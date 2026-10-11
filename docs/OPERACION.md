@@ -25,7 +25,7 @@ Todo lo demás es igual: cobros y pagos parciales, comprobantes privados, correc
 | Código | GitHub `JanoM91/Orthopedic-Vets-Medical` | — |
 | Base de datos | Supabase, organización Exkalibur Consulting | `DATABASE_URL` (Sensitive) |
 | Secreto de sesiones | — | `PAYLOAD_SECRET` (Sensitive). Cambiarlo cierra todas las sesiones. |
-| Comprobantes | Vercel Blob **privado**, conectado con prefijo `FINANZAS` | `FINANZAS_BLOB_READ_WRITE_TOKEN` (la crea Vercel al conectar) |
+| Comprobantes | Vercel Blob **privado** `ovm-finanzas-comprobantes` (iad1), conectado con prefijo `FINANZAS_BLOB` | `FINANZAS_BLOB_READ_WRITE_TOKEN` (la crea Vercel al conectar) |
 | Nota de voz | Anthropic (Claude) | `ANTHROPIC_API_KEY` (Sensitive); opcional `ANTHROPIC_MODEL` (por omisión `claude-haiku-5-5`). Llave propia con límite de gasto. |
 | Correo «Olvidé mi contraseña» | Resend | `RESEND_API_KEY`, `LEADS_FROM_EMAIL` (opcionales) |
 | Identidad | — | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_LOCATION_CITY`, `NEXT_PUBLIC_LOCATION_TIMEZONE` |

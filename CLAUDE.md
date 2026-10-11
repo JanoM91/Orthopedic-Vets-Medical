@@ -7,10 +7,10 @@ Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 ## Stack (no cambiar sin consultar)
 
 - Next.js 16 (App Router) + TypeScript estricto · Payload CMS 3 embebido (`/admin`).
-- **Base de datos: PostgreSQL en Supabase** (`DATABASE_URL`, pooler en modo transacción). La app NO usa la API REST de Supabase: Payload se conecta directo a Postgres.
+- **Base de datos: PostgreSQL en Supabase** (proyecto `orthopedic-vets-finanzas`, ref `mjgpafqqcflqskcupuoq`). `DATABASE_URL` usa el rol `payload_app` (dueño de las tablas) por el pooler en modo transacción de **aws-0**-us-east-2:6543. La app NO usa la API REST de Supabase: Payload se conecta directo a Postgres.
 - **Esquema por migraciones** (`migrations/`), con `push: false`. En producción Payload aplica solas las migraciones pendientes al arrancar (`prodMigrations`). Nunca se sincroniza con `npm run dev` como en MacAuto.
 - Comprobantes en un almacén **privado** de Vercel Blob (`FINANZAS_BLOB_READ_WRITE_TOKEN`).
-- Nota de voz: OpenAI (`OPENAI_API_KEY`, `gpt-4.1-mini` + `gpt-4o-mini-transcribe`). Sin llave, responde 503 y lo demás funciona.
+- Nota de voz: el **dictado del navegador** (Web Speech API) convierte la voz en texto en el teléfono y **Claude** (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, por omisión `claude-haiku-5-5`, salida JSON con `output_config.format`) lo interpreta. No se sube audio. Sin llave, responde 503 y lo demás funciona. Decisión de Jano (11-oct-2026): Anthropic en vez de OpenAI.
 - Deploy: Vercel (producción = rama `main`).
 
 ## Reglas heredadas de MacAuto Finanzas (no romper)

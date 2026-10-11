@@ -9,10 +9,13 @@
  * «Revisar y guardar»: el borrador llena el formulario de captura, donde lo
  * corrige lo que haga falta y lo guarda. NADA se guarda desde esta pantalla.
  *
- * Cómo graba: `MediaRecorder` del navegador (webm en Android/Chrome, mp4 en
- * iPhone), máximo 60 segundos. Si el teléfono no deja usar el micrófono (o
- * el navegador no sabe grabar), queda la opción de escribirlo: el mismo
- * intérprete trabaja sobre texto.
+ * Cómo escucha (distinto de MacAuto): el DICTADO DEL NAVEGADOR (Web Speech
+ * API: Safari en iPhone, Chrome en Android y computadora) convierte la voz en
+ * texto en el propio teléfono, y solo ese texto viaja al servidor, donde
+ * Claude lo interpreta (lib/finanzas/voz.ts). No se sube audio. Máximo 60
+ * segundos. Si el navegador no tiene dictado (Firefox, por ejemplo) o no da
+ * permiso de micrófono, queda «Escríbelo», donde también sirve el micrófono
+ * del teclado del teléfono.
  */
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useRef, useState } from 'react'
@@ -25,13 +28,26 @@ const EJEMPLOS = ['Pagué 3,200 de una placa de titanio para cirugía, de la caj
 
 type Fase = 'listo' | 'grabando' | 'procesando' | 'resultado'
 
-function mimePreferido(): string {
-  if (typeof MediaRecorder === 'undefined') return ''
-  return ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/aac'].find((m) => MediaRecorder.isTypeSupported(m)) ?? ''
+/* Tipos mínimos del dictado del navegador (no vienen en lib.dom de TypeScript). */
+type ResultadoDictado = { isFinal: boolean; 0: { transcript: string } }
+type EventoDictado = { resultIndex: number; results: { length: number; [i: number]: ResultadoDictado } }
+type Dictado = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((e: EventoDictado) => void) | null
+  onerror: ((e: { error: string }) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+  abort: () => void
 }
+type ConstructorDictado = new () => Dictado
 
-function puedeGrabar(): boolean {
-  return typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
+function constructorDictado(): ConstructorDictado | null {
+  if (typeof window === 'undefined') return null
+  const w = window as unknown as { SpeechRecognition?: ConstructorDictado; webkitSpeechRecognition?: ConstructorDictado }
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
 export default function Voz() {
@@ -44,75 +60,107 @@ export default function Voz() {
   const [modoTexto, setModoTexto] = useState(false)
   const [texto, setTexto] = useState('')
   const [soporte, setSoporte] = useState<boolean | null>(null)
-  const grabadora = useRef<MediaRecorder | null>(null)
-  const pedazos = useRef<Blob[]>([])
-  const flujo = useRef<MediaStream | null>(null)
+  const [enVivo, setEnVivo] = useState('')
+  const dictado = useRef<Dictado | null>(null)
+  const definitivo = useRef('')
+  const parcial = useRef('')
+  const cancelado = useRef(false)
   const reloj = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- depende del navegador: solo se sabe después de montar
-    setSoporte(puedeGrabar())
+    setSoporte(Boolean(constructorDictado()))
     return () => detenerTodo()
   }, [])
 
   function detenerTodo() {
     if (reloj.current) clearInterval(reloj.current)
     reloj.current = null
-    flujo.current?.getTracks().forEach((t) => t.stop())
-    flujo.current = null
-  }
-
-  async function empezar() {
-    setError(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      flujo.current = stream
-      const mime = mimePreferido()
-      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
-      pedazos.current = []
-      rec.ondataavailable = (e) => {
-        if (e.data.size > 0) pedazos.current.push(e.data)
-      }
-      rec.onstop = () => {
-        const tipo = rec.mimeType || mime || 'audio/webm'
-        const blob = new Blob(pedazos.current, { type: tipo })
-        detenerTodo()
-        void enviar(blob, '')
-      }
-      grabadora.current = rec
-      rec.start(1000)
-      setSegundos(0)
-      setFase('grabando')
-      reloj.current = setInterval(() => {
-        setSegundos((s) => {
-          if (s + 1 >= MAX_SEGUNDOS) terminar()
-          return s + 1
-        })
-      }, 1000)
-    } catch (e) {
-      const nombre = (e as { name?: string })?.name
-      setError(nombre === 'NotAllowedError' || nombre === 'SecurityError'
-        ? 'El teléfono no dio permiso para usar el micrófono. Actívalo en los ajustes del navegador para este sitio, o escríbelo abajo.'
-        : nombre === 'NotFoundError' ? 'No se encontró un micrófono. Escríbelo abajo.' : 'No se pudo empezar a grabar. Escríbelo abajo.')
-      setModoTexto(true)
-      detenerTodo()
+    const d = dictado.current
+    dictado.current = null
+    if (d) {
+      cancelado.current = true
+      try { d.abort() } catch { /* ya estaba detenido */ }
     }
   }
 
-  function terminar() {
-    const rec = grabadora.current
-    if (rec && rec.state !== 'inactive') rec.stop()
-    else detenerTodo()
-    if (reloj.current) clearInterval(reloj.current)
-    reloj.current = null
+  function empezar() {
+    const C = constructorDictado()
+    if (!C) {
+      setModoTexto(true)
+      return
+    }
+    setError(null)
+    definitivo.current = ''
+    parcial.current = ''
+    cancelado.current = false
+    setEnVivo('')
+    const d = new C()
+    d.lang = 'es-MX'
+    d.continuous = true
+    d.interimResults = true
+    d.onresult = (e) => {
+      let parciales = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i]
+        if (r.isFinal) definitivo.current += `${r[0].transcript} `
+        else parciales += r[0].transcript
+      }
+      parcial.current = parciales
+      setEnVivo(`${definitivo.current}${parciales}`.trim())
+    }
+    d.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return
+      cancelado.current = true
+      setError(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? 'El teléfono no dio permiso para usar el micrófono o el dictado. Actívalo en los ajustes del navegador para este sitio, o escríbelo abajo.'
+        : e.error === 'network' ? 'El dictado necesita internet. Revisa tu conexión o escríbelo abajo.' : 'No se pudo usar el dictado. Escríbelo abajo.')
+      setModoTexto(true)
+      setFase('listo')
+    }
+    d.onend = () => {
+      if (reloj.current) clearInterval(reloj.current)
+      reloj.current = null
+      dictado.current = null
+      if (cancelado.current) return
+      const texto = `${definitivo.current}${parcial.current}`.trim()
+      if (!texto) {
+        setError('No se escuchó nada. Intenta de nuevo, más cerca del micrófono, o escríbelo abajo.')
+        setFase('listo')
+        return
+      }
+      void enviar(texto)
+    }
+    try {
+      d.start()
+    } catch {
+      setError('No se pudo empezar el dictado. Escríbelo abajo.')
+      setModoTexto(true)
+      return
+    }
+    dictado.current = d
+    setSegundos(0)
+    setFase('grabando')
+    reloj.current = setInterval(() => {
+      setSegundos((s) => {
+        if (s + 1 >= MAX_SEGUNDOS) terminar()
+        return s + 1
+      })
+    }, 1000)
   }
 
-  async function enviar(blob: Blob | null, dictado: string) {
+  function terminar() {
+    if (reloj.current) clearInterval(reloj.current)
+    reloj.current = null
+    /* stop() entrega lo que falte y luego dispara onend, que envía el texto. */
+    try { dictado.current?.stop() } catch { /* ya estaba detenido */ }
+  }
+
+  async function enviar(texto: string) {
     setFase('procesando'); setError(null); setResultado(null)
     try {
       const form = new FormData()
-      if (blob) form.append('audio', new File([blob], `nota.${blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm'}`, { type: blob.type }))
-      else form.append('texto', dictado)
+      form.append('texto', texto)
       const r = await api.formulario<ResultadoVoz>('voz', form)
       setResultado(r)
       setFase('resultado')
@@ -154,26 +202,27 @@ export default function Voz() {
       {fase !== 'resultado' && (
         <>
           <p className="fz-ayuda">Di <b>qué pasó, cuánto fue, de dónde salió el dinero y de qué área</b> (consulta, cirugía, rehabilitación…). El sistema arma el borrador; tú lo revisas y lo guardas.</p>
-          {soporte === false && !modoTexto && <Aviso tono="info">Este navegador no puede grabar audio. Escríbelo abajo: funciona igual.</Aviso>}
+          {soporte === false && !modoTexto && <Aviso tono="info">Este navegador no tiene dictado. Escríbelo abajo (puedes usar el micrófono del teclado): funciona igual.</Aviso>}
           {error && <Aviso tono="malo">{error}</Aviso>}
 
           {soporte && !modoTexto && (
             <div className="fz-voz">
               {fase === 'grabando' ? (
                 <>
-                  <button type="button" className="fz-grabar is-grabando" onClick={terminar} aria-label="Terminar grabación"><Icono n="stop" /></button>
-                  <div className="fz-voz__estado"><span className="fz-voz__punto" /> Grabando · {segundos}s <span className="fz-tenue">/ {MAX_SEGUNDOS}s</span></div>
+                  <button type="button" className="fz-grabar is-grabando" onClick={terminar} aria-label="Terminar dictado"><Icono n="stop" /></button>
+                  <div className="fz-voz__estado"><span className="fz-voz__punto" /> Escuchando · {segundos}s <span className="fz-tenue">/ {MAX_SEGUNDOS}s</span></div>
+                  {enVivo && <p className="fz-voz__transcripcion">«{enVivo}»</p>}
                   <p className="fz-ayuda">Toca el cuadro para terminar.</p>
                 </>
               ) : fase === 'procesando' ? (
                 <>
                   <span className="fz-grabar is-procesando" aria-hidden="true"><Icono n="mic" /></span>
-                  <div className="fz-voz__estado">Escuchando y armando el borrador…</div>
+                  <div className="fz-voz__estado">Armando el borrador…</div>
                 </>
               ) : (
                 <>
-                  <button type="button" className="fz-grabar" onClick={empezar} aria-label="Empezar a grabar"><Icono n="mic" /></button>
-                  <div className="fz-voz__estado">Toca para grabar</div>
+                  <button type="button" className="fz-grabar" onClick={empezar} aria-label="Empezar a dictar"><Icono n="mic" /></button>
+                  <div className="fz-voz__estado">Toca para dictar</div>
                 </>
               )}
             </div>
@@ -188,11 +237,11 @@ export default function Voz() {
 
           {fase === 'listo' && (modoTexto || soporte === false ? (
             <div className="fz-campo">
-              <span className="fz-etiqueta">Escríbelo</span>
+              <span className="fz-etiqueta">Escríbelo <span className="fz-opcional">o usa el micrófono del teclado</span></span>
               <textarea className="fz-input" rows={3} value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={600} placeholder="Ej. Pagué 3,200 de una placa de titanio, de la caja chica" aria-label="Nota escrita" />
               <div className="fz-acciones-fin">
-                <button type="button" className="fz-btn fz-btn--navy" disabled={!texto.trim()} onClick={() => enviar(null, texto.trim())}><Icono n="enviar" chico />Interpretar</button>
-                {soporte && <button type="button" className="fz-btn fz-btn--claro" onClick={() => { setModoTexto(false); setError(null) }}>Mejor grabar</button>}
+                <button type="button" className="fz-btn fz-btn--navy" disabled={!texto.trim()} onClick={() => enviar(texto.trim())}><Icono n="enviar" chico />Interpretar</button>
+                {soporte && <button type="button" className="fz-btn fz-btn--claro" onClick={() => { setModoTexto(false); setError(null) }}>Mejor dictar</button>}
               </div>
             </div>
           ) : soporte ? (
@@ -225,7 +274,7 @@ export default function Voz() {
           )}
           <div className="fz-acciones-fin">
             <button type="button" className={`fz-btn ${b.tipo === 'entrada' ? 'fz-btn--teal' : 'fz-btn--navy'}`} onClick={revisarYGuardar}>Revisar y guardar</button>
-            <button type="button" className="fz-btn fz-btn--claro" onClick={deNuevo}>Grabar de nuevo</button>
+            <button type="button" className="fz-btn fz-btn--claro" onClick={deNuevo}>Dictar de nuevo</button>
           </div>
           <p className="fz-ayuda">Nada se guarda todavía: en el formulario puedes cambiar cualquier dato antes de guardar.</p>
         </>

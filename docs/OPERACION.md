@@ -12,7 +12,7 @@
 | Primer acceso | Rol anterior «admin» se marcaba superadmin | **La primera cuenta que se crea nace superadministradora.** |
 | Roles sugeridos | 6 (Dueño, Administración, Director, Vendedor, Operativo de piso, Editor) | 4: Dueño, Administración, Médico veterinario (ve lo de Consulta, Cirugía y Rehabilitación), Recepción (solo captura). |
 | Categorías sugeridas | De autos | 20 de clínica (Consultas, Cirugías, Implantes y material de osteosíntesis, Medicamentos y anestesia, Nómina restringida…). |
-| Nota de voz | Ejemplos y vocabulario de autos | Ejemplos y vocabulario de la clínica; propone el área. |
+| Nota de voz | Graba audio, OpenAI transcribe e interpreta | El **teléfono dicta** (voz → texto con el dictado del navegador) y **Claude** interpreta el texto. No se sube audio. Ejemplos y vocabulario de la clínica; propone el área. Decisión de Jano, 11-oct-2026. |
 | Marca | Navy y turquesa | Verde pino `#123a34` y menta del logotipo `#6ed8bb`. Nombre de la app en el teléfono: «Finanzas». |
 
 Todo lo demás es igual: cobros y pagos parciales, comprobantes privados, corrección y anulación con bitácora, nómina restringida, saldos, traspasos, fondos a cargo de empleados, gastos «de mi bolsa» con reembolso, sesiones de 7 días y «Si se pierde un teléfono».
@@ -26,13 +26,15 @@ Todo lo demás es igual: cobros y pagos parciales, comprobantes privados, correc
 | Base de datos | Supabase, organización Exkalibur Consulting | `DATABASE_URL` (Sensitive) |
 | Secreto de sesiones | — | `PAYLOAD_SECRET` (Sensitive). Cambiarlo cierra todas las sesiones. |
 | Comprobantes | Vercel Blob **privado**, conectado con prefijo `FINANZAS` | `FINANZAS_BLOB_READ_WRITE_TOKEN` (la crea Vercel al conectar) |
-| Nota de voz | OpenAI | `OPENAI_API_KEY` (Sensitive). Usar una llave propia de la clínica o de Exkalibur, con límite de gasto; **no la de MacAuto**. |
+| Nota de voz | Anthropic (Claude) | `ANTHROPIC_API_KEY` (Sensitive); opcional `ANTHROPIC_MODEL` (por omisión `claude-haiku-5-5`). Llave propia con límite de gasto. |
 | Correo «Olvidé mi contraseña» | Resend | `RESEND_API_KEY`, `LEADS_FROM_EMAIL` (opcionales) |
 | Identidad | — | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_LOCATION_CITY`, `NEXT_PUBLIC_LOCATION_TIMEZONE` |
 
 ## 3. Base de datos en Supabase
 
-- La app entra a Postgres con un rol propio (`payload_app`) por el **pooler en modo transacción** (puerto 6543). No usa la API REST de Supabase ni las llaves anon/service.
+- Proyecto `orthopedic-vets-finanzas` (ref `mjgpafqqcflqskcupuoq`, us-east-2), creado por Jano el 11-oct-2026.
+- La app entra a Postgres con un rol propio (`payload_app`, contraseña solo en Vercel) por el **pooler en modo transacción**: `aws-0-us-east-2.pooler.supabase.com:6543` (con `aws-1` responde «tenant/user not found»). No usa la API REST de Supabase ni las llaves anon/service.
+- El asesor de seguridad de Supabase marca «RLS Enabled No Policy» (nivel INFO) en las 18 tablas: es intencional.
 - Las tablas viven en el esquema `public` con **RLS activado y sin políticas**: la API REST de Supabase no puede leer nada (ni usuarios ni dinero). El dueño de las tablas (`payload_app`) no está sujeto a RLS, así que la app no se entera.
 - **Migraciones:** `migrations/`. Al arrancar en producción, Payload revisa la tabla `payload_migrations` y aplica las pendientes. Para un cambio de modelo: ver `CLAUDE.md` → «Cambios al modelo de datos». **No** se corre `npm run dev` contra la base de producción.
 - Respaldos: el plan Pro de Supabase hace respaldos diarios (7 días). Si se quiere poder volver a cualquier minuto, activar *Point in Time Recovery* (costo extra).
@@ -55,4 +57,6 @@ Todo lo demás es igual: cobros y pagos parciales, comprobantes privados, correc
 | Integración por API contra Postgres local | 37 / 37: primer usuario superadmin, catálogos y roles sugeridos, gasto asignado a Cirugía, reintento sin duplicar, «auto» rechazado, entrada por cobrar con cobro parcial y cobro excedido, clasificar, saldos al centavo, traspaso, Recepción (sin nómina, sin saldos, solo lo suyo, no abre lo ajeno, no se vuelve superadmin), cuenta sin rol rechazada, gasto «de mi bolsa» y reembolso, anulación, API genérica `fin-*` cerrada, nota de voz sin llave → 503, comprobante sin almacén → 503 |
 | Pantallas (Chromium) | Login 390 px, inicio y captura de Recepción a 390 px, inicio de superadmin a 1280 px; sin errores de JavaScript |
 
-No probado aquí: subida real de comprobantes (necesita el almacén privado), nota de voz con OpenAI real, correo de recuperación.
+No probado aquí: subida real de comprobantes (necesita el almacén privado), nota de voz con la llave real de Anthropic y el dictado en iPhone/Android reales, correo de recuperación.
+
+**Navegadores con dictado:** Safari en iPhone, Chrome en Android y en computadora. En Safari el dictado lo hace Apple; en Chrome, Google (el audio pasa por sus servidores). Donde no hay dictado (Firefox), queda «Escríbelo», donde sirve el micrófono del teclado.

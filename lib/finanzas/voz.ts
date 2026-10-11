@@ -3,14 +3,19 @@
  * Finanzas — nota de voz (heredada de MacAuto Finanzas, docs/62 de ese proyecto)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * La persona dicta «pagué tres mil doscientos de placas de titanio, de la
+ * La persona dicta «pagué tres mil doscientos de una placa de titanio, de la
  * caja chica» y recibe un BORRADOR: tipo, importe, concepto, categoría,
- * cuenta, área, fecha. El borrador llena el formulario de captura y la persona lo
- * revisa y guarda. Nada se guarda solo: este archivo no escribe en la base.
+ * cuenta, área, fecha. El borrador llena el formulario de captura y la
+ * persona lo revisa y guarda. Nada se guarda solo: este archivo no escribe en
+ * la base.
  *
- * Dos llamadas a OpenAI (llave OPENAI_API_KEY de esta instalación):
- *   1. audio → texto  (/audio/transcriptions, OPENAI_TRANSCRIBE_MODEL)
- *   2. texto → JSON   (/chat/completions con esquema estricto, OPENAI_MODEL)
+ * DIFERENCIA CON MACAUTO (decisión de Jano, 11-oct-2026: Anthropic en vez de
+ * OpenAI). La API de Claude no recibe audio, así que el paso de voz a texto lo
+ * hace el TELÉFONO con el dictado del navegador (Web Speech API, en
+ * components/admin/finanzas/Voz.tsx). Aquí llega solo el texto, y Claude lo
+ * convierte en JSON con un esquema estricto (`output_config.format`):
+ *
+ *   texto → JSON   (POST /v1/messages, ANTHROPIC_MODEL; por omisión claude-haiku-5-5)
  *
  * Y una regla pura que no habla con nadie: armarBorradorVoz (reglas.ts)
  * revisa el JSON contra el catálogo (ids que existen, categoría del tipo
@@ -22,8 +27,8 @@
  * del catálogo. Si alguien dicta «ignora las reglas», lo peor que pasa es un
  * borrador raro que la persona ve antes de guardar.
  *
- * Sin OPENAI_API_KEY la función responde 503 con un mensaje claro; el resto
- * de Finanzas sigue igual.
+ * Sin ANTHROPIC_API_KEY la función responde 503 con un mensaje claro; el
+ * resto de Finanzas sigue igual.
  */
 import { rateLimit } from '../rateLimit'
 import { site } from '../site'
@@ -31,27 +36,15 @@ import { armarBorradorVoz, type InterpretacionVoz } from './reglas'
 import { catalogo, type Ctx, ErrorFinanzas } from './servicio'
 import type { ResultadoVoz } from './tipos'
 
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1'
-const MODELO = process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini'
-/** Modelo de transcripción. `gpt-4o-mini-transcribe` entiende bien el español de México y es barato; `whisper-1` también sirve. */
-const MODELO_TRANSCRIPCION = process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || 'gpt-4o-mini-transcribe'
+const ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL?.trim() || 'https://api.anthropic.com'
+/** Haiku: extracción rápida y barata. Se cambia con ANTHROPIC_MODEL sin tocar código. */
+const MODELO = process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-5-5'
 
-const MAX_AUDIO_BYTES = 8 * 1024 * 1024
 const MAX_TEXTO = 600
 const NOTAS_POR_HORA = 40
 const ESPERA_MS = 25_000
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
-
-function extensionDe(tipo: string): string {
-  const t = tipo.toLowerCase()
-  if (t.includes('webm')) return 'webm'
-  if (t.includes('mp4') || t.includes('m4a') || t.includes('aac')) return 'mp4'
-  if (t.includes('ogg') || t.includes('opus')) return 'ogg'
-  if (t.includes('wav')) return 'wav'
-  if (t.includes('mpeg') || t.includes('mp3')) return 'mp3'
-  return 'webm'
-}
 
 async function conEspera<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const ctrl = new AbortController()
@@ -61,24 +54,6 @@ async function conEspera<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T>
   } finally {
     clearTimeout(t)
   }
-}
-
-/** Audio → texto. */
-async function transcribir(apiKey: string, audio: File, pistas: string): Promise<string> {
-  const form = new FormData()
-  form.append('file', audio, `nota.${extensionDe(audio.type)}`)
-  form.append('model', MODELO_TRANSCRIPCION)
-  form.append('language', 'es')
-  form.append('response_format', 'json')
-  /* Vocabulario del negocio: ayuda a que escriba bien marcas, modelos y nombres de cuentas. */
-  if (pistas) form.append('prompt', pistas.slice(0, 600))
-  const res = await conEspera((signal) => fetch(`${OPENAI_BASE_URL}/audio/transcriptions`, { method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal }))
-  if (!res.ok) {
-    console.error('[finanzas/voz] transcripción falló:', res.status, (await res.text()).slice(0, 300))
-    throw new ErrorFinanzas(502, 'No se pudo transcribir la nota. Intenta de nuevo o captúralo a mano.')
-  }
-  const datos = (await res.json()) as { text?: string }
-  return (datos.text || '').trim()
 }
 
 const ESQUEMA = {
@@ -113,7 +88,7 @@ async function interpretar(apiKey: string, transcripcion: string, cat: Awaited<R
   const catEntrada = cat.categorias.filter((c) => c.tipo === 'entrada').map((c) => `${c.id} = ${c.nombre}`).join(' | ')
   const actividades = cat.actividades.map((a) => `${a.id} = ${a.nombre}`).join(' | ')
   const sistema = [
-    `Eres el asistente de captura de ${site.brand.name} Finanzas, una clínica veterinaria de ortopedia en ${site.location.city}. Recibes la transcripción de una nota de voz dictada en español de México por una persona del equipo y la conviertes en un borrador de registro. Responde SOLO con el JSON del esquema.`,
+    `Eres el asistente de captura de ${site.brand.name} Finanzas, una clínica veterinaria de ortopedia en ${site.location.city}. Recibes la transcripción de una nota de voz dictada en español de México por una persona del equipo y la conviertes en un borrador de registro. La transcripción viene del dictado automático del teléfono: puede traer palabras mal reconocidas (corrígelas por contexto) y números escritos con letra. Responde SOLO con el JSON del esquema.`,
     'Reglas:',
     '- tipo: "gasto" si salió dinero (pagó, compró, gastó), "entrada" si entró dinero (cobró, le pagaron, dejaron anticipo, vendió). "desconocido" solo si de verdad no se puede saber.',
     '- importe: en pesos, número. "ochocientos" = 800; "mil doscientos cincuenta con cincuenta" = 1250.50. Si no se dice, null.',
@@ -129,20 +104,31 @@ async function interpretar(apiKey: string, transcripcion: string, cat: Awaited<R
   ].join('\n')
   const cuerpo = {
     model: MODELO,
-    temperature: 0,
-    messages: [
-      { role: 'system', content: sistema },
-      { role: 'user', content: `Transcripción: «${transcripcion}»` },
-    ],
-    response_format: { type: 'json_schema', json_schema: { name: 'borrador_finanzas', strict: true, schema: ESQUEMA } },
+    max_tokens: 1024,
+    system: sistema,
+    messages: [{ role: 'user', content: `Transcripción: «${transcripcion}»` }],
+    output_config: { format: { type: 'json_schema', schema: ESQUEMA } },
   }
-  const res = await conEspera((signal) => fetch(`${OPENAI_BASE_URL}/chat/completions`, { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), signal }))
+  let res: Response
+  try {
+    res = await conEspera((signal) =>
+      fetch(`${ANTHROPIC_BASE_URL}/v1/messages`, {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify(cuerpo),
+        signal,
+      }),
+    )
+  } catch {
+    throw new ErrorFinanzas(504, 'El servicio tardó demasiado. Intenta de nuevo o captúralo a mano.')
+  }
   if (!res.ok) {
     console.error('[finanzas/voz] interpretación falló:', res.status, (await res.text()).slice(0, 300))
     throw new ErrorFinanzas(502, 'No se pudo interpretar la nota. Intenta de nuevo o captúralo a mano.')
   }
-  const datos = (await res.json()) as { choices?: { message?: { content?: string; refusal?: string } }[] }
-  const contenido = datos.choices?.[0]?.message?.content
+  const datos = (await res.json()) as { stop_reason?: string; content?: { type: string; text?: string }[] }
+  if (datos.stop_reason === 'refusal') throw new ErrorFinanzas(502, 'El modelo no quiso interpretar esa nota. Captúralo a mano.')
+  const contenido = datos.content?.find((c) => c.type === 'text')?.text
   if (!contenido) throw new ErrorFinanzas(502, 'El modelo no devolvió un borrador. Intenta de nuevo.')
   try {
     return JSON.parse(contenido) as InterpretacionVoz
@@ -152,26 +138,20 @@ async function interpretar(apiKey: string, transcripcion: string, cat: Awaited<R
 }
 
 /**
- * Nota de voz (o texto dictado) → borrador para el formulario. Pide
+ * Texto dictado (o escrito) → borrador para el formulario. Pide
  * «Registrar entradas y gastos», cuenta contra un tope por persona y nunca
  * guarda nada.
  */
-export async function notaDeVoz(ctx: Ctx, entrada: { audio: File | null; texto: string }): Promise<ResultadoVoz> {
+export async function notaDeVoz(ctx: Ctx, entrada: { texto: string }): Promise<ResultadoVoz> {
   if (!ctx.p.fin.registrar) throw new ErrorFinanzas(403, 'Tu rol no incluye registrar entradas y gastos.')
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  if (!apiKey) throw new ErrorFinanzas(503, 'La nota de voz no está configurada en el servidor (falta OPENAI_API_KEY). Captúralo a mano.')
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim()
+  if (!apiKey) throw new ErrorFinanzas(503, 'La nota de voz no está configurada en el servidor (falta ANTHROPIC_API_KEY). Captúralo a mano.')
   if (!rateLimit(`finanzas-voz:${ctx.user.id}`, NOTAS_POR_HORA, 60 * 60 * 1000)) throw new ErrorFinanzas(429, 'Muchas notas en poco tiempo. Espera unos minutos o captúralo a mano.')
 
-  const cat = await catalogo(ctx)
-  let transcripcion = entrada.texto.trim().slice(0, MAX_TEXTO)
-  if (entrada.audio) {
-    if (entrada.audio.size === 0) throw new ErrorFinanzas(400, 'La grabación llegó vacía. Intenta de nuevo.')
-    if (entrada.audio.size > MAX_AUDIO_BYTES) throw new ErrorFinanzas(400, 'La grabación es muy larga. Dicta solo lo esencial: qué, cuánto, de dónde salió y para qué área.')
-    const pistas = [site.brand.name, 'caja chica', 'fondo', 'transferencia', 'efectivo', 'consulta', 'cirugía', 'rehabilitación', 'implante', 'placa', 'tornillos', 'anestesia', 'rayos X', 'TPLO', ...cat.cuentas.map((c) => c.nombre), ...cat.categorias.map((c) => c.nombre)].join(', ')
-    transcripcion = await transcribir(apiKey, entrada.audio, pistas)
-  }
+  const transcripcion = entrada.texto.trim().slice(0, MAX_TEXTO)
   if (!transcripcion) throw new ErrorFinanzas(400, 'No se escuchó nada. Intenta de nuevo, más cerca del micrófono.')
 
+  const cat = await catalogo(ctx)
   const interp = await interpretar(apiKey, transcripcion, cat, ctx.hoy, cat.usuario.nombre)
   const { borrador, dudas } = armarBorradorVoz(interp, cat, ctx.hoy, cat.fechaCorte, transcripcion)
 

@@ -56,14 +56,14 @@ import { notaDeVoz } from '@/lib/finanzas/voz'
  *   GET  fondos                        dinero a cargo de cada persona (etapa 3, docs/62)
  *   GET  equipo                        id y nombre de las personas del panel (para «quién pagó de su bolsa»)
  *   POST movimientos-internos          traspaso entre cuentas, aportación o retiro de socio
- *   POST voz                           nota de voz (multipart «audio») o texto dictado → borrador para el formulario (etapa 4)
+ *   POST voz                           texto dictado en el teléfono → borrador para el formulario (Claude)
  *
  * Los reintentos son seguros: los POST que crean algo aceptan el encabezado
  * `Idempotency-Key` y un segundo envío con la misma clave no duplica nada.
  */
 
 export const dynamic = 'force-dynamic'
-/* La nota de voz hace dos llamadas a OpenAI seguidas (transcribir e interpretar): más que los 10 s de fábrica. */
+/* La nota de voz espera la respuesta de Claude: puede pasar de los 10 s de fábrica. */
 export const maxDuration = 30
 
 type Contexto = { params: Promise<{ ruta?: string[] }> }
@@ -154,7 +154,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       return json(r, r.duplicado ? 200 : 201)
     }
     if (a === 'voz' && !b) {
-      let audio: File | null = null
+      /* Solo texto: el teléfono hace el dictado (voz → texto) y aquí Claude lo interpreta. */
       let texto = ''
       const tipo = req.headers.get('content-type') || ''
       if (tipo.includes('multipart/form-data')) {
@@ -162,17 +162,15 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
         try {
           form = await req.formData()
         } catch {
-          return json({ error: 'No llegó la grabación.' }, 400)
+          return json({ error: 'No llegó la nota.' }, 400)
         }
-        const f = form.get('audio')
-        if (f instanceof File) audio = f
         const t = form.get('texto')
         if (typeof t === 'string') texto = t
       } else {
         const cuerpo = (await leerJson(req)) as { texto?: unknown }
         if (typeof cuerpo?.texto === 'string') texto = cuerpo.texto
       }
-      return json(await notaDeVoz(ctx, { audio, texto }))
+      return json(await notaDeVoz(ctx, { texto }))
     }
   }
   return json({ error: 'Ruta no encontrada.' }, 404)

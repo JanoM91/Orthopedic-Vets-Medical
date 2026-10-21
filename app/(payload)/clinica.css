@@ -23,8 +23,8 @@
 
 /* avatares: personas (navy), perros, gatos y otras especies */
 .cl-avatar { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: 14px; letter-spacing: 0.02em; color: #fff; background: var(--mx-navy); }
-.cl-avatar.is-perro { background: #b8742a; }
-.cl-avatar.is-gato { background: #5a6b8c; }
+.cl-avatar.is-perro { background: #5fb3c4; }
+.cl-avatar.is-gato { background: #d4a94a; }
 .cl-avatar.is-otra { background: var(--mx-teal-dark); }
 .cl-avatar--grande { width: 56px; height: 56px; font-size: 19px; }
 .cl-cabecera-ficha { display: flex; gap: 14px; align-items: center; min-width: 0; }
@@ -94,7 +94,7 @@
 .cl-cita.is-sel { outline: 2px solid var(--mx-navy); z-index: 2; }
 .cl-cita.st-solicitada { background: var(--mx-amber-soft); color: #92400e; border-left-color: var(--mx-amber); }
 .cl-cita.st-confirmada { background: #e1ecf7; color: #2c5a87; border-left-color: #2c5a87; }
-.cl-cita.st-llegada { background: #efe6fa; color: #5b3a8c; border-left-color: #7a4fb0; }
+.cl-cita.st-llegada { background: #e3eaf6; color: #2b4a85; border-left-color: #2b4a85; }
 .cl-cita.st-atencion { background: var(--mx-teal-light); color: #0c2c26; border-left-color: var(--mx-teal-dark); }
 .cl-cita.st-finalizada { background: var(--mx-sand-dark); color: var(--mx-muted); border-left-color: var(--mx-muted); }
 .cl-cita.st-cancelada, .cl-cita.st-no_asistio { background: #fdecee; color: #b42330; border-left-color: #b42330; text-decoration: line-through; }

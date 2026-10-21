@@ -95,7 +95,7 @@ export function htmlDeRecuperacion(args: {
         panel administrativo de <b>${e(site.brand.name)}</b>.
       </p>
       <p style="margin:24px 0">
-        <a href="${e(args.liga)}" style="background:#123a34;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">
+        <a href="${e(args.liga)}" style="background:${site.brand.primary};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">
           Crear una contraseña nueva
         </a>
       </p>

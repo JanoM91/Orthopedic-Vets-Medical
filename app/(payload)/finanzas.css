@@ -22,7 +22,7 @@
 /* encabezado y barra (solo captura) — cabe en 320 px: marca · iniciales · Salir; el nombre solo desde 480 px */
 .fz-cabecera { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); padding-top: calc(10px + env(safe-area-inset-top, 0px)); background: var(--mx-navy); color: #fff; }
 .fz-marca { display: flex; align-items: center; gap: 8px; flex: none; text-decoration: none; }
-.fz-marca img { height: clamp(28px, 8.5vw, 34px); width: auto; display: block; }
+.fz-marca img { height: clamp(28px, 8.5vw, 34px); width: auto; border-radius: 50%; display: block; }
 .fz-marca span { color: var(--mx-teal-light); font-weight: 800; font-size: clamp(14px, 4.4vw, 17px); letter-spacing: -0.02em; line-height: 1; }
 .fz-cabecera__quien { margin-left: auto; min-width: 0; display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 1.2; }
 .fz-avatar { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--mx-navy-light); color: var(--mx-teal-light); font-weight: 750; font-size: 13px; letter-spacing: 0.02em; }

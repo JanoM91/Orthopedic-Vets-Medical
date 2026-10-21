@@ -20,7 +20,7 @@ export default function MarcaDelPanel() {
         <img alt="" aria-hidden="true" className="mx-marca__emblema" src="/logo-mark-white.png" />
         <span className="mx-marca__nombre">{site.brand.name}</span>
       </span>
-      <span className="mx-marca__sub">Finanzas · panel</span>
+      <span className="mx-marca__sub">Panel de la clínica</span>
     </div>
   )
 }

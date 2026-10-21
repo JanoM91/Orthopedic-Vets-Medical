@@ -1,6 +1,6 @@
 /*
  * ═══════════════════════════════════════════════════════════════════════════
- *  Hoja de estilos del PANEL DE ADMINISTRACIÓN (Payload CMS) — marca Orthopedic Vet's Medical
+ *  Hoja de estilos del PANEL DE ADMINISTRACIÓN (Payload CMS) — marca de la instalación (hoy Veterinaria Exkalibur)
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * QUÉ ES
@@ -35,26 +35,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ──────────────────────────────────────────────────────────────────────────
- * 1-A · Tokens de marca (menta del logotipo #6ed8bb + verde pino oscuro).
+ * 1-A · Tokens de marca (azul marino #243a63, azul #3a9db0 y dorado #e8c272 del logotipo).
  *       Los nombres --mx-navy / --mx-teal se heredan de MacAuto: «navy» es el
  *       color primario oscuro y «teal» el acento, sea cual sea su tono.
  * ────────────────────────────────────────────────────────────────────────── */
 :root {
-  --mx-navy: #123a34;
-  --mx-navy-dark: #0b2925;
-  --mx-navy-light: #1c4d45;
-  --mx-teal: #2bae8e;
-  --mx-teal-dark: #1f8c72;
-  --mx-teal-light: #6ed8bb;
-  --mx-teal-text: #1b7a64; /* verde menta legible sobre blanco (≈5:1) */
-  --mx-teal-soft: #eaf9f4;
-  --mx-ink: #1a1a2e;
-  --mx-muted: #6b7280;
-  --mx-sand: #f4f8f7;
-  --mx-sand-dark: #ebf2f0;
-  --mx-line: #dfe8e5;
-  --mx-amber: #fbbf24;
-  --mx-amber-soft: #fef6e0;
+  --mx-navy: #243a63;
+  --mx-navy-dark: #182a4a;
+  --mx-navy-light: #33508a;
+  --mx-teal: #3a9db0;
+  --mx-teal-dark: #2c8192;
+  --mx-teal-light: #7fc8d6;
+  --mx-teal-text: #22778a; /* azul del logotipo legible sobre blanco (≈5:1) */
+  --mx-teal-soft: #e6f4f7;
+  --mx-ink: #1a2238;
+  --mx-muted: #66718a;
+  --mx-sand: #f3f6fa;
+  --mx-sand-dark: #e8edf5;
+  --mx-line: #d9e1ec;
+  --mx-amber: #e8c272;
+  --mx-amber-soft: #fdf5e1;
   --mx-offer: #e63946;
   --mx-reserved: #f4a261;
   --mx-sold: #9ca3af;
@@ -63,8 +63,8 @@
   --mx-radius-panel: 28px;
   --mx-radius-pill: 999px;
   --mx-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --mx-shadow-soft: 0 14px 34px rgba(10, 28, 25, 0.08);
-  --mx-shadow-lift: 0 26px 60px rgba(10, 28, 25, 0.14);
+  --mx-shadow-soft: 0 14px 34px rgba(24, 42, 74, 0.08);
+  --mx-shadow-lift: 0 26px 60px rgba(24, 42, 74, 0.14);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -77,46 +77,46 @@
 :root,
 html[data-theme='light'] {
   --theme-elevation-0: #ffffff;
-  --theme-elevation-50: #f6f6f6;
-  --theme-elevation-100: #f0f1f1;
-  --theme-elevation-150: #e7e9e9;
-  --theme-elevation-200: #dbdddd;
-  --theme-elevation-250: #cdd1d1;
-  --theme-elevation-300: #bec3c2;
-  --theme-elevation-350: #adb3b2;
-  --theme-elevation-400: #979f9e;
-  --theme-elevation-450: #848d8c;
-  --theme-elevation-500: #717b7a;
-  --theme-elevation-550: #636e6c;
-  --theme-elevation-600: #53605e;
-  --theme-elevation-650: #455351;
-  --theme-elevation-700: #384745;
-  --theme-elevation-750: #2d3d3a;
-  --theme-elevation-800: #223330;
-  --theme-elevation-850: #1d2d2b;
-  --theme-elevation-900: #162724;
-  --theme-elevation-950: #0f211e;
-  --theme-elevation-1000: #0a1c19;
+  --theme-elevation-50: #f6f7fa;
+  --theme-elevation-100: #eaebf0;
+  --theme-elevation-150: #dddfe5;
+  --theme-elevation-200: #d1d4db;
+  --theme-elevation-250: #c5c8d0;
+  --theme-elevation-300: #b8bcc6;
+  --theme-elevation-350: #acb0bb;
+  --theme-elevation-400: #9fa4b1;
+  --theme-elevation-450: #9399a6;
+  --theme-elevation-500: #878d9c;
+  --theme-elevation-550: #7a8191;
+  --theme-elevation-600: #6e7587;
+  --theme-elevation-650: #626a7c;
+  --theme-elevation-700: #555e72;
+  --theme-elevation-750: #495267;
+  --theme-elevation-800: #3c465d;
+  --theme-elevation-850: #303a52;
+  --theme-elevation-900: #242f48;
+  --theme-elevation-950: #17233d;
+  --theme-elevation-1000: #0b1733;
 
-  --theme-success-50: #eaf9f4;
-  --theme-success-100: #d9f2eb;
-  --theme-success-150: #c5eae0;
-  --theme-success-200: #ade1d3;
-  --theme-success-250: #92d6c5;
-  --theme-success-300: #7bcdb9;
-  --theme-success-350: #5fc2aa;
-  --theme-success-400: #46b99c;
-  --theme-success-450: #36b294;
-  --theme-success-500: #2bae8e;
-  --theme-success-550: #269c7f;
-  --theme-success-600: #20866d;
-  --theme-success-650: #1b7761;
-  --theme-success-700: #176854;
-  --theme-success-750: #135848;
-  --theme-success-800: #0f4a3c;
-  --theme-success-850: #0b3d32;
-  --theme-success-900: #083127;
-  --theme-success-950: #04241d;
+  --theme-success-50: #e6f4f7;
+  --theme-success-100: #d3ebf1;
+  --theme-success-150: #bde1ea;
+  --theme-success-200: #a4d6e2;
+  --theme-success-250: #8ccbd9;
+  --theme-success-300: #73bfcf;
+  --theme-success-350: #5cb2c4;
+  --theme-success-400: #4aa8bb;
+  --theme-success-450: #41a2b5;
+  --theme-success-500: #3a9db0;
+  --theme-success-550: #338d9e;
+  --theme-success-600: #2c7c8b;
+  --theme-success-650: #266d7a;
+  --theme-success-700: #215e6a;
+  --theme-success-750: #1b4f59;
+  --theme-success-800: #164149;
+  --theme-success-850: #12363d;
+  --theme-success-900: #0e2b31;
+  --theme-success-950: #0a2025;
 
   --theme-error-50: #fdf2f3;
   --theme-error-100: #fbe4e6;
@@ -798,6 +798,7 @@ textarea:focus,
 .mx-marca__emblema {
   height: 34px;
   width: 34px;
+  border-radius: 50%;
   display: block;
   flex: none;
 }
@@ -828,9 +829,16 @@ textarea:focus,
 
 /* El tamaño baja con el ancho de la pantalla: cabe en un teléfono de 320 px. */
 .mx-logo-login__logo {
-  width: clamp(150px, 48vw, 210px);
+  width: clamp(120px, 36vw, 160px);
   height: auto;
   display: block;
+}
+
+.mx-logo-login__nombre {
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--mx-navy);
 }
 
 .mx-logo-login__sub {

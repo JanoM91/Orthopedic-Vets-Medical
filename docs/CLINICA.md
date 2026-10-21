@@ -8,7 +8,8 @@
 |---|---|---|
 | **Pacientes** (clientes-tutores y mascotas): búsqueda, alta manual, ficha del cliente, expediente de la mascota (datos, alergias y alertas de manejo, cartilla, pesos, notas clínicas SOAP, documentos), código de vinculación al portal | Equipo, según su rol | `/admin/clinica` (y las colecciones del grupo «Clínica» en el panel de Payload) |
 | **Importación** de clientes y mascotas desde CSV o Excel, con plantilla, mapeo de columnas, vista previa y detección de duplicados | Roles con «Importar» | `/admin/clinica/importar` |
-| **Portal del tutor**: cuenta propia, vinculación con código, mis mascotas, cartilla, peso, documentos publicados, aportar antecedentes | Dueños de mascotas | `/portal` |
+| **Agenda y citas** (21-oct-2026): día por consultorio, citas con estados, solicitudes del portal por confirmar, reprogramar/cancelar, cargo automático en Finanzas al finalizar | Roles con «Agenda» | `/admin/clinica/agenda` y pestaña «Citas» del expediente; catálogos en Clínica → Recursos, Servicios y «Agenda: horario y reglas» |
+| **Portal del tutor**: cuenta propia, vinculación con código, mis mascotas, cartilla, peso, documentos publicados, aportar antecedentes, **pedir, reprogramar y cancelar citas** | Dueños de mascotas | `/portal`, `/portal/citas` |
 
 Es **marca blanca**: nombre, colores, logotipo y teléfono salen de variables de entorno (§6). Ningún dato de la clínica vive en el código.
 
@@ -51,6 +52,16 @@ Quien no «entra al panel completo» ve la clínica sola, con encabezado y barra
 - **Documentos aportados por el tutor** entran como «pendiente de revisión» y no se publican hasta que el equipo lo decida.
 - **Sesiones**: Payload usa la misma cookie para el panel y el portal. En un mismo navegador, entrar al portal cierra la sesión del panel y viceversa (en la práctica son personas distintas).
 
+## 4-bis. Agenda y citas
+
+- **Catálogos**: `recursos` (consultorios, quirófano, estética), `servicios` (duración, recurso por defecto, precio opcional, área de Finanzas, si el tutor lo puede pedir en línea: «inmediata», «solo con valoración» o «no») y el global `agenda-configuracion` (horario por día, intervalo, reglas del portal: anticipación mínima, días adelante, horas para cancelar). Primera vez: en la agenda, botón «Crear recursos y servicios sugeridos» (4 recursos, 9 servicios sin precio) y luego se editan en el panel. Sin horario guardado se usa L–V 9–19 y S 9–14.
+- **Estados**: solicitada → confirmada → llegada → atención → finalizada; cancelada (con motivo) y no asistió cierran. Las transiciones válidas las decide el servidor (`TRANSICIONES` en `collections/clinica/agenda.ts`). Todo cambio queda en el historial de la cita.
+- **Choques**: al crear o reprogramar se toma un candado de Postgres por recurso dentro de la transacción y se vuelven a buscar traslapes; dos personas no obtienen el mismo hueco. La disponibilidad se calcula por servicio (duración) en su recurso o en otro que elija recepción.
+- **Portal**: el tutor pide citas de sus mascotas en servicios reservables, dentro del horario, con la anticipación mínima; nacen «solicitadas» y recepción las confirma (aparecen en «Por confirmar»). Reprograma (vuelve a solicitada) o cancela solo con `cancelacionHoras` de anticipación; fuera de eso, llama. Las de «solo con valoración» también se solicitan y la clínica decide.
+- **Cargo en Finanzas**: al pasar a «finalizada», si el servicio tiene precio se registra una **entrada por cobrar** (`FIN-…`) asignada al área del servicio, a nombre del tutor, con clave de reintento `cita-<id>` (no se duplica). Lo hace el sistema aunque quien finaliza no tenga permisos de Finanzas; el cobro se registra después en Finanzas → Pendientes. Sin precio, no se genera nada.
+- **Recordatorios por WhatsApp/correo**: pendientes (requieren proveedor de mensajes).
+- **Permisos**: «Agenda» (ver y gestionar citas) y «Configurar agenda» (catálogos y horario). Roles sugeridos: Recepción y Médico tienen Agenda; Dueño y Administración también configuran.
+
 ## 5. Importación de archivo
 
 1. `/admin/clinica/importar` → «Descargar plantilla .xlsx» (hoja «Pacientes» con 3 filas de ejemplo y hoja «Instrucciones»). También sirve un CSV con «,» o «;».
@@ -81,17 +92,18 @@ El panel toma sus colores de `app/(payload)/custom.css`; si se definen las dos v
 
 | Qué | Dónde |
 |---|---|
-| Colecciones | `collections/clinica/{acceso,pacientes,expediente,tutores}.ts` |
+| Colecciones | `collections/clinica/{acceso,pacientes,expediente,tutores,agenda}.ts` |
 | Permisos | `lib/permisosBase.ts` (`clinica`), `lib/permisos.ts` (`esPersonal`, `esTutor`, `esColeccionClinica`) |
-| Servicio y API | `lib/clinica/{servicio,importacion,tipos}.ts` → `app/api/clinica/[...ruta]/route.ts` (rutas documentadas arriba del archivo) |
-| Panel | `components/admin/clinica/*` (vista `/admin/clinica` registrada en `payload.config.ts`), `app/(payload)/clinica.css` |
-| Portal | `app/(portal)/portal/*`, `components/portal/*`, `lib/portal/sesion.ts`, `app/(portal)/portal.css` |
-| Migración | `migrations/20261020_170838_clinica_pacientes.ts` |
-| Pruebas | `npm run test:clinica` contra `npm run dev` o `npm run start` con una base **local** vacía (80 comprobaciones: permisos por rol, nota firmada, tutor solo ve lo suyo, importación con duplicados) |
+| Servicio y API | `lib/clinica/{servicio,importacion,agenda,tipos}.ts` → `app/api/clinica/[...ruta]/route.ts` (rutas documentadas arriba del archivo) |
+| Panel | `components/admin/clinica/*` (`Agenda.tsx` para citas; vista `/admin/clinica` registrada en `payload.config.ts`), `app/(payload)/clinica.css` |
+| Portal | `app/(portal)/portal/*` (`citas/` para pedir y gestionar), `components/portal/*` (`Citas.tsx`), `lib/portal/sesion.ts`, `app/(portal)/portal.css` |
+| Migraciones | `migrations/20261020_170838_clinica_pacientes.ts`, `migrations/20261021_155111_agenda_citas.ts` |
+| Pruebas | `npm run test:clinica` contra `npm run dev` o `npm run start` con una base **local** vacía (115 comprobaciones: permisos por rol, nota firmada, tutor solo ve lo suyo, importación con duplicados, agenda: choques, estados, reglas del portal y cargo en Finanzas) |
 
 ## 8. Pendiente (siguientes etapas)
 
 - Verificación de correo al registrarse en el portal (hoy no se exige) y freno de registros por dirección (10/hora, en memoria).
 - Foto de la mascota; impresión de cartilla en PDF.
-- Citas, hospedaje, tienda, farmacia, laboratorio, mensajes (etapas del plan de desarrollo).
+- Recordatorios de citas por WhatsApp/correo; vista semanal de la agenda; citas recurrentes.
+- Hospedaje, tienda, farmacia, laboratorio, mensajes (etapas del plan de desarrollo).
 - Diseño final del panel y del portal (hoy reutilizan los estilos de Finanzas).

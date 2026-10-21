@@ -210,3 +210,72 @@ export type PortalMascota = {
   cartilla: CartillaVista[]
   documentos: DocumentoVista[]
 }
+
+/* ───────── agenda ───────── */
+
+export type RecursoVista = { id: number; nombre: string; tipo: string; activo: boolean; orden: number }
+export type ServicioVista = {
+  id: number
+  nombre: string
+  descripcion: string | null
+  indicaciones: string | null
+  duracionMin: number
+  precio: number | null
+  recursoPorDefecto: number
+  area: number | null
+  reservaEnLinea: 'inmediata' | 'valoracion' | 'no'
+  activo: boolean
+  orden: number
+}
+export type ConfiguracionAgenda = {
+  horario: { dia: number; abierto: boolean; de: string; a: string }[]
+  intervaloMin: number
+  anticipacionHoras: number
+  diasAdelante: number
+  cancelacionHoras: number
+  /** false mientras nadie haya guardado el horario (se usa el de omisión: L–V 9–19, S 9–14). */
+  configurada: boolean
+}
+export type DisponibilidadDia = { dia: string; abierto: boolean; huecos: { hora: string; disponible: boolean }[]; motivo?: string; recursoId?: number; duracionMin?: number }
+export type EstadoCitaVista = 'solicitada' | 'confirmada' | 'llegada' | 'atencion' | 'finalizada' | 'cancelada' | 'no_asistio'
+export type CitaVista = {
+  id: number
+  folio: string
+  mascota: { id: number; nombre: string; especie: string; folio: string; alertas: string[] }
+  cliente: { id: number; nombre: string; telefono: string | null } | null
+  servicio: { id: number; nombre: string }
+  recurso: { id: number; nombre: string }
+  profesional: PersonaBreve | null
+  dia: string
+  horaInicio: string
+  horaFin: string
+  duracionMin: number
+  estado: EstadoCitaVista
+  origen: 'panel' | 'portal'
+  notasTutor: string | null
+  notasInternas: string | null
+  motivoCancelacion: string | null
+  historial: { estado: string; fecha: string; por: string | null; detalle: string | null }[]
+  cargoFinanzas: number | null
+  esHoy: boolean
+  siguientes: EstadoCitaVista[]
+  creadoEn: string
+}
+export const ESTADO_CITA_LABEL: Record<EstadoCitaVista, string> = {
+  solicitada: 'Solicitada',
+  confirmada: 'Confirmada',
+  llegada: 'Llegada registrada',
+  atencion: 'En atención',
+  finalizada: 'Finalizada',
+  cancelada: 'Cancelada',
+  no_asistio: 'No asistió',
+}
+export const ACCION_ESTADO_LABEL: Record<EstadoCitaVista, string> = {
+  solicitada: 'Volver a solicitada',
+  confirmada: 'Confirmar',
+  llegada: 'Registrar llegada',
+  atencion: 'Pasar a atención',
+  finalizada: 'Finalizar',
+  cancelada: 'Cancelar',
+  no_asistio: 'No asistió',
+}

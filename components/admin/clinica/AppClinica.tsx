@@ -10,6 +10,7 @@
  *   mascotas/nueva?cliente= alta de mascota
  *   mascotas/:id            expediente de la mascota
  *   importar                importación de archivo
+ *   agenda?dia=&mascota=    agenda del día; con mascota abre «nueva cita» para ella
  *
  * Quien no entra al panel completo la ve sola, con encabezado y barra
  * inferior; además tiene acceso a Finanzas desde la barra si su rol lo usa.
@@ -18,6 +19,7 @@ import Link from 'next/link'
 import React, { useCallback, useState } from 'react'
 import type { CatalogoClinica } from '../../../lib/clinica/tipos'
 import { api, Aviso, ClinicaCtx, Icono, iniciales } from './comun'
+import Agenda from './Agenda'
 import { FichaCliente, FormularioCliente } from './Cliente'
 import Importar from './Importar'
 import Inicio from './Inicio'
@@ -48,6 +50,7 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
   else if (seccion === 'mascotas' && id === 'nueva') pantalla = p.editarPacientes ? <FormularioMascota clienteInicial={numero(query.cliente)} /> : <Aviso>Tu rol no incluye dar de alta mascotas.</Aviso>
   else if (seccion === 'mascotas' && numero(id)) pantalla = <Expediente key={id} id={numero(id)!} pestana={query.ver ?? null} />
   else if (seccion === 'importar') pantalla = p.importar ? <Importar /> : <Aviso>Tu rol no incluye importar archivos.</Aviso>
+  else if (seccion === 'agenda') pantalla = p.agenda ? <Agenda diaInicial={query.dia ?? null} mascotaInicial={numero(query.mascota)} /> : <Aviso>Tu rol no incluye la agenda.</Aviso>
   else
     pantalla = (
       <Aviso tono="aviso">
@@ -65,6 +68,11 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
             <Link href={base} className={!seccion ? 'is-on' : ''}>
               Buscar
             </Link>
+            {p.agenda && (
+              <Link href={`${base}/agenda`} className={seccion === 'agenda' ? 'is-on' : ''}>
+                Agenda
+              </Link>
+            )}
             {p.editarPacientes && (
               <Link href={`${base}/clientes/nuevo`} className={seccion === 'clientes' && id === 'nuevo' ? 'is-on' : ''}>
                 Nuevo cliente
@@ -106,6 +114,12 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
               <Icono n="buscar" />
               <span>Pacientes</span>
             </Link>
+            {p.agenda && (
+              <Link href={`${base}/agenda`} className={seccion === 'agenda' ? 'is-on' : ''}>
+                <Icono n="lista" />
+                <span>Agenda</span>
+              </Link>
+            )}
             {p.editarPacientes && (
               <Link href={`${base}/mascotas/nueva`}>
                 <Icono n="mas" />

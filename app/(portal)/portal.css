@@ -96,3 +96,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pt-tabs a.is-on { color: var(--pt-ink); border-bottom-color: var(--pt-accent); }
 .pt-alerta { display: flex; gap: 8px; background: var(--pt-bad-bg); color: var(--pt-bad); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
 .pt-acciones { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.pt-huecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+.pt-hueco { min-height: 44px; border: 1px solid var(--pt-line); border-radius: 10px; background: var(--pt-surface); font-weight: 650; cursor: pointer; }
+.pt-hueco[disabled] { opacity: 0.35; text-decoration: line-through; cursor: not-allowed; }
+.pt-hueco.is-on { background: var(--pt-primary); color: #fff; border-color: var(--pt-primary); }

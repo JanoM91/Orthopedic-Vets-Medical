@@ -14,6 +14,7 @@ const TRAZOS: Record<string, React.ReactNode> = {
   alerta: (<><path d="M12 4l9 16H3z" /><path d="M12 10v4.2M12 17.2h.01" /></>),
   back: <path d="M15 5l-7 7 7 7" />,
   next: <path d="M9 5l7 7-7 7" />,
+  cal: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
   link: (<><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>),
 }
 export function Icono({ n }: { n: string }) {
@@ -70,10 +71,11 @@ export function Cabecera({ nombre }: { nombre?: string }) {
   )
 }
 
-export function Barra({ activa }: { activa: 'inicio' | 'mascotas' | 'cuenta' }) {
+export function Barra({ activa }: { activa: 'inicio' | 'mascotas' | 'citas' | 'cuenta' }) {
   const items: [typeof activa, string, string, string][] = [
     ['inicio', '/portal', 'inicio', 'Inicio'],
     ['mascotas', '/portal#mascotas', 'paw', 'Mascotas'],
+    ['citas', '/portal/citas', 'cal', 'Citas'],
     ['cuenta', '/portal/cuenta', 'user', 'Mi cuenta'],
   ]
   return (

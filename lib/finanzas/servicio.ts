@@ -1024,7 +1024,7 @@ type RolSugerido = {
 }
 function rolesSugeridos(alcanceClinico: number[]): RolSugerido[] {
   const todo = { registrar: true, ver: 'todos', verRestringidas: true, verSaldos: true, verUtilidad: true, liquidar: true, corregir: true, revisarComprobantes: true, configurar: true, moverDinero: true }
-  const todaClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true }
+  const todaClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true, agenda: true, configurarAgenda: true }
   return [
     { nombre: 'Dueño', descripcion: 'Acceso completo y administración de usuarios y roles', panel: { acceso: true, gestionarUsuarios: true }, finanzas: { ...todo }, clinica: { ...todaClinica } },
     { nombre: 'Administración', descripcion: 'Finanzas y pacientes completos, sin administrar usuarios', panel: { acceso: true, gestionarUsuarios: false }, finanzas: { ...todo }, clinica: { ...todaClinica } },
@@ -1033,14 +1033,14 @@ function rolesSugeridos(alcanceClinico: number[]): RolSugerido[] {
       descripcion: 'Expediente completo; en Finanzas registra y consulta lo de consulta, cirugía y rehabilitación',
       panel: { acceso: false, gestionarUsuarios: false },
       finanzas: { registrar: true, ver: 'alcance', alcance: alcanceClinico },
-      clinica: { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: false },
+      clinica: { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: false, agenda: true, configurarAgenda: false },
     },
     {
       nombre: 'Recepción',
       descripcion: 'Da de alta clientes y mascotas, cartilla y vinculación; registra entradas y gastos sin ver el expediente',
       panel: { acceso: false, gestionarUsuarios: false },
       finanzas: { registrar: true, ver: 'propios' },
-      clinica: { verPacientes: true, editarPacientes: true, verExpediente: false, escribirExpediente: false, importar: false },
+      clinica: { verPacientes: true, editarPacientes: true, verExpediente: false, escribirExpediente: false, importar: false, agenda: true, configurarAgenda: false },
     },
   ]
 }

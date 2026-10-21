@@ -79,6 +79,9 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
 
         {tab === 'resumen' && (
           <>
+            <Link href={`/portal/citas/nueva?mascota=${m.id}`} className="pt-btn pt-btn--acento">
+              Pedir cita para {m.nombre}
+            </Link>
             <div className="pt-card">
               <h2>Cartilla</h2>
               {vencidas.length > 0 && <div className="pt-aviso pt-aviso--warn">Refuerzo pendiente: {vencidas.map((v) => `${v.producto} (${fecha(v.proximaFecha)})`).join(', ')}. Agenda tu cita en la clínica.</div>}

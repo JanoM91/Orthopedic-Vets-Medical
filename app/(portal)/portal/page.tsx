@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import React from 'react'
+import { proximasPorMascota } from '../../../lib/clinica/agenda'
 import { portalResumen } from '../../../lib/clinica/servicio'
 import { sesionTutor } from '../../../lib/portal/sesion'
 import { site } from '../../../lib/site'
@@ -13,6 +14,7 @@ export default async function PortalInicio() {
   const c = await sesionTutor()
   if (!c) redirect('/portal/entrar')
   const r = await portalResumen(c)
+  const proximas = await proximasPorMascota(c, r.mascotas.map((m) => m.id))
   return (
     <>
       <Cabecera nombre={r.tutor.nombre} />
@@ -49,6 +51,11 @@ export default async function PortalInicio() {
                       {m.edad ? ` · ${m.edad}` : ''}
                       {m.ultimoPeso ? ` · ${m.ultimoPeso.kg} kg` : ''}
                     </span>
+                    {proximas.get(m.id) && (
+                      <span className="pt-fila__t2">
+                        <Pill tono={proximas.get(m.id)!.estado === 'confirmada' ? 'ok' : 'warn'}>Cita</Pill> {proximas.get(m.id)!.servicio.nombre}: {fecha(proximas.get(m.id)!.dia)} {proximas.get(m.id)!.horaInicio}
+                      </span>
+                    )}
                     {m.proximaCartilla && (
                       <span className="pt-fila__t2">
                         <Pill tono="info">Cartilla</Pill> {m.proximaCartilla.producto}: {fecha(m.proximaCartilla.fecha)}
@@ -58,6 +65,20 @@ export default async function PortalInicio() {
                   <Icono n="next" />
                 </Link>
               ))}
+            </div>
+            <div className="pt-tiles">
+              <Link href="/portal/citas/nueva" className="pt-tile">
+                <Icono n="cal" />
+                Pedir cita
+              </Link>
+              <Link href="/portal/citas" className="pt-tile">
+                <Icono n="shield" />
+                Mis citas
+              </Link>
+              <Link href="/portal/cuenta" className="pt-tile">
+                <Icono n="user" />
+                Mi cuenta
+              </Link>
             </div>
             <div className="pt-card">
               <h2>Tu ficha en la clínica</h2>

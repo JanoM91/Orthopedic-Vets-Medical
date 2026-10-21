@@ -79,6 +79,9 @@ export interface Config {
     tutores: Tutor;
     'codigos-vinculacion': CodigoVinculacion;
     importaciones: Importacion;
+    recursos: Recurso;
+    servicios: Servicio;
+    citas: Cita;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -104,6 +107,9 @@ export interface Config {
     tutores: TutoresSelect<false> | TutoresSelect<true>;
     'codigos-vinculacion': CodigosVinculacionSelect<false> | CodigosVinculacionSelect<true>;
     importaciones: ImportacionesSelect<false> | ImportacionesSelect<true>;
+    recursos: RecursosSelect<false> | RecursosSelect<true>;
+    servicios: ServiciosSelect<false> | ServiciosSelect<true>;
+    citas: CitasSelect<false> | CitasSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -122,9 +128,11 @@ export interface Config {
   fallbackLocale: null;
   globals: {
     'fin-configuracion': FinConfiguracion;
+    'agenda-configuracion': AgendaConfiguracion;
   };
   globalsSelect: {
     'fin-configuracion': FinConfiguracionSelect<false> | FinConfiguracionSelect<true>;
+    'agenda-configuracion': AgendaConfiguracionSelect<false> | AgendaConfiguracionSelect<true>;
   };
   locale: null;
   widgets: {
@@ -238,6 +246,8 @@ export interface Rol {
     verExpediente?: boolean | null;
     escribirExpediente?: boolean | null;
     importar?: boolean | null;
+    agenda?: boolean | null;
+    configurarAgenda?: boolean | null;
   };
   finanzas: {
     registrar?: boolean | null;
@@ -548,32 +558,51 @@ export interface Importacion {
   createdAt: string;
 }
 /**
- * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
+ * Consultorios, quirófano y espacios que se ocupan en la agenda. Desactivar no borra las citas pasadas.
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "fin-cuentas".
+ * via the `definition` "recursos".
  */
-export interface FinCuenta {
+export interface Recurso {
   id: number;
-  /**
-   * Ej. «Banco · Cuenta principal» o «Caja chica · Recepción»
-   */
   nombre: string;
-  tipo: 'banco' | 'efectivo' | 'caja_chica' | 'fondo' | 'otro';
+  tipo: 'consultorio' | 'quirofano' | 'estetica' | 'sala' | 'otro';
+  orden?: number | null;
+  activo?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Lo que se agenda. La duración y el recurso por defecto arman la agenda; el precio (opcional) genera el cargo en Finanzas al finalizar la cita.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "servicios".
+ */
+export interface Servicio {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
   /**
-   * Lo que había en la fecha de inicio. No es una entrada del periodo.
+   * Ej. «Traer cartilla y estudios previos».
    */
-  saldoInicial: number;
+  indicaciones?: string | null;
+  duracionMin: number;
   /**
-   * Normalmente, la fecha de corte.
+   * Si se captura, al finalizar la cita se registra una entrada por cobrar en Finanzas.
    */
-  fechaInicio: string;
+  precio?: number | null;
+  recursoPorDefecto: number | Recurso;
   /**
-   * Solo para cajas o fondos que maneja una persona.
+   * A qué actividad se asigna el cargo (Consulta, Cirugía, Estética…).
    */
-  responsable?: (number | null) | User;
-  activa?: boolean | null;
-  notas?: string | null;
+  area?: (number | null) | FinActividad;
+  /**
+   * Opcional: categoría de entrada para el cargo.
+   */
+  categoriaFinanzas?: (number | null) | FinCategoria;
+  reservaEnLinea: 'inmediata' | 'valoracion' | 'no';
+  orden?: number | null;
+  activo?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -593,6 +622,43 @@ export interface FinCategoria {
   restringida?: boolean | null;
   actividadSugerida?: (number | null) | FinActividad;
   activa?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "citas".
+ */
+export interface Cita {
+  id: number;
+  folio?: string | null;
+  mascota: number | Mascota;
+  cliente?: (number | null) | Cliente;
+  servicio: number | Servicio;
+  recurso: number | Recurso;
+  profesional?: (number | null) | User;
+  dia: string;
+  horaInicio: string;
+  duracionMin: number;
+  inicio: string;
+  fin: string;
+  estado: 'solicitada' | 'confirmada' | 'llegada' | 'atencion' | 'finalizada' | 'cancelada' | 'no_asistio';
+  origen: 'panel' | 'portal';
+  notasTutor?: string | null;
+  notasInternas?: string | null;
+  motivoCancelacion?: string | null;
+  historial?:
+    | {
+        estado: string;
+        fecha: string;
+        por?: string | null;
+        detalle?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  cargoFinanzas?: (number | null) | FinOperacion;
+  creadoPor?: (number | null) | User;
+  creadoPorTutor?: (number | null) | Tutor;
   updatedAt: string;
   createdAt: string;
 }
@@ -622,6 +688,36 @@ export interface FinOperacion {
   anuladaPor?: (number | null) | User;
   anuladaEn?: string | null;
   claveIdempotencia?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "fin-cuentas".
+ */
+export interface FinCuenta {
+  id: number;
+  /**
+   * Ej. «Banco · Cuenta principal» o «Caja chica · Recepción»
+   */
+  nombre: string;
+  tipo: 'banco' | 'efectivo' | 'caja_chica' | 'fondo' | 'otro';
+  /**
+   * Lo que había en la fecha de inicio. No es una entrada del periodo.
+   */
+  saldoInicial: number;
+  /**
+   * Normalmente, la fecha de corte.
+   */
+  fechaInicio: string;
+  /**
+   * Solo para cajas o fondos que maneja una persona.
+   */
+  responsable?: (number | null) | User;
+  activa?: boolean | null;
+  notas?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -746,6 +842,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'importaciones';
         value: number | Importacion;
+      } | null)
+    | ({
+        relationTo: 'recursos';
+        value: number | Recurso;
+      } | null)
+    | ({
+        relationTo: 'servicios';
+        value: number | Servicio;
+      } | null)
+    | ({
+        relationTo: 'citas';
+        value: number | Cita;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -873,6 +981,8 @@ export interface RolesSelect<T extends boolean = true> {
         verExpediente?: T;
         escribirExpediente?: T;
         importar?: T;
+        agenda?: T;
+        configurarAgenda?: T;
       };
   finanzas?:
     | T
@@ -1103,6 +1213,73 @@ export interface ImportacionesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "recursos_select".
+ */
+export interface RecursosSelect<T extends boolean = true> {
+  nombre?: T;
+  tipo?: T;
+  orden?: T;
+  activo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "servicios_select".
+ */
+export interface ServiciosSelect<T extends boolean = true> {
+  nombre?: T;
+  descripcion?: T;
+  indicaciones?: T;
+  duracionMin?: T;
+  precio?: T;
+  recursoPorDefecto?: T;
+  area?: T;
+  categoriaFinanzas?: T;
+  reservaEnLinea?: T;
+  orden?: T;
+  activo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "citas_select".
+ */
+export interface CitasSelect<T extends boolean = true> {
+  folio?: T;
+  mascota?: T;
+  cliente?: T;
+  servicio?: T;
+  recurso?: T;
+  profesional?: T;
+  dia?: T;
+  horaInicio?: T;
+  duracionMin?: T;
+  inicio?: T;
+  fin?: T;
+  estado?: T;
+  origen?: T;
+  notasTutor?: T;
+  notasInternas?: T;
+  motivoCancelacion?: T;
+  historial?:
+    | T
+    | {
+        estado?: T;
+        fecha?: T;
+        por?: T;
+        detalle?: T;
+        id?: T;
+      };
+  cargoFinanzas?: T;
+  creadoPor?: T;
+  creadoPorTutor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-cuentas_select".
  */
 export interface FinCuentasSelect<T extends boolean = true> {
@@ -1271,11 +1448,60 @@ export interface FinConfiguracion {
   createdAt?: string | null;
 }
 /**
+ * Horario de atención por día y reglas para las citas pedidas desde el portal.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agenda-configuracion".
+ */
+export interface AgendaConfiguracion {
+  id: number;
+  /**
+   * Un renglón por día (0 = domingo … 6 = sábado). Horas como HH:MM.
+   */
+  horario?:
+    | {
+        dia: '0' | '1' | '2' | '3' | '4' | '5' | '6';
+        abierto?: boolean | null;
+        de?: string | null;
+        a?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  intervaloMin?: number | null;
+  anticipacionHoras?: number | null;
+  diasAdelante?: number | null;
+  cancelacionHoras?: number | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-configuracion_select".
  */
 export interface FinConfiguracionSelect<T extends boolean = true> {
   fechaCorte?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agenda-configuracion_select".
+ */
+export interface AgendaConfiguracionSelect<T extends boolean = true> {
+  horario?:
+    | T
+    | {
+        dia?: T;
+        abierto?: T;
+        de?: T;
+        a?: T;
+        id?: T;
+      };
+  intervaloMin?: T;
+  anticipacionHoras?: T;
+  diasAdelante?: T;
+  cancelacionHoras?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

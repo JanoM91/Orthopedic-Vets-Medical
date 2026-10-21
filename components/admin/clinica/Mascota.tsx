@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
-import type { CartillaVista, ClienteVista, DocumentoVista, Expediente as Exp, MascotaVista, NotaVista, PesoVista, ResultadoBusqueda } from '../../../lib/clinica/tipos'
+import type { CartillaVista, CitaVista, ClienteVista, ConfiguracionAgenda, DocumentoVista, Expediente as Exp, MascotaVista, NotaVista, PesoVista, RecursoVista, ResultadoBusqueda, ServicioVista } from '../../../lib/clinica/tipos'
+import { DetalleCita, EstadoCita } from './Agenda'
 import { FormularioCliente } from './Cliente'
 import {
   api, Avatar, Aviso, Boton, Campo, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
@@ -284,13 +285,13 @@ export function FormularioMascota({ existente, clienteInicial, onGuardado, onCan
 
 /* ═══════════════════════════ expediente ═══════════════════════════ */
 
-type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'documentos'
+type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'documentos' | 'citas'
 
 export function Expediente({ id, pestana }: { id: number; pestana: string | null }) {
   const { base, catalogo } = useClinica()
   const p = catalogo.permisos
   const { datos, error, cargando, recargar, poner } = useCarga(() => api.get<Exp>(`mascotas/${id}`), [id])
-  const [tab, setTab] = useState<Pestana>((['resumen', 'cartilla', 'pesos', 'notas', 'documentos'].includes(pestana ?? '') ? pestana : 'resumen') as Pestana)
+  const [tab, setTab] = useState<Pestana>((['resumen', 'cartilla', 'pesos', 'notas', 'documentos', 'citas'].includes(pestana ?? '') ? pestana : 'resumen') as Pestana)
   const [editando, setEditando] = useState(false)
 
   if (error) return <Aviso tono="malo">{error}</Aviso>
@@ -316,6 +317,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
     ['pesos', 'Peso', datos.pesos.length],
     ['notas', 'Notas clínicas', datos.notas ? datos.notas.length : null],
     ['documentos', 'Documentos', datos.documentos.length],
+    ...(p.agenda ? ([['citas', 'Citas', null]] as [Pestana, string, number | null][]) : []),
   ]
 
   return (
@@ -424,6 +426,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
       {tab === 'pesos' && <Pesos mascotaId={m.id} lista={datos.pesos} onCambio={recargar} />}
       {tab === 'notas' && <Notas mascotaId={m.id} lista={datos.notas} onCambio={recargar} />}
       {tab === 'documentos' && <Documentos mascotaId={m.id} lista={datos.documentos} onCambio={recargar} />}
+      {tab === 'citas' && <CitasMascota mascotaId={m.id} />}
     </div>
   )
 }
@@ -975,6 +978,47 @@ function Documentos({ mascotaId, lista, onCambio }: { mascotaId: number; lista: 
           </button>
         </form>
       )}
+    </div>
+  )
+}
+
+/* ───────────────────────────── citas de la mascota ───────────────────────────── */
+
+function CitasMascota({ mascotaId }: { mascotaId: number }) {
+  const { base } = useClinica()
+  const citas = useCarga(() => api.get<CitaVista[]>(`mascotas/${mascotaId}/citas`), [mascotaId])
+  const cat = useCarga(() => api.get<{ recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda }>('agenda/catalogo'), [])
+  const [sel, setSel] = useState<number | null>(null)
+  if (citas.error) return <Aviso tono="malo">{citas.error}</Aviso>
+  if (!citas.datos || !cat.datos) return <p className="fz-tenue">Cargando…</p>
+  const elegida = citas.datos.find((c) => c.id === sel)
+  return (
+    <div className="cl-dos">
+      <div className="fz-stack fz-stack--chico">
+        <div>
+          <Link href={`${base}/agenda?mascota=${mascotaId}`} className="fz-btn fz-btn--navy fz-btn--chico">
+            <Icono n="mas" chico /> Nueva cita
+          </Link>
+        </div>
+        <div className="fz-tarjeta fz-lista">
+          {citas.datos.length === 0 && <p className="fz-tenue" style={{ padding: 14 }}>Sin citas.</p>}
+          {citas.datos.map((c) => (
+            <button key={c.id} type="button" className={`fz-fila cl-fila-boton${sel === c.id ? ' is-sel' : ''}`} onClick={() => setSel(c.id)}>
+              <span className="fz-fila__main">
+                <span className="fz-fila__t1">
+                  {fecha(c.dia)} {c.horaInicio} · {c.servicio.nombre}
+                </span>
+                <span className="fz-fila__t2">
+                  {c.recurso.nombre}
+                  {c.profesional ? ` · ${c.profesional.nombre}` : ''}
+                </span>
+              </span>
+              <EstadoCita estado={c.estado} />
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="fz-tarjeta cl-caja">{elegida ? <DetalleCita cita={elegida} catalogo={cat.datos} onCambio={citas.recargar} /> : <p className="fz-chico fz-tenue">Elige una cita para ver el detalle y cambiar su estado.</p>}</div>
     </div>
   )
 }

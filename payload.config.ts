@@ -14,6 +14,7 @@ import { FinBitacora, FinComprobantes, FinMovimientos, FinOperaciones } from './
 import { Clientes, Mascotas, MasPesos } from './collections/clinica/pacientes'
 import { MasCartilla, MasDocumentos, MasNotas } from './collections/clinica/expediente'
 import { CodigosVinculacion, Importaciones, Tutores } from './collections/clinica/tutores'
+import { AgendaConfiguracion, Citas, Recursos, Servicios } from './collections/clinica/agenda'
 import { protegerColeccion, protegerGlobal } from './lib/permisos'
 import { migrations } from './migrations'
 
@@ -85,6 +86,9 @@ export default buildConfig({
     Tutores,
     CodigosVinculacion,
     Importaciones,
+    Recursos,
+    Servicios,
+    Citas,
     FinCuentas,
     FinCategorias,
     FinActividades,
@@ -93,7 +97,7 @@ export default buildConfig({
     FinComprobantes,
     FinBitacora,
   ].map(protegerColeccion),
-  globals: [FinConfiguracion].map(protegerGlobal),
+  globals: [FinConfiguracion, AgendaConfiguracion].map(protegerGlobal),
   /* Correo de recuperación de contraseña (Resend por HTTP). Sin RESEND_API_KEY no se envía nada. Ver lib/emailAdapter.ts. */
   email: resendEmailAdapter,
   i18n: {

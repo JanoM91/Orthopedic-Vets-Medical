@@ -35,6 +35,23 @@ import {
   vincular,
 } from '@/lib/clinica/servicio'
 import { aplicar, cargarArchivo, descartar, historial, planear, plantillaXlsx } from '@/lib/clinica/importacion'
+import {
+  agendaDelDia,
+  anotarCita,
+  arranqueAgenda,
+  cambiarEstado,
+  catalogoAgenda,
+  cita,
+  citasDeMascota,
+  crearCita,
+  disponibilidadEquipo,
+  portalCancelar,
+  portalCitas,
+  portalCrearCita,
+  portalDisponibilidad,
+  portalReprogramar,
+  reprogramarCita,
+} from '@/lib/clinica/agenda'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -66,6 +83,16 @@ import { aplicar, cargarArchivo, descartar, historial, planear, plantillaXlsx } 
  *   POST importaciones/:id/plan                qué pasaría con este mapeo
  *   POST importaciones/:id/aplicar             importar
  *   POST importaciones/:id/descartar
+ *   GET  agenda/catalogo                       recursos, servicios y configuración (horario, reglas)
+ *   POST agenda/arranque                       recursos y servicios sugeridos (una sola vez)
+ *   GET  agenda?dia=AAAA-MM-DD                 citas del día y solicitudes por confirmar
+ *   GET  agenda/disponibilidad?servicio&dia&recurso&ignorar
+ *   POST agenda/citas                          crear (mascotaId, servicioId, dia, hora, recursoId?, confirmar?)
+ *   GET  agenda/citas/:id
+ *   POST agenda/citas/:id/estado               { estado, motivo? }
+ *   POST agenda/citas/:id/reprogramar          { dia, hora, recursoId? }
+ *   POST agenda/citas/:id/notas                { notasInternas?, profesionalId? }
+ *   GET  mascotas/:id/citas
  *
  * PORTAL (sesión de tutor, colección «tutores»):
  *   GET  portal/resumen                        tutor, ficha vinculada y mascotas
@@ -73,6 +100,10 @@ import { aplicar, cargarArchivo, descartar, historial, planear, plantillaXlsx } 
  *   GET  portal/documentos/:id/archivo
  *   POST portal/vincular                       { codigo }
  *   POST portal/mascotas/:id/documentos        aportar un archivo (queda pendiente de revisión)
+ *   GET  portal/citas                          próximas y pasadas, servicios y mascotas para pedir
+ *   GET  portal/citas/disponibilidad?servicio&dia&ignorar
+ *   POST portal/citas                          { mascotaId, servicioId, dia, hora, notasTutor? }
+ *   POST portal/citas/:id/reprogramar | cancelar
  */
 
 export const dynamic = 'force-dynamic'
@@ -132,8 +163,16 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
     if (a === 'resumen' && !b) return json(await portalResumen(c))
     if (a === 'mascotas' && b && !d) return json(await portalMascota(c, idDeRuta(b)))
     if (a === 'documentos' && b && d === 'archivo') return portalAbrirDocumento(c, idDeRuta(b))
+    if (a === 'citas' && !b) return json(await portalCitas(c))
+    if (a === 'citas' && b === 'disponibilidad') {
+      const q = req.nextUrl.searchParams
+      return json(await portalDisponibilidad(c, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined))
+    }
   } else {
     if (a === 'vincular' && !b) return json(await vincular(c, await leerJson(req)))
+    if (a === 'citas' && !b) return json(await portalCrearCita(c, await leerJson(req)), 201)
+    if (a === 'citas' && b && d === 'reprogramar') return json(await portalReprogramar(c, idDeRuta(b), await leerJson(req)))
+    if (a === 'citas' && b && d === 'cancelar') return json(await portalCancelar(c, idDeRuta(b), await leerJson(req)))
     if (a === 'mascotas' && b && d === 'documentos') {
       const { archivo, campos } = await leerArchivo(req)
       return json(await portalSubirDocumento(c, idDeRuta(b), archivo, campos), 201)
@@ -169,7 +208,23 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       })
     }
     if (a === 'importaciones' && !b) return json(await historial(ctx))
+    if (a === 'agenda' && !b) return json(await agendaDelDia(ctx, q.get('dia') ?? ctx.hoy))
+    if (a === 'agenda' && b === 'catalogo') return json(await catalogoAgenda(payload))
+    if (a === 'agenda' && b === 'disponibilidad') {
+      return json(await disponibilidadEquipo(ctx, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? ctx.hoy, q.get('recurso') ? idDeRuta(q.get('recurso')!) : null, q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined))
+    }
+    if (a === 'agenda' && b === 'citas' && c) return json(await cita(ctx, idDeRuta(c)))
+    if (a === 'mascotas' && b && c === 'citas') return json(await citasDeMascota(ctx, idDeRuta(b)))
   } else {
+    if (a === 'agenda' && b === 'arranque') return json(await arranqueAgenda(ctx))
+    if (a === 'agenda' && b === 'citas' && !c) return json(await crearCita(ctx, await leerJson(req)), 201)
+    if (a === 'agenda' && b === 'citas' && c) {
+      const id = idDeRuta(c)
+      const accion = ruta[3]
+      if (accion === 'estado') return json(await cambiarEstado(ctx, id, await leerJson(req)))
+      if (accion === 'reprogramar') return json(await reprogramarCita(ctx, id, await leerJson(req)))
+      if (accion === 'notas') return json(await anotarCita(ctx, id, await leerJson(req)))
+    }
     if (a === 'clientes' && !b) {
       const r = await crearCliente(ctx, await leerJson(req))
       return json(r, r.cliente ? 201 : 200)

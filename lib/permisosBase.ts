@@ -54,6 +54,10 @@ export type PermisosClinica = {
   verExpediente: boolean
   escribirExpediente: boolean
   importar: boolean
+  /** Ver la agenda y gestionar citas (crear, confirmar, cambiar de estado, reprogramar). */
+  agenda: boolean
+  /** Editar servicios, recursos (consultorios) y horario de atención. */
+  configurarAgenda: boolean
 }
 
 export type Permisos = {
@@ -91,6 +95,8 @@ export type RolGuardado = {
     verExpediente?: boolean | null
     escribirExpediente?: boolean | null
     importar?: boolean | null
+    agenda?: boolean | null
+    configurarAgenda?: boolean | null
   } | null
 }
 
@@ -103,8 +109,8 @@ const SIN_FINANZAS: PermisosFinanzas = {
   liquidar: false, corregir: false, revisarComprobantes: false, configurar: false, moverDinero: false,
 }
 
-const SIN_CLINICA: PermisosClinica = { verPacientes: false, editarPacientes: false, verExpediente: false, escribirExpediente: false, importar: false }
-const TODO_CLINICA: PermisosClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true }
+const SIN_CLINICA: PermisosClinica = { verPacientes: false, editarPacientes: false, verExpediente: false, escribirExpediente: false, importar: false, agenda: false, configurarAgenda: false }
+const TODO_CLINICA: PermisosClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true, agenda: true, configurarAgenda: true }
 
 const TODO_FINANZAS: PermisosFinanzas = {
   registrar: true, ver: 'todos', alcance: [], verRestringidas: true, verSaldos: true, verUtilidad: true,
@@ -150,11 +156,13 @@ export function calcularPermisos(usuario: UsuarioParaPermisos | null | undefined
       },
       clinica: {
         /* Quien edita o escribe también ve: así un rol guardado solo con «editar» no queda ciego. */
-        verPacientes: Boolean(c.verPacientes) || Boolean(c.editarPacientes) || Boolean(c.verExpediente) || Boolean(c.importar),
+        verPacientes: Boolean(c.verPacientes) || Boolean(c.editarPacientes) || Boolean(c.verExpediente) || Boolean(c.importar) || Boolean(c.agenda),
         editarPacientes: Boolean(c.editarPacientes) || Boolean(c.importar),
         verExpediente: Boolean(c.verExpediente) || Boolean(c.escribirExpediente),
         escribirExpediente: Boolean(c.escribirExpediente),
         importar: Boolean(c.importar),
+        agenda: Boolean(c.agenda) || Boolean(c.configurarAgenda),
+        configurarAgenda: Boolean(c.configurarAgenda),
       },
       rolNombre: rol.nombre?.trim() || 'Rol sin nombre',
       origen: 'rol',

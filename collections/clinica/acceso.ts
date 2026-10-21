@@ -15,7 +15,7 @@ import { esPersonal, esTutor, permisosDe } from '../../lib/permisos'
  * escribe con la API local; las dos capas dicen lo mismo a propósito.
  */
 
-export type PermisoClinica = 'verPacientes' | 'editarPacientes' | 'verExpediente' | 'escribirExpediente' | 'importar'
+export type PermisoClinica = keyof import('../../lib/permisosBase').PermisosClinica
 
 export const equipoCon = (permiso: PermisoClinica): Access => async ({ req }) => esPersonal(req) && (await permisosDe(req)).clinica[permiso]
 

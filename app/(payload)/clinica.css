@@ -78,3 +78,30 @@
 @media (min-width: 700px) { .cl-overlay { align-items: center; } }
 .cl-modal { background: #fff; color: var(--mx-ink); border-radius: 16px; max-width: 620px; width: 100%; max-height: 88vh; overflow: auto; padding: 20px; box-shadow: var(--mx-shadow-lift); }
 .cl-modal--ancho { max-width: 900px; }
+
+/* agenda: columnas por recurso, filas por intervalo */
+.cl-agenda-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1000px) { .cl-agenda-wrap { grid-template-columns: minmax(0, 1fr) 340px; } }
+.cl-agenda { display: grid; background: #fff; border: 1px solid var(--mx-line); border-radius: 12px; overflow: auto; max-height: 70vh; position: relative; }
+.cl-agenda__h { position: sticky; top: 0; z-index: 2; background: var(--mx-sand); padding: 8px 10px; font-weight: 700; font-size: 13px; border-bottom: 1px solid var(--mx-line); white-space: nowrap; }
+.cl-agenda__t { font-size: 11.5px; color: var(--mx-muted); padding: 3px 6px; border-top: 1px solid var(--mx-line); position: sticky; left: 0; background: #fff; z-index: 1; }
+.cl-agenda__c { border-top: 1px solid var(--mx-line); border-left: 1px solid var(--mx-line); position: relative; }
+.cl-agenda__fuera { padding: 10px; font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--mx-line); }
+.cl-cita { position: absolute; top: 2px; left: 3px; right: 3px; border: 0; border-radius: 8px; padding: 4px 8px; text-align: left; font-size: 12px; line-height: 1.25; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; gap: 1px; z-index: 1; border-left: 4px solid transparent; }
+.cl-cita b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-cita span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-cita__st { font-size: 10.5px; opacity: 0.8; }
+.cl-cita.is-sel { outline: 2px solid var(--mx-navy); z-index: 2; }
+.cl-cita.st-solicitada { background: var(--mx-amber-soft); color: #92400e; border-left-color: var(--mx-amber); }
+.cl-cita.st-confirmada { background: #e1ecf7; color: #2c5a87; border-left-color: #2c5a87; }
+.cl-cita.st-llegada { background: #efe6fa; color: #5b3a8c; border-left-color: #7a4fb0; }
+.cl-cita.st-atencion { background: var(--mx-teal-light); color: #0c2c26; border-left-color: var(--mx-teal-dark); }
+.cl-cita.st-finalizada { background: var(--mx-sand-dark); color: var(--mx-muted); border-left-color: var(--mx-muted); }
+.cl-cita.st-cancelada, .cl-cita.st-no_asistio { background: #fdecee; color: #b42330; border-left-color: #b42330; text-decoration: line-through; }
+.cl-huecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+.cl-hueco { min-height: 40px; border: 1px solid var(--mx-line); border-radius: 8px; background: #fff; font-weight: 600; cursor: pointer; }
+.cl-hueco[disabled] { opacity: 0.35; text-decoration: line-through; cursor: not-allowed; }
+.cl-hueco.is-on { background: var(--mx-navy); color: #fff; border-color: var(--mx-navy); }
+.cl-fila-boton.is-sel { background: var(--mx-teal-soft); }
+/* La clínica sola (sin menú del panel) necesita más ancho que Finanzas para la agenda por columnas. */
+.cl-app.fz-app--solo .fz-contenido { max-width: 1100px; }

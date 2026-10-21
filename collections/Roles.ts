@@ -99,6 +99,8 @@ export const Roles: CollectionConfig = {
         },
         { name: 'escribirExpediente', label: 'Escribir y firmar notas clínicas; agregar adendas', type: 'checkbox', defaultValue: false },
         { name: 'importar', label: 'Importar clientes y mascotas desde archivo (CSV o Excel)', type: 'checkbox', defaultValue: false },
+        { name: 'agenda', label: 'Ver la agenda y gestionar citas (crear, confirmar, registrar llegada, finalizar, reprogramar, cancelar)', type: 'checkbox', defaultValue: false },
+        { name: 'configurarAgenda', label: 'Configurar servicios, consultorios (recursos) y horario de atención', type: 'checkbox', defaultValue: false },
       ],
     },
     {

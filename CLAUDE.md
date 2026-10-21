@@ -3,7 +3,7 @@
 Plataforma de **Orthopedic Vet's Medical** (clínica veterinaria de ortopedia, Xalapa), pensada para replicarse a otras clínicas por configuración. Hoy tiene dos módulos:
 
 - **Finanzas** (octubre de 2026): réplica de **MacAuto Finanzas** (repo `Exkalibur-labs/macauto-xalapa`, docs/60–62) sin sitio público ni autos: cada entrada o gasto se asigna a un **área** (`fin-actividades`), a «general» o queda pendiente.
-- **Clínica** (20/21-oct-2026): clientes-tutores, mascotas, cartilla, pesos, notas clínicas firmables, documentos, importación desde CSV/Excel, **agenda y citas** (con cargo automático en Finanzas) y **portal del tutor** (`/portal`, incluye pedir citas). Todo en `docs/CLINICA.md`.
+- **Clínica** (20/21-oct-2026): clientes-tutores, mascotas, cartilla, pesos, notas clínicas firmables, documentos, importación desde CSV/Excel, **agenda y citas** (con cargo automático en Finanzas), **portal del tutor** (`/portal`, incluye pedir citas) y **sitio público** en la raíz (`app/(sitio)`, contenido en el global `sitio-configuracion`). Todo en `docs/CLINICA.md`.
 
 Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 
@@ -28,13 +28,14 @@ Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 
 ## Reglas de la Clínica (docs/CLINICA.md)
 
-- Colecciones `clientes`, `mascotas`, `mas-*`, `tutores`, `codigos-vinculacion`, `importaciones`, `recursos`, `servicios`, `citas` (y el global `agenda-configuracion`) tienen reglas propias en `collections/clinica/acceso.ts` y **no** se envuelven con `protegerColeccion` (ya lo sabe `lib/permisos.ts`). Distinguen tres sesiones: equipo (`users`), tutor (`tutores`) y visitante.
+- Colecciones `clientes`, `mascotas`, `mas-*`, `tutores`, `codigos-vinculacion`, `importaciones`, `recursos`, `servicios`, `citas` (y los globales `agenda-configuracion` y `sitio-configuracion`) tienen reglas propias en `collections/clinica/acceso.ts` y **no** se envuelven con `protegerColeccion` (ya lo sabe `lib/permisos.ts`). Distinguen tres sesiones: equipo (`users`), tutor (`tutores`) y visitante.
 - La lógica va en `lib/clinica/servicio.ts`, `importacion.ts` y `agenda.ts`, expuesta en `app/api/clinica/[...ruta]/route.ts`. El equipo escribe con `overrideAccess: true` después de revisar `ctx.p.clinica.*`; el **portal siempre consulta con `overrideAccess: false` y el usuario tutor**, para que las reglas de acceso decidan qué ve.
 - Una **nota clínica firmada es inmutable** (hook `beforeChange` en `mas-notas`); solo admite adendas. El tutor nunca lee notas: se le publican documentos.
+- Una regla de acceso nunca debe tener efectos (contar, fallar): Payload las evalúa también al calcular permisos de cualquier visitante en cada página. Los frenos van en hooks de la operación (ej. registro de `tutores` en `beforeValidate`).
 - Toda regla de acceso del equipo usa `esPersonal(req)`: una sesión de tutor no cuenta como «con sesión» en `users`, `roles` ni Finanzas.
 - Marca blanca: nombre, colores, logotipo y teléfono salen de `lib/site.ts` (variables `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_BRAND_*`). No escribir datos de una clínica en el código.
 - Las citas solo se crean y cambian por `lib/clinica/agenda.ts` (candado por recurso en la transacción; transiciones en `TRANSICIONES`); por la API genérica solo se leen. Al finalizar una cita con servicio con precio, el cargo entra a Finanzas por `registrar()` con clave `cita-<id>`.
-- Pruebas con base local: `npm run test:clinica` (115 comprobaciones) con la app corriendo contra Postgres local vacío.
+- Pruebas con base local: `npm run test:clinica` (121 comprobaciones) con la app corriendo contra Postgres local vacío.
 
 ## Cambios al modelo de datos
 

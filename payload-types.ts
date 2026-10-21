@@ -129,10 +129,12 @@ export interface Config {
   globals: {
     'fin-configuracion': FinConfiguracion;
     'agenda-configuracion': AgendaConfiguracion;
+    'sitio-configuracion': SitioConfiguracion;
   };
   globalsSelect: {
     'fin-configuracion': FinConfiguracionSelect<false> | FinConfiguracionSelect<true>;
     'agenda-configuracion': AgendaConfiguracionSelect<false> | AgendaConfiguracionSelect<true>;
+    'sitio-configuracion': SitioConfiguracionSelect<false> | SitioConfiguracionSelect<true>;
   };
   locale: null;
   widgets: {
@@ -1475,6 +1477,61 @@ export interface AgendaConfiguracion {
   createdAt?: string | null;
 }
 /**
+ * Lo que ven los visitantes en la página principal. Los servicios y el horario salen de la agenda.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sitio-configuracion".
+ */
+export interface SitioConfiguracion {
+  id: number;
+  /**
+   * Apagado: la raíz del dominio muestra solo el nombre y el acceso al portal y al panel (sin servicios ni datos). Enciéndelo cuando el contenido esté listo.
+   */
+  publicado?: boolean | null;
+  /**
+   * Ej. «Cuidamos a quien cuida de ti».
+   */
+  lema?: string | null;
+  descripcion?: string | null;
+  contacto?: {
+    direccion?: string | null;
+    mapaUrl?: string | null;
+    telefono?: string | null;
+    whatsapp?: string | null;
+    correo?: string | null;
+    /**
+     * Ej. «Urgencias: llama antes de venir, te decimos si podemos recibirte».
+     */
+    urgencias?: string | null;
+  };
+  redes?: {
+    facebook?: string | null;
+    instagram?: string | null;
+    tiktok?: string | null;
+  };
+  equipo?:
+    | {
+        nombre: string;
+        cargo?: string | null;
+        descripcion?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  preguntas?:
+    | {
+        pregunta: string;
+        respuesta: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Se muestra en /aviso-de-privacidad. Si está vacío, la página dice que está en preparación.
+   */
+  avisoPrivacidad?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-configuracion_select".
  */
@@ -1502,6 +1559,51 @@ export interface AgendaConfiguracionSelect<T extends boolean = true> {
   anticipacionHoras?: T;
   diasAdelante?: T;
   cancelacionHoras?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sitio-configuracion_select".
+ */
+export interface SitioConfiguracionSelect<T extends boolean = true> {
+  publicado?: T;
+  lema?: T;
+  descripcion?: T;
+  contacto?:
+    | T
+    | {
+        direccion?: T;
+        mapaUrl?: T;
+        telefono?: T;
+        whatsapp?: T;
+        correo?: T;
+        urgencias?: T;
+      };
+  redes?:
+    | T
+    | {
+        facebook?: T;
+        instagram?: T;
+        tiktok?: T;
+      };
+  equipo?:
+    | T
+    | {
+        nombre?: T;
+        cargo?: T;
+        descripcion?: T;
+        id?: T;
+      };
+  preguntas?:
+    | T
+    | {
+        pregunta?: T;
+        respuesta?: T;
+        id?: T;
+      };
+  avisoPrivacidad?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

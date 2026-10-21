@@ -29,7 +29,7 @@ import { site } from '../site'
  */
 
 /** Primario oscuro de la marca: barra de estado del teléfono y fondo de la pantalla de arranque. */
-export const COLOR_APP = '#123a34'
+export const COLOR_APP = site.brand.primary
 
 export const RUTA_MANIFEST = '/finanzas/manifest.webmanifest'
 

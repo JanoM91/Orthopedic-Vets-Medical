@@ -1,5 +1,5 @@
 """
-Iconos de Orthopedic Vet's Finanzas para la pantalla de inicio del celular.
+Iconos de Finanzas para la pantalla de inicio del celular (marca de la instalación).
 
 Mismo esquema que MacAuto Finanzas (docs/61 de ese proyecto): fondo del color
 primario oscuro de la marca, el isotipo en blanco y menta, y la palabra
@@ -19,7 +19,7 @@ Uso (solo hace falta volver a correrlo si cambia el logotipo o el nombre):
 
   pip install Pillow
   python3 scripts/iconos-finanzas/generar-iconos.py
-  python3 scripts/iconos-finanzas/generar-iconos.py --texto Finanzas --fondo "#123a34" --acento "#6ed8bb"
+  python3 scripts/iconos-finanzas/generar-iconos.py --texto Finanzas --fondo "#243a63" --acento "#e8c272"
 """
 import argparse
 import os
@@ -78,8 +78,8 @@ def icono(tam, isotipo, fondo, acento, texto, zona, ruta_fuente, redondeo=False)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--isotipo', default=os.path.join(RAIZ, 'public', 'logo-mark-white.png'))
-    ap.add_argument('--fondo', default='#123a34')
-    ap.add_argument('--acento', default='#6ed8bb')
+    ap.add_argument('--fondo', default='#243a63')
+    ap.add_argument('--acento', default='#e8c272')
     ap.add_argument('--texto', default='Finanzas')
     ap.add_argument('--fuente', default=None)
     ap.add_argument('--salida', default=os.path.join(RAIZ, 'public', 'finanzas'))

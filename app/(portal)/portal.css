@@ -4,17 +4,17 @@
    las variables de entorno (marca blanca). Prefijo pt- para no chocar.
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --pt-primary: #123a34;
-  --pt-accent: #2bae8e;
-  --pt-bg: #f3f7f6;
+  --pt-primary: #243a63;
+  --pt-accent: #3a9db0;
+  --pt-bg: #f3f6fa;
   --pt-surface: #ffffff;
-  --pt-line: #dfe8e5;
-  --pt-ink: #11241f;
-  --pt-muted: #52675f;
-  --pt-ok-bg: #dcf2ea; --pt-ok: #1b7a64;
-  --pt-warn-bg: #fbeedb; --pt-warn: #9a5208;
+  --pt-line: #d9e1ec;
+  --pt-ink: #1a2238;
+  --pt-muted: #5c6880;
+  --pt-ok-bg: #e6f4f7; --pt-ok: #22778a;
+  --pt-warn-bg: #fdf5e1; --pt-warn: #8a6410;
   --pt-bad-bg: #fbe3e0; --pt-bad: #ad2a20;
-  --pt-info-bg: #e1ecf7; --pt-info: #2c5a87;
+  --pt-info-bg: #e3eaf6; --pt-info: #2b4a85;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--pt-bg); color: var(--pt-ink); }
@@ -31,7 +31,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .pt-cabecera { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top, 0px)); background: var(--pt-primary); color: #fff; }
 .pt-marca { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; min-width: 0; }
-.pt-marca img { height: 32px; width: auto; display: block; }
+.pt-marca img { height: 34px; width: 34px; border-radius: 50%; display: block; }
 .pt-marca span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pt-cabecera__der { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .pt-cabecera__der a, .pt-cabecera__der button { color: #fff; border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; border-radius: 8px; min-height: 36px; padding: 0 11px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; cursor: pointer; }
@@ -54,8 +54,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pt-fila__t1 { font-weight: 650; }
 .pt-fila__t2 { font-size: 13px; color: var(--pt-muted); }
 .pt-avatar { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 18px; color: #fff; background: var(--pt-accent); }
-.pt-avatar.is-perro { background: #b8742a; }
-.pt-avatar.is-gato { background: #5a6b8c; }
+.pt-avatar.is-perro { background: #5fb3c4; }
+.pt-avatar.is-gato { background: #d4a94a; }
 .pt-avatar--grande { width: 64px; height: 64px; font-size: 24px; }
 .pt-cabecera-mascota { display: flex; gap: 14px; align-items: center; }
 

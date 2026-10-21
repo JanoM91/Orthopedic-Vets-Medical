@@ -46,7 +46,7 @@ Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 
 ## Diseño
 
-Tokens en `app/(payload)/custom.css` (`--mx-*`; los nombres «navy» y «teal» se heredan de MacAuto): primario oscuro verde pino `#123a34`, acento `#2bae8e`, menta del logotipo `#6ed8bb`, texto de acento sobre blanco `#1b7a64`. Logotipos en `public/` (`logo-ovm.png`, `logo-mark.png`, `logo-mark-white.png`); iconos del celular en `public/finanzas/` (se regeneran con `scripts/iconos-finanzas/generar-iconos.py`).
+Marca **Veterinaria Exkalibur** (21-oct-2026): logotipo corazón con gato y perro. Tokens en `app/(payload)/custom.css` (`--mx-*`; los nombres «navy» y «teal» se heredan de MacAuto): primario azul marino `#243a63`, acento azul `#3a9db0`, azul claro del logotipo `#7fc8d6`, dorado `#e8c272`, texto de acento sobre blanco `#22778a`. El portal toma primario y acento de `lib/site.ts` (`NEXT_PUBLIC_BRAND_*` o estos mismos valores). Logotipos en `public/`: `logo-mark.png` (fondo transparente), `logo-mark-white.png` (sobre círculo blanco, para fondos oscuros), `logo-ovm.png` (grande, pantalla de acceso); iconos del celular en `public/finanzas/` (se regeneran con `scripts/iconos-finanzas/generar-iconos.py`). El nombre sale de `NEXT_PUBLIC_SITE_NAME`.
 
 ## Convenciones
 

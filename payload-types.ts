@@ -64,11 +64,24 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    tutores: TutoreAuthOperations;
   };
   blocks: {};
   collections: {
     users: User;
     roles: Rol;
+    clientes: Cliente;
+    mascotas: Mascota;
+    'mas-pesos': MasPeso;
+    'mas-cartilla': MasCartilla;
+    'mas-notas': MasNota;
+    'mas-documentos': MasDocumento;
+    tutores: Tutor;
+    'codigos-vinculacion': CodigoVinculacion;
+    importaciones: Importacion;
+    recursos: Recurso;
+    servicios: Servicio;
+    citas: Cita;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -85,6 +98,18 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     roles: RolesSelect<false> | RolesSelect<true>;
+    clientes: ClientesSelect<false> | ClientesSelect<true>;
+    mascotas: MascotasSelect<false> | MascotasSelect<true>;
+    'mas-pesos': MasPesosSelect<false> | MasPesosSelect<true>;
+    'mas-cartilla': MasCartillaSelect<false> | MasCartillaSelect<true>;
+    'mas-notas': MasNotasSelect<false> | MasNotasSelect<true>;
+    'mas-documentos': MasDocumentosSelect<false> | MasDocumentosSelect<true>;
+    tutores: TutoresSelect<false> | TutoresSelect<true>;
+    'codigos-vinculacion': CodigosVinculacionSelect<false> | CodigosVinculacionSelect<true>;
+    importaciones: ImportacionesSelect<false> | ImportacionesSelect<true>;
+    recursos: RecursosSelect<false> | RecursosSelect<true>;
+    servicios: ServiciosSelect<false> | ServiciosSelect<true>;
+    citas: CitasSelect<false> | CitasSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -103,21 +128,41 @@ export interface Config {
   fallbackLocale: null;
   globals: {
     'fin-configuracion': FinConfiguracion;
+    'agenda-configuracion': AgendaConfiguracion;
   };
   globalsSelect: {
     'fin-configuracion': FinConfiguracionSelect<false> | FinConfiguracionSelect<true>;
+    'agenda-configuracion': AgendaConfiguracionSelect<false> | AgendaConfiguracionSelect<true>;
   };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User;
+  user: User | Tutor;
   jobs: {
     tasks: unknown;
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface TutoreAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -192,6 +237,18 @@ export interface Rol {
      */
     gestionarUsuarios?: boolean | null;
   };
+  clinica?: {
+    verPacientes?: boolean | null;
+    editarPacientes?: boolean | null;
+    /**
+     * Recepción y estética normalmente no lo necesitan: ven alertas de manejo y alergias sin esta casilla.
+     */
+    verExpediente?: boolean | null;
+    escribirExpediente?: boolean | null;
+    importar?: boolean | null;
+    agenda?: boolean | null;
+    configurarAgenda?: boolean | null;
+  };
   finanzas: {
     registrar?: boolean | null;
     ver: 'propios' | 'alcance' | 'todos';
@@ -231,32 +288,321 @@ export interface FinActividad {
   createdAt: string;
 }
 /**
- * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
+ * Las personas responsables de las mascotas. La ficha se vincula a su cuenta del portal con un código.
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "fin-cuentas".
+ * via the `definition` "clientes".
  */
-export interface FinCuenta {
+export interface Cliente {
   id: number;
-  /**
-   * Ej. «Banco · Cuenta principal» o «Caja chica · Recepción»
-   */
+  folio?: string | null;
   nombre: string;
-  tipo: 'banco' | 'efectivo' | 'caja_chica' | 'fondo' | 'otro';
+  apellidos?: string | null;
+  nombreCompleto?: string | null;
   /**
-   * Lo que había en la fecha de inicio. No es una entrada del periodo.
+   * Con lada: 2281234567.
    */
-  saldoInicial: number;
+  telefono?: string | null;
+  telefonoAlterno?: string | null;
+  email?: string | null;
+  direccion?: string | null;
+  contactoEmergencia?: {
+    nombre?: string | null;
+    telefono?: string | null;
+  };
+  comunicacion?: {
+    avisos?: boolean | null;
+    promociones?: boolean | null;
+    whatsapp?: boolean | null;
+    correo?: boolean | null;
+  };
+  notasInternas?: string | null;
+  activo?: boolean | null;
+  origen?: ('manual' | 'importacion' | 'portal') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Un expediente por mascota. Cartilla, pesos, notas clínicas y documentos cuelgan de aquí.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mascotas".
+ */
+export interface Mascota {
+  id: number;
+  folio?: string | null;
+  nombre: string;
+  especie: 'perro' | 'gato' | 'ave' | 'conejo' | 'roedor' | 'reptil' | 'otra';
+  especieOtra?: string | null;
+  raza?: string | null;
+  sexo?: ('macho' | 'hembra' | 'desconocido') | null;
+  esterilizado?: ('si' | 'no' | 'desconocido') | null;
+  color?: string | null;
+  fechaNacimiento?: string | null;
+  nacimientoEstimado?: boolean | null;
+  microchip?: string | null;
   /**
-   * Normalmente, la fecha de corte.
+   * Se muestran como alerta en todo el sistema.
    */
-  fechaInicio: string;
+  alergias?: string | null;
   /**
-   * Solo para cajas o fondos que maneja una persona.
+   * Ej. «Postoperatorio: evitar saltos». Las ve todo el equipo, también estética y recepción.
    */
-  responsable?: (number | null) | User;
-  activa?: boolean | null;
+  alertasManejo?:
+    | {
+        texto: string;
+        id?: string | null;
+      }[]
+    | null;
+  medicoTratante?: (number | null) | User;
+  tutores: {
+    cliente: number | Cliente;
+    principal?: boolean | null;
+    /**
+     * Opcional: «pareja», «hijo», etc.
+     */
+    parentesco?: string | null;
+    id?: string | null;
+  }[];
+  estado?: ('activo' | 'inactivo' | 'fallecido') | null;
+  notasInternas?: string | null;
+  origen?: ('manual' | 'importacion' | 'portal') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-pesos".
+ */
+export interface MasPeso {
+  id: number;
+  mascota: number | Mascota;
+  fecha: string;
+  kg: number;
+  nota?: string | null;
+  registradoPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-cartilla".
+ */
+export interface MasCartilla {
+  id: number;
+  mascota: number | Mascota;
+  tipo: 'vacuna' | 'desparasitacion_interna' | 'desparasitacion_externa' | 'otro';
+  /**
+   * Ej. «Vacuna múltiple canina», «Antirrábica», «Desparasitante interno».
+   */
+  producto: string;
+  fechaAplicacion: string;
+  proximaFecha?: string | null;
+  lote?: string | null;
+  caducidad?: string | null;
+  aplicadoPor?: (number | null) | User;
+  aplicadoPorTexto?: string | null;
   notas?: string | null;
+  registradoPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-notas".
+ */
+export interface MasNota {
+  id: number;
+  mascota: number | Mascota;
+  fecha: string;
+  tipo: 'consulta' | 'ortopedia' | 'cirugia' | 'control' | 'urgencia' | 'hospitalizacion' | 'rehabilitacion' | 'otro';
+  titulo: string;
+  subjetivo?: string | null;
+  objetivo?: string | null;
+  analisis?: string | null;
+  plan?: string | null;
+  autor?: (number | null) | User;
+  estado: 'borrador' | 'firmada';
+  firmadaEn?: string | null;
+  firmadaPor?: (number | null) | User;
+  adendas?:
+    | {
+        motivo: string;
+        texto: string;
+        fecha?: string | null;
+        autor?: (number | null) | User;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-documentos".
+ */
+export interface MasDocumento {
+  id: number;
+  mascota: number | Mascota;
+  titulo: string;
+  tipo: 'indicaciones' | 'receta' | 'consentimiento' | 'estudio' | 'constancia' | 'cartilla' | 'otro';
+  fecha?: string | null;
+  publicadoAlTutor?: boolean | null;
+  origen: 'clinica' | 'tutor';
+  revision?: ('no_aplica' | 'pendiente' | 'revisado') | null;
+  ruta: string;
+  nombreArchivo?: string | null;
+  tipoContenido?: string | null;
+  tamano?: number | null;
+  subidoPor?: (number | null) | User;
+  subidoPorTutor?: (number | null) | Tutor;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Cuentas con las que los tutores entran al portal. Se vinculan a su ficha de cliente con un código.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tutores".
+ */
+export interface Tutor {
+  id: number;
+  nombre: string;
+  telefono?: string | null;
+  /**
+   * Sin ficha vinculada, la cuenta no ve ninguna mascota.
+   */
+  cliente?: (number | null) | Cliente;
+  vinculadoEn?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'tutores';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "codigos-vinculacion".
+ */
+export interface CodigoVinculacion {
+  id: number;
+  codigo: string;
+  cliente: number | Cliente;
+  expira: string;
+  usadoEn?: string | null;
+  usadoPor?: (number | null) | Tutor;
+  creadoPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "importaciones".
+ */
+export interface Importacion {
+  id: number;
+  archivo: string;
+  estado: 'previa' | 'aplicada' | 'descartada';
+  columnas?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  filas?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  mapeo?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  resumen?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  creadoPor?: (number | null) | User;
+  aplicadaEn?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Consultorios, quirófano y espacios que se ocupan en la agenda. Desactivar no borra las citas pasadas.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "recursos".
+ */
+export interface Recurso {
+  id: number;
+  nombre: string;
+  tipo: 'consultorio' | 'quirofano' | 'estetica' | 'sala' | 'otro';
+  orden?: number | null;
+  activo?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Lo que se agenda. La duración y el recurso por defecto arman la agenda; el precio (opcional) genera el cargo en Finanzas al finalizar la cita.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "servicios".
+ */
+export interface Servicio {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  /**
+   * Ej. «Traer cartilla y estudios previos».
+   */
+  indicaciones?: string | null;
+  duracionMin: number;
+  /**
+   * Si se captura, al finalizar la cita se registra una entrada por cobrar en Finanzas.
+   */
+  precio?: number | null;
+  recursoPorDefecto: number | Recurso;
+  /**
+   * A qué actividad se asigna el cargo (Consulta, Cirugía, Estética…).
+   */
+  area?: (number | null) | FinActividad;
+  /**
+   * Opcional: categoría de entrada para el cargo.
+   */
+  categoriaFinanzas?: (number | null) | FinCategoria;
+  reservaEnLinea: 'inmediata' | 'valoracion' | 'no';
+  orden?: number | null;
+  activo?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -276,6 +622,43 @@ export interface FinCategoria {
   restringida?: boolean | null;
   actividadSugerida?: (number | null) | FinActividad;
   activa?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "citas".
+ */
+export interface Cita {
+  id: number;
+  folio?: string | null;
+  mascota: number | Mascota;
+  cliente?: (number | null) | Cliente;
+  servicio: number | Servicio;
+  recurso: number | Recurso;
+  profesional?: (number | null) | User;
+  dia: string;
+  horaInicio: string;
+  duracionMin: number;
+  inicio: string;
+  fin: string;
+  estado: 'solicitada' | 'confirmada' | 'llegada' | 'atencion' | 'finalizada' | 'cancelada' | 'no_asistio';
+  origen: 'panel' | 'portal';
+  notasTutor?: string | null;
+  notasInternas?: string | null;
+  motivoCancelacion?: string | null;
+  historial?:
+    | {
+        estado: string;
+        fecha: string;
+        por?: string | null;
+        detalle?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  cargoFinanzas?: (number | null) | FinOperacion;
+  creadoPor?: (number | null) | User;
+  creadoPorTutor?: (number | null) | Tutor;
   updatedAt: string;
   createdAt: string;
 }
@@ -305,6 +688,36 @@ export interface FinOperacion {
   anuladaPor?: (number | null) | User;
   anuladaEn?: string | null;
   claveIdempotencia?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "fin-cuentas".
+ */
+export interface FinCuenta {
+  id: number;
+  /**
+   * Ej. «Banco · Cuenta principal» o «Caja chica · Recepción»
+   */
+  nombre: string;
+  tipo: 'banco' | 'efectivo' | 'caja_chica' | 'fondo' | 'otro';
+  /**
+   * Lo que había en la fecha de inicio. No es una entrada del periodo.
+   */
+  saldoInicial: number;
+  /**
+   * Normalmente, la fecha de corte.
+   */
+  fechaInicio: string;
+  /**
+   * Solo para cajas o fondos que maneja una persona.
+   */
+  responsable?: (number | null) | User;
+  activa?: boolean | null;
+  notas?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -395,6 +808,54 @@ export interface PayloadLockedDocument {
         value: number | Rol;
       } | null)
     | ({
+        relationTo: 'clientes';
+        value: number | Cliente;
+      } | null)
+    | ({
+        relationTo: 'mascotas';
+        value: number | Mascota;
+      } | null)
+    | ({
+        relationTo: 'mas-pesos';
+        value: number | MasPeso;
+      } | null)
+    | ({
+        relationTo: 'mas-cartilla';
+        value: number | MasCartilla;
+      } | null)
+    | ({
+        relationTo: 'mas-notas';
+        value: number | MasNota;
+      } | null)
+    | ({
+        relationTo: 'mas-documentos';
+        value: number | MasDocumento;
+      } | null)
+    | ({
+        relationTo: 'tutores';
+        value: number | Tutor;
+      } | null)
+    | ({
+        relationTo: 'codigos-vinculacion';
+        value: number | CodigoVinculacion;
+      } | null)
+    | ({
+        relationTo: 'importaciones';
+        value: number | Importacion;
+      } | null)
+    | ({
+        relationTo: 'recursos';
+        value: number | Recurso;
+      } | null)
+    | ({
+        relationTo: 'servicios';
+        value: number | Servicio;
+      } | null)
+    | ({
+        relationTo: 'citas';
+        value: number | Cita;
+      } | null)
+    | ({
         relationTo: 'fin-cuentas';
         value: number | FinCuenta;
       } | null)
@@ -423,10 +884,15 @@ export interface PayloadLockedDocument {
         value: number | FinBitacora;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'tutores';
+        value: number | Tutor;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -436,10 +902,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'tutores';
+        value: number | Tutor;
+      };
   key?: string | null;
   value?:
     | {
@@ -502,6 +973,17 @@ export interface RolesSelect<T extends boolean = true> {
         acceso?: T;
         gestionarUsuarios?: T;
       };
+  clinica?:
+    | T
+    | {
+        verPacientes?: T;
+        editarPacientes?: T;
+        verExpediente?: T;
+        escribirExpediente?: T;
+        importar?: T;
+        agenda?: T;
+        configurarAgenda?: T;
+      };
   finanzas?:
     | T
     | {
@@ -517,6 +999,282 @@ export interface RolesSelect<T extends boolean = true> {
         configurar?: T;
         moverDinero?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clientes_select".
+ */
+export interface ClientesSelect<T extends boolean = true> {
+  folio?: T;
+  nombre?: T;
+  apellidos?: T;
+  nombreCompleto?: T;
+  telefono?: T;
+  telefonoAlterno?: T;
+  email?: T;
+  direccion?: T;
+  contactoEmergencia?:
+    | T
+    | {
+        nombre?: T;
+        telefono?: T;
+      };
+  comunicacion?:
+    | T
+    | {
+        avisos?: T;
+        promociones?: T;
+        whatsapp?: T;
+        correo?: T;
+      };
+  notasInternas?: T;
+  activo?: T;
+  origen?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mascotas_select".
+ */
+export interface MascotasSelect<T extends boolean = true> {
+  folio?: T;
+  nombre?: T;
+  especie?: T;
+  especieOtra?: T;
+  raza?: T;
+  sexo?: T;
+  esterilizado?: T;
+  color?: T;
+  fechaNacimiento?: T;
+  nacimientoEstimado?: T;
+  microchip?: T;
+  alergias?: T;
+  alertasManejo?:
+    | T
+    | {
+        texto?: T;
+        id?: T;
+      };
+  medicoTratante?: T;
+  tutores?:
+    | T
+    | {
+        cliente?: T;
+        principal?: T;
+        parentesco?: T;
+        id?: T;
+      };
+  estado?: T;
+  notasInternas?: T;
+  origen?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-pesos_select".
+ */
+export interface MasPesosSelect<T extends boolean = true> {
+  mascota?: T;
+  fecha?: T;
+  kg?: T;
+  nota?: T;
+  registradoPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-cartilla_select".
+ */
+export interface MasCartillaSelect<T extends boolean = true> {
+  mascota?: T;
+  tipo?: T;
+  producto?: T;
+  fechaAplicacion?: T;
+  proximaFecha?: T;
+  lote?: T;
+  caducidad?: T;
+  aplicadoPor?: T;
+  aplicadoPorTexto?: T;
+  notas?: T;
+  registradoPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-notas_select".
+ */
+export interface MasNotasSelect<T extends boolean = true> {
+  mascota?: T;
+  fecha?: T;
+  tipo?: T;
+  titulo?: T;
+  subjetivo?: T;
+  objetivo?: T;
+  analisis?: T;
+  plan?: T;
+  autor?: T;
+  estado?: T;
+  firmadaEn?: T;
+  firmadaPor?: T;
+  adendas?:
+    | T
+    | {
+        motivo?: T;
+        texto?: T;
+        fecha?: T;
+        autor?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-documentos_select".
+ */
+export interface MasDocumentosSelect<T extends boolean = true> {
+  mascota?: T;
+  titulo?: T;
+  tipo?: T;
+  fecha?: T;
+  publicadoAlTutor?: T;
+  origen?: T;
+  revision?: T;
+  ruta?: T;
+  nombreArchivo?: T;
+  tipoContenido?: T;
+  tamano?: T;
+  subidoPor?: T;
+  subidoPorTutor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tutores_select".
+ */
+export interface TutoresSelect<T extends boolean = true> {
+  nombre?: T;
+  telefono?: T;
+  cliente?: T;
+  vinculadoEn?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "codigos-vinculacion_select".
+ */
+export interface CodigosVinculacionSelect<T extends boolean = true> {
+  codigo?: T;
+  cliente?: T;
+  expira?: T;
+  usadoEn?: T;
+  usadoPor?: T;
+  creadoPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "importaciones_select".
+ */
+export interface ImportacionesSelect<T extends boolean = true> {
+  archivo?: T;
+  estado?: T;
+  columnas?: T;
+  filas?: T;
+  mapeo?: T;
+  resumen?: T;
+  creadoPor?: T;
+  aplicadaEn?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "recursos_select".
+ */
+export interface RecursosSelect<T extends boolean = true> {
+  nombre?: T;
+  tipo?: T;
+  orden?: T;
+  activo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "servicios_select".
+ */
+export interface ServiciosSelect<T extends boolean = true> {
+  nombre?: T;
+  descripcion?: T;
+  indicaciones?: T;
+  duracionMin?: T;
+  precio?: T;
+  recursoPorDefecto?: T;
+  area?: T;
+  categoriaFinanzas?: T;
+  reservaEnLinea?: T;
+  orden?: T;
+  activo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "citas_select".
+ */
+export interface CitasSelect<T extends boolean = true> {
+  folio?: T;
+  mascota?: T;
+  cliente?: T;
+  servicio?: T;
+  recurso?: T;
+  profesional?: T;
+  dia?: T;
+  horaInicio?: T;
+  duracionMin?: T;
+  inicio?: T;
+  fin?: T;
+  estado?: T;
+  origen?: T;
+  notasTutor?: T;
+  notasInternas?: T;
+  motivoCancelacion?: T;
+  historial?:
+    | T
+    | {
+        estado?: T;
+        fecha?: T;
+        por?: T;
+        detalle?: T;
+        id?: T;
+      };
+  cargoFinanzas?: T;
+  creadoPor?: T;
+  creadoPorTutor?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -690,11 +1448,60 @@ export interface FinConfiguracion {
   createdAt?: string | null;
 }
 /**
+ * Horario de atención por día y reglas para las citas pedidas desde el portal.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agenda-configuracion".
+ */
+export interface AgendaConfiguracion {
+  id: number;
+  /**
+   * Un renglón por día (0 = domingo … 6 = sábado). Horas como HH:MM.
+   */
+  horario?:
+    | {
+        dia: '0' | '1' | '2' | '3' | '4' | '5' | '6';
+        abierto?: boolean | null;
+        de?: string | null;
+        a?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  intervaloMin?: number | null;
+  anticipacionHoras?: number | null;
+  diasAdelante?: number | null;
+  cancelacionHoras?: number | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-configuracion_select".
  */
 export interface FinConfiguracionSelect<T extends boolean = true> {
   fechaCorte?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agenda-configuracion_select".
+ */
+export interface AgendaConfiguracionSelect<T extends boolean = true> {
+  horario?:
+    | T
+    | {
+        dia?: T;
+        abierto?: T;
+        de?: T;
+        a?: T;
+        id?: T;
+      };
+  intervaloMin?: T;
+  anticipacionHoras?: T;
+  diasAdelante?: T;
+  cancelacionHoras?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

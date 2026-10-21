@@ -84,7 +84,8 @@ export type Ctx = { payload: Payload; req: PayloadRequest; user: User; p: Permis
 /** Arma el contexto a partir de la sesión del panel (cookie de Payload). */
 export async function contextoDesdeHeaders(payload: Payload, headers: Headers): Promise<Ctx | null> {
   const { user } = await payload.auth({ headers })
-  if (!user) return null
+  /* Solo el equipo (colección «users»); un tutor del portal no entra a Finanzas. */
+  if (!user || (user as { collection?: string }).collection !== 'users') return null
   const req = await createLocalReq({ user: user as User & { collection: 'users' } }, payload)
   const p = await permisosDe(req)
   return { payload, req, user: user as User, p, hoy: diaEnZona(new Date(), site.location.timeZone) }
@@ -92,7 +93,7 @@ export async function contextoDesdeHeaders(payload: Payload, headers: Headers): 
 
 /** Contexto para una vista del panel que ya tiene la petición de Payload. */
 export async function contextoDesdeReq(req: PayloadRequest): Promise<Ctx | null> {
-  if (!req.user) return null
+  if (!req.user || (req.user as { collection?: string }).collection !== 'users') return null
   const p = await permisosDe(req)
   return { payload: req.payload, req, user: req.user as User, p, hoy: diaEnZona(new Date(), site.location.timeZone) }
 }
@@ -1014,14 +1015,33 @@ const CATEGORIAS_SUGERIDAS: { nombre: string; tipo: 'entrada' | 'gasto'; activid
   { nombre: 'Otros gastos', tipo: 'gasto', actividad: 'Administración' },
 ]
 
-type RolSugerido = { nombre: string; descripcion: string; panel: { acceso: boolean; gestionarUsuarios: boolean }; finanzas: Record<string, boolean | string | number[]> }
+type RolSugerido = {
+  nombre: string
+  descripcion: string
+  panel: { acceso: boolean; gestionarUsuarios: boolean }
+  finanzas: Record<string, boolean | string | number[]>
+  clinica: Record<string, boolean>
+}
 function rolesSugeridos(alcanceClinico: number[]): RolSugerido[] {
   const todo = { registrar: true, ver: 'todos', verRestringidas: true, verSaldos: true, verUtilidad: true, liquidar: true, corregir: true, revisarComprobantes: true, configurar: true, moverDinero: true }
+  const todaClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true, agenda: true, configurarAgenda: true }
   return [
-    { nombre: 'Dueño', descripcion: 'Acceso completo y administración de usuarios y roles', panel: { acceso: true, gestionarUsuarios: true }, finanzas: { ...todo } },
-    { nombre: 'Administración', descripcion: 'Finanzas completas, sin administrar usuarios', panel: { acceso: true, gestionarUsuarios: false }, finanzas: { ...todo } },
-    { nombre: 'Médico veterinario', descripcion: 'Registra y consulta lo de consulta, cirugía y rehabilitación', panel: { acceso: false, gestionarUsuarios: false }, finanzas: { registrar: true, ver: 'alcance', alcance: alcanceClinico } },
-    { nombre: 'Recepción', descripcion: 'Solo registra entradas y gastos: entra directo a Finanzas', panel: { acceso: false, gestionarUsuarios: false }, finanzas: { registrar: true, ver: 'propios' } },
+    { nombre: 'Dueño', descripcion: 'Acceso completo y administración de usuarios y roles', panel: { acceso: true, gestionarUsuarios: true }, finanzas: { ...todo }, clinica: { ...todaClinica } },
+    { nombre: 'Administración', descripcion: 'Finanzas y pacientes completos, sin administrar usuarios', panel: { acceso: true, gestionarUsuarios: false }, finanzas: { ...todo }, clinica: { ...todaClinica } },
+    {
+      nombre: 'Médico veterinario',
+      descripcion: 'Expediente completo; en Finanzas registra y consulta lo de consulta, cirugía y rehabilitación',
+      panel: { acceso: false, gestionarUsuarios: false },
+      finanzas: { registrar: true, ver: 'alcance', alcance: alcanceClinico },
+      clinica: { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: false, agenda: true, configurarAgenda: false },
+    },
+    {
+      nombre: 'Recepción',
+      descripcion: 'Da de alta clientes y mascotas, cartilla y vinculación; registra entradas y gastos sin ver el expediente',
+      panel: { acceso: false, gestionarUsuarios: false },
+      finanzas: { registrar: true, ver: 'propios' },
+      clinica: { verPacientes: true, editarPacientes: true, verExpediente: false, escribirExpediente: false, importar: false, agenda: true, configurarAgenda: false },
+    },
   ]
 }
 

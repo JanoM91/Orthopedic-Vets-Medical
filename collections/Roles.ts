@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { APIError } from 'payload'
-import { gestionaUsuarios } from '../lib/permisos'
+import { esPersonal, gestionaUsuarios } from '../lib/permisos'
 
 /**
  * Roles editables (heredado de MacAuto Finanzas).
@@ -31,7 +31,7 @@ export const Roles: CollectionConfig = {
       'Qué puede hacer cada tipo de persona. Lo editan los dueños y el superadministrador. Para asignarlo, entra a Usuarios.',
   },
   access: {
-    read: ({ req }) => Boolean(req.user),
+    read: ({ req }) => esPersonal(req),
     create: gestionaUsuarios,
     update: gestionaUsuarios,
     delete: gestionaUsuarios,
@@ -76,6 +76,31 @@ export const Roles: CollectionConfig = {
           defaultValue: false,
           admin: { description: 'Crear cuentas, asignar roles y editar lo que cada rol puede hacer.' },
         },
+      ],
+    },
+    {
+      name: 'clinica',
+      label: 'Clínica: pacientes y expediente',
+      type: 'group',
+      fields: [
+        { name: 'verPacientes', label: 'Ver clientes-tutores, mascotas, cartilla, pesos y documentos', type: 'checkbox', defaultValue: false },
+        {
+          name: 'editarPacientes',
+          label: 'Dar de alta y corregir clientes y mascotas; registrar cartilla, pesos y documentos; vincular tutores al portal',
+          type: 'checkbox',
+          defaultValue: false,
+        },
+        {
+          name: 'verExpediente',
+          label: 'Leer las notas clínicas (expediente)',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: { description: 'Recepción y estética normalmente no lo necesitan: ven alertas de manejo y alergias sin esta casilla.' },
+        },
+        { name: 'escribirExpediente', label: 'Escribir y firmar notas clínicas; agregar adendas', type: 'checkbox', defaultValue: false },
+        { name: 'importar', label: 'Importar clientes y mascotas desde archivo (CSV o Excel)', type: 'checkbox', defaultValue: false },
+        { name: 'agenda', label: 'Ver la agenda y gestionar citas (crear, confirmar, registrar llegada, finalizar, reprogramar, cancelar)', type: 'checkbox', defaultValue: false },
+        { name: 'configurarAgenda', label: 'Configurar servicios, consultorios (recursos) y horario de atención', type: 'checkbox', defaultValue: false },
       ],
     },
     {

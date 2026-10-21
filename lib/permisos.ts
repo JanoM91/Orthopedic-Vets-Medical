@@ -21,7 +21,7 @@ import type { Access, CollectionConfig, GlobalConfig, PayloadRequest } from 'pay
 import { calcularPermisos, type Permisos, type RolGuardado, usaFinanzas } from './permisosBase'
 
 export type { Permisos } from './permisosBase'
-export { esSoloCaptura, usaFinanzas } from './permisosBase'
+export { esSoloCaptura, usaClinica, usaFinanzas } from './permisosBase'
 
 type UsuarioConRol = {
   id?: number | string
@@ -34,7 +34,8 @@ const MEMO = '__permisosMx'
 /** Permisos efectivos de quien hace la petición. Memorizados por petición. */
 export async function permisosDe(req: PayloadRequest): Promise<Permisos> {
   const ctx = (req.context ?? {}) as Record<string, unknown>
-  const usuario = req.user as UsuarioConRol | null | undefined
+  /* Un tutor del portal nunca tiene permisos del equipo, aunque traiga sesión. */
+  const usuario = (esPersonal(req) ? req.user : null) as UsuarioConRol | null | undefined
   const memo = ctx[MEMO] as { userId: unknown; permisos: Permisos } | undefined
   if (memo && memo.userId === usuario?.id) return memo.permisos
 
@@ -56,11 +57,19 @@ export async function permisosDe(req: PayloadRequest): Promise<Permisos> {
 
 /* ───────────────────── reglas listas para usar ───────────────────── */
 
-export const conPanel: Access = async ({ req }) => Boolean(req.user) && (await permisosDe(req)).panel
-export const gestionaUsuarios: Access = async ({ req }) => Boolean(req.user) && (await permisosDe(req)).gestionarUsuarios
-export const configuraFinanzas: Access = async ({ req }) => Boolean(req.user) && (await permisosDe(req)).fin.configurar
+/**
+ * ¿La sesión es de una persona del equipo (colección «users»)? Los tutores del
+ * portal (colección «tutores») también traen sesión de Payload, pero no son
+ * equipo: no ven usuarios, roles ni Finanzas aunque la regla diga «con sesión».
+ */
+export const esPersonal = (req: PayloadRequest): boolean => Boolean(req.user) && (req.user as { collection?: string }).collection === 'users'
+export const esTutor = (req: PayloadRequest): boolean => Boolean(req.user) && (req.user as { collection?: string }).collection === 'tutores'
+
+export const conPanel: Access = async ({ req }) => esPersonal(req) && (await permisosDe(req)).panel
+export const gestionaUsuarios: Access = async ({ req }) => esPersonal(req) && (await permisosDe(req)).gestionarUsuarios
+export const configuraFinanzas: Access = async ({ req }) => esPersonal(req) && (await permisosDe(req)).fin.configurar
 export const usaFinanzasOPanel: Access = async ({ req }) => {
-  if (!req.user) return false
+  if (!esPersonal(req)) return false
   const p = await permisosDe(req)
   return p.panel || usaFinanzas(p)
 }
@@ -102,9 +111,12 @@ const OPERACIONES = ['read', 'create', 'update', 'delete', 'readVersions'] as co
 
 /** Colecciones con reglas propias que no se envuelven. */
 const CON_REGLAS_PROPIAS = new Set(['users', 'roles'])
+/** Colecciones de la clínica: sus reglas (collections/clinica/acceso.ts) ya distinguen equipo, tutores y visitantes. */
+export const COLECCIONES_CLINICA = new Set(['clientes', 'mascotas', 'tutores', 'codigos-vinculacion', 'importaciones', 'recursos', 'servicios', 'citas'])
+export const esColeccionClinica = (slug: string): boolean => COLECCIONES_CLINICA.has(slug) || slug.startsWith('mas-')
 
 export function protegerColeccion(c: CollectionConfig): CollectionConfig {
-  if (CON_REGLAS_PROPIAS.has(c.slug) || c.slug.startsWith('fin-')) return c
+  if (CON_REGLAS_PROPIAS.has(c.slug) || c.slug.startsWith('fin-') || esColeccionClinica(c.slug)) return c
   const access = { ...(c.access ?? {}) } as NonNullable<CollectionConfig['access']>
   for (const op of OPERACIONES) {
     ;(access as Record<string, Access>)[op] = envolver((c.access as Record<string, Access> | undefined)?.[op])
@@ -113,7 +125,7 @@ export function protegerColeccion(c: CollectionConfig): CollectionConfig {
 }
 
 export function protegerGlobal(g: GlobalConfig): GlobalConfig {
-  if (g.slug.startsWith('fin-')) return g
+  if (g.slug.startsWith('fin-') || g.slug === 'agenda-configuracion') return g
   const access = { ...(g.access ?? {}) } as NonNullable<GlobalConfig['access']>
   for (const op of ['read', 'update', 'readVersions'] as const) {
     ;(access as Record<string, Access>)[op] = envolver((g.access as Record<string, Access> | undefined)?.[op])

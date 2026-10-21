@@ -17,6 +17,10 @@
 
 Todo lo demás es igual: cobros y pagos parciales, comprobantes privados, corrección y anulación con bitácora, nómina restringida, saldos, traspasos, fondos a cargo de empleados, gastos «de mi bolsa» con reembolso, sesiones de 7 días y «Si se pierde un teléfono».
 
+## 1-bis. Clínica y portal del tutor (20-oct-2026)
+
+Pacientes, expediente, importación y portal: `docs/CLINICA.md`. Variables nuevas (opcionales): `NEXT_PUBLIC_BRAND_PRIMARY`, `NEXT_PUBLIC_BRAND_ACCENT`, `NEXT_PUBLIC_BRAND_LOGO`, `NEXT_PUBLIC_BRAND_PHONE`, `CLINICA_BLOB_READ_WRITE_TOKEN` (si falta, los documentos usan `FINANZAS_BLOB_READ_WRITE_TOKEN`). Al desplegar, Payload aplica solas las migraciones `20261020_170838_clinica_pacientes` y `20261021_155111_agenda_citas` (tablas nuevas con RLS). Agenda: primera vez, en `/admin/clinica/agenda` → «Crear recursos y servicios sugeridos», luego ajustar precios y horario en el panel (Clínica → Servicios / Recursos / «Agenda: horario y reglas»). Si los roles ya existían antes de esta versión, hay que marcarles a mano las casillas de «Clínica» en Sistema → Roles.
+
 ## 2. Piezas y variables
 
 | Pieza | Dónde | Variable en Vercel |

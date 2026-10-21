@@ -1,6 +1,9 @@
-# Orthopedic Vet's Finanzas
+# Orthopedic Vet's — plataforma de clínica veterinaria (marca blanca)
 
-App de registro de entradas, gastos y compromisos de **Orthopedic Vet's Medical** (clínica veterinaria de ortopedia, Xalapa). Es una réplica de **MacAuto Finanzas** (repo `Exkalibur-labs/macauto-xalapa`, docs/60–62) **sin el sitio público y sin autos**: aquí cada entrada o gasto se asigna a un **área** de la clínica (colección `fin-actividades`), a «general» o queda pendiente.
+Plataforma de **Orthopedic Vet's Medical** (clínica veterinaria de ortopedia, Xalapa), pensada para replicarse a otras clínicas por configuración. Hoy tiene dos módulos:
+
+- **Finanzas** (octubre de 2026): réplica de **MacAuto Finanzas** (repo `Exkalibur-labs/macauto-xalapa`, docs/60–62) sin sitio público ni autos: cada entrada o gasto se asigna a un **área** (`fin-actividades`), a «general» o queda pendiente.
+- **Clínica** (20-oct-2026): clientes-tutores, mascotas, cartilla, pesos, notas clínicas firmables, documentos, importación desde CSV/Excel y **portal del tutor** (`/portal`). Todo en `docs/CLINICA.md`.
 
 Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 
@@ -22,6 +25,15 @@ Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 - Nada financiero se borra: se corrige o se anula con motivo; todo queda en `fin-bitacora`.
 - Pantallas de Finanzas: probar de 320 a 430 px y campos de 16 px.
 - Pruebas sin base: `npm run test:finanzas` (también en CI).
+
+## Reglas de la Clínica (docs/CLINICA.md)
+
+- Colecciones `clientes`, `mascotas`, `mas-*`, `tutores`, `codigos-vinculacion`, `importaciones` tienen reglas propias en `collections/clinica/acceso.ts` y **no** se envuelven con `protegerColeccion` (ya lo sabe `lib/permisos.ts`). Distinguen tres sesiones: equipo (`users`), tutor (`tutores`) y visitante.
+- La lógica va en `lib/clinica/servicio.ts` e `importacion.ts`, expuesta en `app/api/clinica/[...ruta]/route.ts`. El equipo escribe con `overrideAccess: true` después de revisar `ctx.p.clinica.*`; el **portal siempre consulta con `overrideAccess: false` y el usuario tutor**, para que las reglas de acceso decidan qué ve.
+- Una **nota clínica firmada es inmutable** (hook `beforeChange` en `mas-notas`); solo admite adendas. El tutor nunca lee notas: se le publican documentos.
+- Toda regla de acceso del equipo usa `esPersonal(req)`: una sesión de tutor no cuenta como «con sesión» en `users`, `roles` ni Finanzas.
+- Marca blanca: nombre, colores, logotipo y teléfono salen de `lib/site.ts` (variables `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_BRAND_*`). No escribir datos de una clínica en el código.
+- Pruebas con base local: `npm run test:clinica` (80 comprobaciones) con la app corriendo contra Postgres local vacío.
 
 ## Cambios al modelo de datos
 

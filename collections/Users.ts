@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { APIError, ValidationError } from 'payload'
 import type { Access, AccessResult, FieldAccess, Where } from 'payload'
-import { permisosDe } from '../lib/permisos'
+import { esPersonal, permisosDe } from '../lib/permisos'
 
 import {
   VIGENCIA_RECUPERACION_MS,
@@ -41,34 +41,34 @@ import { rateLimit } from '../lib/rateLimit'
  *   puede cambiarse el rol.
  */
 const leerCuentas: Access = async ({ req }): Promise<AccessResult> => {
-  if (!req.user) return false
+  if (!req.user || !esPersonal(req)) return false
   if ((await permisosDe(req)).gestionarUsuarios) return true
   return { id: { equals: req.user.id } }
 }
 const noSuperadmin: Where = { or: [{ esSuperadmin: { equals: false } }, { esSuperadmin: { exists: false } }] }
 const editarCuentas: Access = async ({ req }): Promise<AccessResult> => {
-  if (!req.user) return false
+  if (!req.user || !esPersonal(req)) return false
   const p = await permisosDe(req)
   if (p.superadmin) return true
   if (p.gestionarUsuarios) return { or: [noSuperadmin, { id: { equals: req.user.id } }] }
   return { id: { equals: req.user.id } }
 }
 const borrarCuentas: Access = async ({ req }): Promise<AccessResult> => {
-  if (!req.user) return false
+  if (!req.user || !esPersonal(req)) return false
   const p = await permisosDe(req)
   if (p.superadmin) return { id: { not_equals: req.user.id } }
   if (p.gestionarUsuarios) return { and: [noSuperadmin, { id: { not_equals: req.user.id } }] }
   return false
 }
-const crearCuentas: Access = async ({ req }) => Boolean(req.user) && (await permisosDe(req)).gestionarUsuarios
-const cambiaRoles: FieldAccess = async ({ req }) => Boolean(req.user) && (await permisosDe(req)).gestionarUsuarios
+const crearCuentas: Access = async ({ req }) => esPersonal(req) && (await permisosDe(req)).gestionarUsuarios
+const cambiaRoles: FieldAccess = async ({ req }) => esPersonal(req) && (await permisosDe(req)).gestionarUsuarios
 /**
  * La marca de superadministrador solo la pone otro superadministrador. La
  * primera cuenta de la instalación (la que se crea en «Crear primer usuario»)
  * la recibe sola: ver el hook `beforeChange` más abajo.
  */
 const marcaSuperadmin: FieldAccess = async ({ req }) => {
-  if (!req.user) return false
+  if (!req.user || !esPersonal(req)) return false
   return (await permisosDe(req)).superadmin
 }
 

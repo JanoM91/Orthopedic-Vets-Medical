@@ -38,12 +38,31 @@ export type PermisosFinanzas = {
   moverDinero: boolean
 }
 
+/**
+ * Permisos de la clínica (pacientes, tutores y expediente). Octubre de 2026.
+ *
+ *   verPacientes       → ve clientes-tutores, mascotas, cartilla, pesos y documentos.
+ *   editarPacientes    → da de alta y corrige clientes y mascotas; registra cartilla, pesos
+ *                        y documentos; genera códigos de vinculación para el portal.
+ *   verExpediente      → lee las notas clínicas (SOAP). Recepción normalmente NO.
+ *   escribirExpediente → escribe y firma notas clínicas y agrega adendas.
+ *   importar           → carga archivos (CSV/Excel) con clientes y mascotas.
+ */
+export type PermisosClinica = {
+  verPacientes: boolean
+  editarPacientes: boolean
+  verExpediente: boolean
+  escribirExpediente: boolean
+  importar: boolean
+}
+
 export type Permisos = {
   superadmin: boolean
   /** Entra al panel completo del sitio. Sin esto, la persona entra directo a Finanzas. */
   panel: boolean
   gestionarUsuarios: boolean
   fin: PermisosFinanzas
+  clinica: PermisosClinica
   /** Para mostrar en pantalla: «Superadministrador», el nombre del rol o «Sin rol». */
   rolNombre: string
   origen: 'superadmin' | 'rol' | 'ninguno'
@@ -66,6 +85,13 @@ export type RolGuardado = {
     configurar?: boolean | null
     moverDinero?: boolean | null
   } | null
+  clinica?: {
+    verPacientes?: boolean | null
+    editarPacientes?: boolean | null
+    verExpediente?: boolean | null
+    escribirExpediente?: boolean | null
+    importar?: boolean | null
+  } | null
 }
 
 export type UsuarioParaPermisos = {
@@ -76,6 +102,9 @@ const SIN_FINANZAS: PermisosFinanzas = {
   registrar: false, ver: 'propios', alcance: [], verRestringidas: false, verSaldos: false, verUtilidad: false,
   liquidar: false, corregir: false, revisarComprobantes: false, configurar: false, moverDinero: false,
 }
+
+const SIN_CLINICA: PermisosClinica = { verPacientes: false, editarPacientes: false, verExpediente: false, escribirExpediente: false, importar: false }
+const TODO_CLINICA: PermisosClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true }
 
 const TODO_FINANZAS: PermisosFinanzas = {
   registrar: true, ver: 'todos', alcance: [], verRestringidas: true, verSaldos: true, verUtilidad: true,
@@ -88,13 +117,14 @@ const TODO_FINANZAS: PermisosFinanzas = {
  */
 export function calcularPermisos(usuario: UsuarioParaPermisos | null | undefined, rol: RolGuardado | null): Permisos {
   if (!usuario) {
-    return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, rolNombre: 'Sin sesión', origen: 'ninguno' }
+    return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, clinica: { ...SIN_CLINICA }, rolNombre: 'Sin sesión', origen: 'ninguno' }
   }
   if (usuario.esSuperadmin) {
-    return { superadmin: true, panel: true, gestionarUsuarios: true, fin: { ...TODO_FINANZAS }, rolNombre: 'Superadministrador', origen: 'superadmin' }
+    return { superadmin: true, panel: true, gestionarUsuarios: true, fin: { ...TODO_FINANZAS }, clinica: { ...TODO_CLINICA }, rolNombre: 'Superadministrador', origen: 'superadmin' }
   }
   if (rol) {
     const f = rol.finanzas ?? {}
+    const c = rol.clinica ?? {}
     const ver: AlcanceDeVista = f.ver === 'todos' || f.ver === 'alcance' ? f.ver : 'propios'
     return {
       superadmin: false,
@@ -118,12 +148,20 @@ export function calcularPermisos(usuario: UsuarioParaPermisos | null | undefined
            cambio y nadie lo pierde por volver a guardar un rol. */
         moverDinero: Boolean(f.moverDinero) || Boolean(f.configurar),
       },
+      clinica: {
+        /* Quien edita o escribe también ve: así un rol guardado solo con «editar» no queda ciego. */
+        verPacientes: Boolean(c.verPacientes) || Boolean(c.editarPacientes) || Boolean(c.verExpediente) || Boolean(c.importar),
+        editarPacientes: Boolean(c.editarPacientes) || Boolean(c.importar),
+        verExpediente: Boolean(c.verExpediente) || Boolean(c.escribirExpediente),
+        escribirExpediente: Boolean(c.escribirExpediente),
+        importar: Boolean(c.importar),
+      },
       rolNombre: rol.nombre?.trim() || 'Rol sin nombre',
       origen: 'rol',
     }
   }
   /* Sin rol: no entra a nada. Quien administra usuarios le asigna uno. */
-  return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, rolNombre: 'Sin rol', origen: 'ninguno' }
+  return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, clinica: { ...SIN_CLINICA }, rolNombre: 'Sin rol', origen: 'ninguno' }
 }
 
 /** ¿Tiene algo que hacer en Finanzas? */
@@ -135,4 +173,9 @@ export function usaFinanzas(p: Permisos): boolean {
 /** Quien no entra al panel completo y sí usa Finanzas: su acceso es directo a la captura. */
 export function esSoloCaptura(p: Permisos): boolean {
   return !p.panel && usaFinanzas(p)
+}
+
+/** ¿Tiene algo que hacer en la clínica (pacientes y expediente)? */
+export function usaClinica(p: Permisos): boolean {
+  return p.superadmin || p.clinica.verPacientes
 }

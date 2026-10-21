@@ -1,0 +1,80 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Clínica (pacientes y expediente) — estilos propios, octubre de 2026
+   ═══════════════════════════════════════════════════════════════════════════
+   Reutiliza las clases fz-* de finanzas.css (tarjetas, filas, botones, inputs,
+   avisos) y los tokens --mx-* de custom.css. Aquí solo lo que Finanzas no
+   tiene: rejillas de dos columnas, avatares, alerta clínica, tablas, modal.
+   Funcionalidad primero: el diseño final se afina al terminar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.cl-app { max-width: 1100px; }
+.cl-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.cl-caja { padding: 16px; }
+.cl-dos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 820px) { .cl-dos { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
+.cl-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 560px) { .cl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cl-campo--corto { max-width: 200px; }
+.cl-cargando { opacity: 0.6; }
+.cl-fieldset { border: 1px solid var(--mx-line); border-radius: 10px; padding: 10px 14px 12px; display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; }
+.cl-fieldset legend { padding: 0 6px; }
+.cl-check { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; }
+.cl-check input { width: 18px; height: 18px; accent-color: var(--mx-teal); }
+
+/* avatares: personas (navy), perros, gatos y otras especies */
+.cl-avatar { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: 14px; letter-spacing: 0.02em; color: #fff; background: var(--mx-navy); }
+.cl-avatar.is-perro { background: #b8742a; }
+.cl-avatar.is-gato { background: #5a6b8c; }
+.cl-avatar.is-otra { background: var(--mx-teal-dark); }
+.cl-avatar--grande { width: 56px; height: 56px; font-size: 19px; }
+.cl-cabecera-ficha { display: flex; gap: 14px; align-items: center; min-width: 0; }
+
+/* alerta clínica: alergias y manejo, visible para todo el equipo */
+.cl-alerta { display: flex; gap: 10px; align-items: flex-start; background: #fdecee; color: #b42330; border-left: 4px solid #b42330; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+.cl-alerta .fz-i { margin-top: 2px; }
+
+/* lista definición */
+.cl-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 14px; }
+.cl-dl dt { color: var(--mx-muted); font-weight: 600; font-size: 12.5px; padding-top: 2px; }
+.cl-dl dd { margin: 0; }
+
+/* código de vinculación */
+.cl-codigo { display: flex; flex-direction: column; gap: 2px; background: var(--mx-teal-soft); border-radius: 10px; padding: 10px 14px; }
+.cl-codigo b { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 26px; letter-spacing: 0.18em; color: var(--mx-navy); }
+
+/* fila-botón en el buscador de tutores */
+.cl-fila-boton { width: 100%; background: none; border: 0; border-bottom: 1px solid var(--mx-line); text-align: left; cursor: pointer; font: inherit; }
+.cl-fila-boton:hover { background: var(--mx-sand); }
+.cl-tutor-fila { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--mx-line); }
+.cl-tutor-fila .fz-input--compacto { max-width: 180px; }
+.cl-cerrar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--mx-line); background: #fff; font-size: 20px; line-height: 1; cursor: pointer; color: var(--mx-muted); flex: none; }
+.cl-cerrar:hover { color: var(--mx-ink); border-color: var(--mx-muted); }
+
+/* SOAP y adendas */
+.cl-soap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+@media (min-width: 640px) { .cl-soap { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cl-soap > div { background: var(--mx-sand); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+.cl-soap b { display: block; color: var(--mx-teal-text); font-size: 12.5px; margin-bottom: 2px; }
+.cl-soap p { margin: 0; white-space: pre-wrap; }
+.cl-adenda { border: 1px dashed var(--mx-amber); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+.cl-adenda p { margin: 4px 0 0; white-space: pre-wrap; }
+
+/* gráfica de peso */
+.cl-grafica { width: 100%; height: auto; max-height: 120px; display: block; }
+
+/* tablas (importador) */
+.cl-tabla { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.cl-tabla th, .cl-tabla td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--mx-line); vertical-align: middle; }
+.cl-tabla th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mx-muted); background: var(--mx-sand); }
+.cl-tabla tr:last-child td { border-bottom: 0; }
+.cl-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cl-kpi { background: var(--mx-sand); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; }
+.cl-kpi b { font-size: 24px; font-weight: 750; line-height: 1.1; color: var(--mx-navy); }
+.cl-kpi span { font-size: 12.5px; color: var(--mx-muted); }
+.cl-ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* modal */
+.cl-overlay { position: fixed; inset: 0; background: rgba(6, 20, 17, 0.5); z-index: 80; display: flex; align-items: flex-end; justify-content: center; padding: 16px; }
+@media (min-width: 700px) { .cl-overlay { align-items: center; } }
+.cl-modal { background: #fff; color: var(--mx-ink); border-radius: 16px; max-width: 620px; width: 100%; max-height: 88vh; overflow: auto; padding: 20px; box-shadow: var(--mx-shadow-lift); }
+.cl-modal--ancho { max-width: 900px; }

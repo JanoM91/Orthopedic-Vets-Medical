@@ -11,6 +11,9 @@ import { Users } from './collections/Users'
 import { Roles } from './collections/Roles'
 import { FinActividades, FinCategorias, FinConfiguracion, FinCuentas } from './collections/finanzas/catalogos'
 import { FinBitacora, FinComprobantes, FinMovimientos, FinOperaciones } from './collections/finanzas/registros'
+import { Clientes, Mascotas, MasPesos } from './collections/clinica/pacientes'
+import { MasCartilla, MasDocumentos, MasNotas } from './collections/clinica/expediente'
+import { CodigosVinculacion, Importaciones, Tutores } from './collections/clinica/tutores'
 import { protegerColeccion, protegerGlobal } from './lib/permisos'
 import { migrations } from './migrations'
 
@@ -54,8 +57,13 @@ export default buildConfig({
           Component: '/components/admin/finanzas/VistaFinanzas#default',
           path: '/finanzas',
         },
+        /* Clínica (octubre de 2026): pacientes, tutores y expediente. Misma idea. */
+        clinica: {
+          Component: '/components/admin/clinica/VistaClinica#default',
+          path: '/clinica',
+        },
       },
-      afterNavLinks: ['/components/admin/EnlaceFinanzas#default'],
+      afterNavLinks: ['/components/admin/EnlaceClinica#default', '/components/admin/EnlaceFinanzas#default'],
     },
   },
   /**
@@ -64,9 +72,27 @@ export default buildConfig({
    * para que una colección nueva quede protegida sin acordarse. Usuarios,
    * Roles y las de Finanzas traen sus propias reglas.
    */
-  collections: [Users, Roles, FinCuentas, FinCategorias, FinActividades, FinOperaciones, FinMovimientos, FinComprobantes, FinBitacora].map(
-    protegerColeccion,
-  ),
+  collections: [
+    Users,
+    Roles,
+    /* Clínica (octubre de 2026): pacientes, tutores y expediente. Reglas propias en collections/clinica/acceso.ts. */
+    Clientes,
+    Mascotas,
+    MasPesos,
+    MasCartilla,
+    MasNotas,
+    MasDocumentos,
+    Tutores,
+    CodigosVinculacion,
+    Importaciones,
+    FinCuentas,
+    FinCategorias,
+    FinActividades,
+    FinOperaciones,
+    FinMovimientos,
+    FinComprobantes,
+    FinBitacora,
+  ].map(protegerColeccion),
   globals: [FinConfiguracion].map(protegerGlobal),
   /* Correo de recuperación de contraseña (Resend por HTTP). Sin RESEND_API_KEY no se envía nada. Ver lib/emailAdapter.ts. */
   email: resendEmailAdapter,

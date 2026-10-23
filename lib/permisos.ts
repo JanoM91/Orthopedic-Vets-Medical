@@ -125,7 +125,7 @@ export function protegerColeccion(c: CollectionConfig): CollectionConfig {
 }
 
 export function protegerGlobal(g: GlobalConfig): GlobalConfig {
-  if (g.slug.startsWith('fin-') || g.slug === 'agenda-configuracion') return g
+  if (g.slug.startsWith('fin-') || g.slug === 'agenda-configuracion' || g.slug === 'sitio-configuracion') return g
   const access = { ...(g.access ?? {}) } as NonNullable<GlobalConfig['access']>
   for (const op of ['read', 'update', 'readVersions'] as const) {
     ;(access as Record<string, Access>)[op] = envolver((g.access as Record<string, Access> | undefined)?.[op])

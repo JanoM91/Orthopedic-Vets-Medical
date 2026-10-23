@@ -402,6 +402,26 @@ async function main() {
   r = await tutor.get('/api/citas?depth=0')
   ok(r.status === 200 && r.data.docs.every((x) => x.notasInternas === undefined && (x.historial === undefined || x.historial.length === 0)), 'API genérica: el tutor no ve notas internas ni historial de citas', r.data.docs?.[0] && Object.keys(r.data.docs[0]))
 
+  /* ── visitante y sitio público ── */
+  console.log('\nVisitante y sitio público')
+  let ok500 = true
+  for (let i = 0; i < 15; i++) {
+    const x = await fetch(`${BASE}/portal/citas/nueva`, { redirect: 'manual' })
+    if (x.status >= 500) ok500 = false
+  }
+  ok(ok500, '15 visitas anónimas seguidas al portal no fallan (el freno de registros no cuenta al calcular permisos)')
+  r = await new Sesion().post('/api/globals/sitio-configuracion', { publicado: true })
+  ok(r.status === 403 || r.status === 401, 'Un visitante no edita el sitio público')
+  r = await admin.post('/api/globals/sitio-configuracion', { publicado: true, lema: 'Lema de prueba', contacto: { whatsapp: '228 000 0000' } })
+  ok(r.status === 200, 'Superadmin publica el sitio')
+  r = await fetch(`${BASE}/`)
+  const html = await r.text()
+  ok(r.status === 200 && html.includes('Lema de prueba') && html.includes('wa.me/522280000000') && html.includes('Consulta general'), 'Raíz: muestra lema, WhatsApp con +52 y servicios del catálogo')
+  r = await fetch(`${BASE}/robots.txt`)
+  ok(r.status === 200 && (await r.text()).includes('Disallow: /admin'), 'robots.txt excluye el panel')
+  r = await fetch(`${BASE}/finanzas`, { redirect: 'manual' })
+  ok(r.status === 307 || r.status === 308, '/finanzas sigue llevando al módulo de Finanzas')
+
   console.log(`\n${total - fallas}/${total} correctas${fallas ? ` · ${fallas} fallaron` : ''}\n`)
   process.exit(fallas ? 1 : 0)
 }

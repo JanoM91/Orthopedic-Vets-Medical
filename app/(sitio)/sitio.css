@@ -1,0 +1,96 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sitio público — estilos (octubre de 2026). Marca por --st-primary/--st-accent
+   (los inyecta el layout desde lib/site.ts). Prefijo st-. Funcional y limpio;
+   el diseño fino viene después.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --st-primary: #243a63;
+  --st-accent: #3a9db0;
+  --st-bg: #f6f8fb;
+  --st-surface: #ffffff;
+  --st-line: #d9e1ec;
+  --st-ink: #1a2238;
+  --st-muted: #5c6880;
+  --st-gold: #e8c272;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--st-bg); color: var(--st-ink); }
+.st-body { font: 16px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: -0.015em; }
+h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 800; }
+h2 { font-size: clamp(22px, 3vw, 30px); font-weight: 750; display: flex; align-items: center; gap: 8px; }
+h3 { font-size: 18px; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--st-accent); }
+.st-wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.st-tenue { color: var(--st-muted); }
+.st-chico { font-size: 14px; }
+.st-eyebrow { font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--st-accent); margin-bottom: 8px; }
+.st-i { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.st-i--grande { width: 36px; height: 36px; color: var(--st-accent); }
+
+.st-cabecera { position: sticky; top: 0; z-index: 20; background: var(--st-surface); border-bottom: 1px solid var(--st-line); }
+.st-cabecera__in { display: flex; align-items: center; gap: 12px; min-height: 64px; flex-wrap: wrap; padding-block: 8px; }
+.st-marca { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--st-primary); font-weight: 800; font-size: 18px; }
+.st-marca img { height: 44px; width: 44px; display: block; }
+.st-nav { margin-left: auto; display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; font-size: 15px; }
+.st-nav a { color: var(--st-ink); text-decoration: none; font-weight: 600; min-height: 36px; display: inline-flex; align-items: center; }
+.st-nav a.is-on { color: var(--st-accent); }
+
+.st-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 10px 20px; border-radius: 999px; border: 1px solid var(--st-line); background: var(--st-surface); color: var(--st-ink); font-weight: 700; text-decoration: none; font-size: 15px; }
+.st-btn--primario { background: var(--st-primary); color: #fff; border-color: var(--st-primary); }
+.st-btn--acento { background: var(--st-accent); color: #fff; border-color: var(--st-accent); }
+.st-btn--claro { background: var(--st-surface); }
+.st-btn--chico { min-height: 38px; padding: 6px 14px; font-size: 14px; }
+.st-acciones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+
+.st-hero { background: var(--st-primary); color: #fff; }
+.st-hero__in { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 48px 56px; align-items: center; }
+@media (min-width: 820px) { .st-hero__in { grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); } }
+.st-hero .st-eyebrow { color: var(--st-gold); }
+.st-hero .st-lead { font-size: 18px; opacity: 0.92; margin-top: 14px; max-width: 56ch; }
+.st-hero__nota { margin-top: 14px; opacity: 0.85; }
+.st-hero__logo { width: min(260px, 60vw); height: auto; justify-self: center; background: #fff; border-radius: 50%; padding: 18px; }
+.st-hero .st-btn--claro { background: #fff; color: var(--st-primary); border-color: #fff; }
+
+.st-sec { padding-block: 44px; }
+.st-sec--alt { background: var(--st-surface); border-top: 1px solid var(--st-line); border-bottom: 1px solid var(--st-line); }
+.st-sec--compacta { margin-top: 28px; }
+.st-sec__head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+.st-grupos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 16px; }
+@media (min-width: 640px) { .st-grupos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 980px) { .st-grupos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.st-card { background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.st-sec--alt .st-card { background: var(--st-bg); }
+.st-lista { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.st-lista a { color: var(--st-ink); }
+.st-pasos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (min-width: 760px) { .st-pasos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.st-dos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+@media (min-width: 760px) { .st-dos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.st-horario { border-collapse: collapse; margin-top: 12px; font-size: 15px; }
+.st-horario th { text-align: left; font-weight: 600; padding: 6px 18px 6px 0; }
+.st-horario td { padding: 6px 0; }
+.st-contacto { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.st-aviso { background: #fdf5e1; color: #7a5a10; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+.st-faq details { border-bottom: 1px solid var(--st-line); padding: 12px 0; }
+.st-faq summary { cursor: pointer; font-weight: 700; }
+.st-faq p { margin-top: 8px; color: var(--st-muted); }
+.st-cta { text-align: center; }
+.st-cta .st-acciones { justify-content: center; }
+.st-servicios { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+@media (min-width: 700px) { .st-servicios { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.st-servicios .st-btn { align-self: flex-start; margin-top: 4px; }
+
+.st-main { max-width: 860px; margin: 0 auto; padding: 32px 16px 56px; display: flex; flex-direction: column; gap: 12px; }
+.st-main--centro { min-height: 100vh; justify-content: center; align-items: center; text-align: center; gap: 10px; }
+.st-prosa p { margin-bottom: 12px; }
+
+.st-pie { background: var(--st-primary); color: #fff; padding-block: 32px; font-size: 14px; }
+.st-pie .st-tenue { color: rgba(255, 255, 255, 0.75); }
+.st-pie__in { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+@media (min-width: 700px) { .st-pie__in { grid-template-columns: 1.2fr 1fr; } }
+.st-pie__ligas { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.st-pie a { color: #fff; }
+/* Sobre el fondo azul marino del hero, el botón primario usa el acento para no perderse. */
+.st-hero .st-btn--primario { background: var(--st-accent); border-color: var(--st-accent); }

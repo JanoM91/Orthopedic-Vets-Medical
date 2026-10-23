@@ -66,20 +66,29 @@ export const Tutores: CollectionConfig = {
   },
   access: {
     read: leer,
-    /* Registro público desde el portal (con freno por dirección) o alta por el equipo. */
+    /* Registro público desde el portal, o alta por el equipo. El freno por dirección va en el hook
+       beforeValidate (abajo): las reglas de acceso también se evalúan al calcular permisos de un
+       visitante en cada página, y ahí no debe contar ni fallar. */
     create: async ({ req }) => {
       if (esPersonal(req)) return (await permisosDe(req)).clinica.editarPacientes
-      if (req.user) return false
-      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'desconocida'
-      if (!rateLimit(`tutores:registro:${ip}`, MAX_REGISTROS_POR_IP, VENTANA_MS)) {
-        throw new APIError('Demasiados registros desde esta conexión. Intenta más tarde.', 429, undefined, true)
-      }
-      return true
+      return !req.user
     },
     update: actualizar,
     delete: nadie,
     /* Nadie entra al panel con una cuenta de tutor. */
     admin: () => false,
+  },
+  hooks: {
+    beforeValidate: [
+      ({ operation, req }) => {
+        /* Freno de registros públicos: solo cuenta cuando de verdad se intenta crear sin sesión. */
+        if (operation !== 'create' || req.user) return
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'desconocida'
+        if (!rateLimit(`tutores:registro:${ip}`, MAX_REGISTROS_POR_IP, VENTANA_MS)) {
+          throw new APIError('Demasiados registros desde esta conexión. Intenta más tarde.', 429, undefined, true)
+        }
+      },
+    ],
   },
   fields: [
     { name: 'nombre', label: 'Nombre', type: 'text', required: true },

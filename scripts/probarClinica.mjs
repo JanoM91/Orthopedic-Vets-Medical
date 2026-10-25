@@ -75,8 +75,8 @@ async function main() {
   }
   r = await admin.get('/api/clinica/catalogo')
   ok(r.status === 200 && r.data.permisos.superadmin && r.data.permisos.importar, 'Superadmin: catálogo con todos los permisos de clínica', r.data)
-  r = await admin.get('/api/finanzas/catalogo')
-  const hayRoles = r.status === 200 && r.data.roles?.length
+  r = await admin.get('/api/roles?limit=1&depth=0')
+  const hayRoles = r.status === 200 && r.data.totalDocs > 0
   if (!hayRoles) {
     r = await admin.post('/api/finanzas/arranque', { que: 'catalogos' })
     r = await admin.post('/api/finanzas/arranque', { que: 'roles' })

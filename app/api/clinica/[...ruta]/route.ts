@@ -35,6 +35,7 @@ import {
   vincular,
 } from '@/lib/clinica/servicio'
 import { aplicar, cargarArchivo, descartar, historial, planear, plantillaXlsx } from '@/lib/clinica/importacion'
+import { leerModulos } from '@/lib/modulos'
 import {
   agendaDelDia,
   anotarCita,
@@ -183,9 +184,12 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
 
 async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[]): Promise<Response> {
   if (metodo === 'POST' && !mismoOrigen(req)) return json({ error: 'Origen no permitido.' }, 403)
+  /* Módulo Clínica apagado (lib/modulos.ts): toda la API, portal incluido, responde 404. */
+  const payloadModulos = await getPayload({ config })
+  if (!(await leerModulos(payloadModulos)).clinica) return json({ error: 'El módulo de Clínica está apagado en esta instalación (Sistema → Instalación: módulos).' }, 404)
   if (ruta[0] === 'portal') return atenderPortal(metodo, req, ruta.slice(1))
 
-  const payload = await getPayload({ config })
+  const payload = payloadModulos
   const ctx: Ctx | null = await contextoDesdeHeaders(payload, req.headers)
   if (!ctx) return json({ error: 'Tu sesión terminó. Vuelve a entrar al panel.' }, 401)
   const q = req.nextUrl.searchParams

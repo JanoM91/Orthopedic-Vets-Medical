@@ -6,6 +6,7 @@ import React from 'react'
 
 import { catalogo, contextoDesdeReq } from '../../../lib/clinica/servicio'
 import { usaClinica } from '../../../lib/permisos'
+import { leerModulos } from '../../../lib/modulos'
 import { site } from '../../../lib/site'
 import AppClinica from './AppClinica'
 
@@ -29,6 +30,7 @@ export default async function VistaClinica({ initPageResult, params, searchParam
   }
 
   const ctx = await contextoDesdeReq(req)
+  const modulos = await leerModulos(req.payload)
   const query: Record<string, string> = {}
   for (const [k, v] of Object.entries(searchParams ?? {})) if (typeof v === 'string') query[k] = v
 
@@ -47,11 +49,15 @@ export default async function VistaClinica({ initPageResult, params, searchParam
     </DefaultTemplate>
   )
 
-  if (!ctx || !usaClinica(ctx.p)) {
+  if (!ctx || !usaClinica(ctx.p) || !modulos.clinica) {
     const aviso = (
       <div className="fz-app">
         <div className="fz-aviso fz-aviso--info" style={{ marginTop: 24 }}>
-          <div>Tu rol no incluye pacientes ni expediente. Si lo necesitas, pídelo a un dueño o al superadministrador (Usuarios → Rol de acceso).</div>
+          <div>
+            {!modulos.clinica
+              ? 'El módulo de Clínica está apagado en esta instalación. El superadministrador lo enciende en Sistema → Instalación: módulos.'
+              : 'Tu rol no incluye pacientes ni expediente. Si lo necesitas, pídelo a un dueño o al superadministrador (Usuarios → Rol de acceso).'}
+          </div>
         </div>
       </div>
     )

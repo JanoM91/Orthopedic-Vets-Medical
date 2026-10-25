@@ -16,7 +16,12 @@ import { MasCartilla, MasDocumentos, MasNotas } from './collections/clinica/expe
 import { CodigosVinculacion, Importaciones, Tutores } from './collections/clinica/tutores'
 import { AgendaConfiguracion, Citas, Recursos, Servicios } from './collections/clinica/agenda'
 import { SitioConfiguracion } from './collections/clinica/sitio'
+import { InstalacionConfiguracion } from './collections/Instalacion'
+import { FarAlmacenes, FarPresentaciones, FarProductos, FarProveedores } from './collections/farmacia/catalogo'
+import { FarLotes, FarMovimientos } from './collections/farmacia/inventario'
+import { FarmaciaConfiguracion } from './collections/farmacia/configuracion'
 import { protegerColeccion, protegerGlobal } from './lib/permisos'
+import { conModuloColeccion, conModuloGlobal } from './lib/modulosAcceso'
 import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
@@ -64,8 +69,13 @@ export default buildConfig({
           Component: '/components/admin/clinica/VistaClinica#default',
           path: '/clinica',
         },
+        /* Farmacia (25-oct-2026): catálogo, inventario, compras y ventas. Misma idea. */
+        farmacia: {
+          Component: '/components/admin/farmacia/VistaFarmacia#default',
+          path: '/farmacia',
+        },
       },
-      afterNavLinks: ['/components/admin/EnlaceClinica#default', '/components/admin/EnlaceFinanzas#default'],
+      afterNavLinks: ['/components/admin/EnlaceClinica#default', '/components/admin/EnlaceFarmacia#default', '/components/admin/EnlaceFinanzas#default'],
     },
   },
   /**
@@ -77,19 +87,18 @@ export default buildConfig({
   collections: [
     Users,
     Roles,
-    /* Clínica (octubre de 2026): pacientes, tutores y expediente. Reglas propias en collections/clinica/acceso.ts. */
-    Clientes,
-    Mascotas,
-    MasPesos,
-    MasCartilla,
-    MasNotas,
-    MasDocumentos,
+    /* Clínica (octubre de 2026): pacientes, tutores y expediente. Reglas propias en collections/clinica/acceso.ts.
+       Con el módulo Clínica apagado (lib/modulos.ts) responden «no» a todo. */
+    ...[Clientes, Mascotas, MasPesos, MasCartilla, MasNotas, MasDocumentos, CodigosVinculacion, Importaciones, Recursos, Servicios, Citas].map((c) => conModuloColeccion('clinica', c)),
+    /* Las cuentas del portal no se apagan con la clínica: en la fase 5 también entran a la tienda. */
     Tutores,
-    CodigosVinculacion,
-    Importaciones,
-    Recursos,
-    Servicios,
-    Citas,
+    /* Farmacia (25-oct-2026): reglas propias en collections/farmacia/acceso.ts (ya revisan el módulo). */
+    FarProductos,
+    FarPresentaciones,
+    FarAlmacenes,
+    FarProveedores,
+    FarLotes,
+    FarMovimientos,
     FinCuentas,
     FinCategorias,
     FinActividades,
@@ -98,7 +107,7 @@ export default buildConfig({
     FinComprobantes,
     FinBitacora,
   ].map(protegerColeccion),
-  globals: [FinConfiguracion, AgendaConfiguracion, SitioConfiguracion].map(protegerGlobal),
+  globals: [FinConfiguracion, conModuloGlobal('clinica', AgendaConfiguracion), SitioConfiguracion, FarmaciaConfiguracion, InstalacionConfiguracion].map(protegerGlobal),
   /* Correo de recuperación de contraseña (Resend por HTTP). Sin RESEND_API_KEY no se envía nada. Ver lib/emailAdapter.ts. */
   email: resendEmailAdapter,
   i18n: {

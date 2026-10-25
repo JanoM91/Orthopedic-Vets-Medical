@@ -33,6 +33,7 @@ import { z } from 'zod'
 import type { FinCategoria, FinComprobante, FinCuenta, FinMovimiento, FinOperacion, User } from '../../payload-types'
 import { permisosDe, type Permisos } from '../permisos'
 import { site } from '../site'
+import { FARMACIA_TODO, ROLES_FARMACIA } from '../farmacia/roles'
 import {
   aCentavos,
   aPesos,
@@ -1021,13 +1022,15 @@ type RolSugerido = {
   panel: { acceso: boolean; gestionarUsuarios: boolean }
   finanzas: Record<string, boolean | string | number[]>
   clinica: Record<string, boolean>
+  farmacia?: Record<string, boolean>
 }
 function rolesSugeridos(alcanceClinico: number[]): RolSugerido[] {
   const todo = { registrar: true, ver: 'todos', verRestringidas: true, verSaldos: true, verUtilidad: true, liquidar: true, corregir: true, revisarComprobantes: true, configurar: true, moverDinero: true }
   const todaClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true, agenda: true, configurarAgenda: true }
   return [
-    { nombre: 'Dueño', descripcion: 'Acceso completo y administración de usuarios y roles', panel: { acceso: true, gestionarUsuarios: true }, finanzas: { ...todo }, clinica: { ...todaClinica } },
-    { nombre: 'Administración', descripcion: 'Finanzas y pacientes completos, sin administrar usuarios', panel: { acceso: true, gestionarUsuarios: false }, finanzas: { ...todo }, clinica: { ...todaClinica } },
+    /* Dueño y Administración también llevan toda la farmacia (docs/FARMACIA-PROMPT.md → Permisos). Los roles propios de la farmacia van al final. */
+    { nombre: 'Dueño', descripcion: 'Acceso completo y administración de usuarios y roles', panel: { acceso: true, gestionarUsuarios: true }, finanzas: { ...todo }, clinica: { ...todaClinica }, farmacia: { ...FARMACIA_TODO } },
+    { nombre: 'Administración', descripcion: 'Finanzas, pacientes y farmacia completos, sin administrar usuarios', panel: { acceso: true, gestionarUsuarios: false }, finanzas: { ...todo }, clinica: { ...todaClinica }, farmacia: { ...FARMACIA_TODO } },
     {
       nombre: 'Médico veterinario',
       descripcion: 'Expediente completo; en Finanzas registra y consulta lo de consulta, cirugía y rehabilitación',
@@ -1042,6 +1045,7 @@ function rolesSugeridos(alcanceClinico: number[]): RolSugerido[] {
       finanzas: { registrar: true, ver: 'propios' },
       clinica: { verPacientes: true, editarPacientes: true, verExpediente: false, escribirExpediente: false, importar: false, agenda: true, configurarAgenda: false },
     },
+    ...ROLES_FARMACIA,
   ]
 }
 

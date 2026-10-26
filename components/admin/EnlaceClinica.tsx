@@ -3,10 +3,12 @@ import { createLocalReq } from 'payload'
 import { Link } from '@payloadcms/ui'
 import React from 'react'
 import { permisosDe, usaClinica } from '../../lib/permisos'
+import { leerModulos } from '../../lib/modulos'
 
 /** Enlace «Pacientes» en el menú del panel. Solo si el rol usa la clínica. */
 export default async function EnlaceClinica({ payload, user }: ServerProps) {
   if (!payload || !user) return null
+  if (!(await leerModulos(payload)).clinica) return null
   const req = await createLocalReq({ user: user as Parameters<typeof createLocalReq>[0]['user'] }, payload)
   const p = await permisosDe(req)
   if (!usaClinica(p)) return null

@@ -6,7 +6,8 @@ import { redirect } from 'next/navigation'
 import React from 'react'
 
 import { fechaLegible, partesLocales } from '../../lib/localTime'
-import { esSoloCaptura, permisosDe, usaFinanzas } from '../../lib/permisos'
+import { esSoloCaptura, permisosDe, usaFarmacia, usaFinanzas } from '../../lib/permisos'
+import { leerModulos } from '../../lib/modulos'
 
 /**
  * Bienvenida del tablero del panel (heredada de MacAuto, docs/58 y docs/60).
@@ -41,13 +42,22 @@ export default async function Bienvenida({ payload, user }: ServerProps) {
 
   /* Quien solo registra entradas y gastos se va directo a Finanzas. */
   let conFinanzas = false
+  let conFarmacia = false
   if (payload && user) {
     const req = await createLocalReq({ user: user as Parameters<typeof createLocalReq>[0]['user'] }, payload)
     const p = await permisosDe(req)
+    const modulos = await leerModulos(payload)
+    conFarmacia = modulos.farmacia && usaFarmacia(p)
     if (esSoloCaptura(p)) redirect(`${rutaAdmin}/finanzas`)
+    /* Quien no entra al panel completo ni usa Finanzas pero sí la farmacia (vendedor, repartidor) se va directo a ella. */
+    if (!p.panel && !usaFinanzas(p) && conFarmacia) redirect(`${rutaAdmin}/farmacia`)
     conFinanzas = usaFinanzas(p)
   }
-  const accesos = conFinanzas ? [{ etiqueta: 'Finanzas', ruta: '/finanzas', destacado: true }, ...ACCESOS] : ACCESOS
+  const accesos = [
+    ...(conFinanzas ? [{ etiqueta: 'Finanzas', ruta: '/finanzas', destacado: true }] : []),
+    ...(conFarmacia ? [{ etiqueta: 'Farmacia', ruta: '/farmacia', destacado: true }] : []),
+    ...ACCESOS,
+  ]
 
   /* El usuario de Payload trae `email`; el nombre existe solo si la colección
      de usuarios lo define, así que se lee con cuidado. */

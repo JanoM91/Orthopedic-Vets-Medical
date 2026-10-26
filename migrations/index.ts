@@ -3,6 +3,7 @@ import * as migration_20261011_210000_rls_supabase from './20261011_210000_rls_s
 import * as migration_20261020_170838_clinica_pacientes from './20261020_170838_clinica_pacientes';
 import * as migration_20261021_155111_agenda_citas from './20261021_155111_agenda_citas';
 import * as migration_20261021_184402_sitio_publico from './20261021_184402_sitio_publico';
+import * as migration_20261025_221652_farmacia_base from './20261025_221652_farmacia_base';
 
 export const migrations = [
   {
@@ -28,6 +29,11 @@ export const migrations = [
   {
     up: migration_20261021_184402_sitio_publico.up,
     down: migration_20261021_184402_sitio_publico.down,
-    name: '20261021_184402_sitio_publico'
+    name: '20261021_184402_sitio_publico',
+  },
+  {
+    up: migration_20261025_221652_farmacia_base.up,
+    down: migration_20261025_221652_farmacia_base.down,
+    name: '20261025_221652_farmacia_base'
   },
 ];

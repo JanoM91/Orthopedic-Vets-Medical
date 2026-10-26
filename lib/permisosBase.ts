@@ -60,6 +60,40 @@ export type PermisosClinica = {
   configurarAgenda: boolean
 }
 
+/**
+ * Permisos de la farmacia (octubre de 2026, docs/FARMACIA-PROMPT.md).
+ *
+ *   vender            → venta de mostrador y preparar pedidos de la tienda.
+ *   verCostos         → costos y márgenes. Sin esta casilla, NINGUNA respuesta
+ *                       de la API trae costo (no solo la pantalla).
+ *   descuentos        → aplica o autoriza descuentos (encargado o dueño).
+ *   catalogo          → productos, presentaciones, precios, publicación en tienda, importación.
+ *   recibirCompras    → registrar y recibir compras (XML o manual).
+ *   ajustes           → ajustes, mermas y conteo físico.
+ *   recetas           → validar recetas y despachar Grupo I y II.
+ *   aprobar           → aprobar promociones por caducidad y puntos de reorden.
+ *   asignarRepartidor → asignar repartidor a pedidos.
+ *   entregas          → ver y cerrar «mis entregas» (repartidor).
+ *   cierreDia         → registrar el cierre del día.
+ *   reportes          → reportes y libro de control.
+ *   configurar        → configuración de la farmacia, proveedores, almacenes, zonas.
+ */
+export type PermisosFarmacia = {
+  vender: boolean
+  verCostos: boolean
+  descuentos: boolean
+  catalogo: boolean
+  recibirCompras: boolean
+  ajustes: boolean
+  recetas: boolean
+  aprobar: boolean
+  asignarRepartidor: boolean
+  entregas: boolean
+  cierreDia: boolean
+  reportes: boolean
+  configurar: boolean
+}
+
 export type Permisos = {
   superadmin: boolean
   /** Entra al panel completo del sitio. Sin esto, la persona entra directo a Finanzas. */
@@ -67,6 +101,7 @@ export type Permisos = {
   gestionarUsuarios: boolean
   fin: PermisosFinanzas
   clinica: PermisosClinica
+  farmacia: PermisosFarmacia
   /** Para mostrar en pantalla: «Superadministrador», el nombre del rol o «Sin rol». */
   rolNombre: string
   origen: 'superadmin' | 'rol' | 'ninguno'
@@ -98,6 +133,7 @@ export type RolGuardado = {
     agenda?: boolean | null
     configurarAgenda?: boolean | null
   } | null
+  farmacia?: Partial<Record<keyof PermisosFarmacia, boolean | null>> | null
 }
 
 export type UsuarioParaPermisos = {
@@ -107,6 +143,15 @@ export type UsuarioParaPermisos = {
 const SIN_FINANZAS: PermisosFinanzas = {
   registrar: false, ver: 'propios', alcance: [], verRestringidas: false, verSaldos: false, verUtilidad: false,
   liquidar: false, corregir: false, revisarComprobantes: false, configurar: false, moverDinero: false,
+}
+
+const SIN_FARMACIA: PermisosFarmacia = {
+  vender: false, verCostos: false, descuentos: false, catalogo: false, recibirCompras: false, ajustes: false, recetas: false,
+  aprobar: false, asignarRepartidor: false, entregas: false, cierreDia: false, reportes: false, configurar: false,
+}
+const TODO_FARMACIA: PermisosFarmacia = {
+  vender: true, verCostos: true, descuentos: true, catalogo: true, recibirCompras: true, ajustes: true, recetas: true,
+  aprobar: true, asignarRepartidor: true, entregas: true, cierreDia: true, reportes: true, configurar: true,
 }
 
 const SIN_CLINICA: PermisosClinica = { verPacientes: false, editarPacientes: false, verExpediente: false, escribirExpediente: false, importar: false, agenda: false, configurarAgenda: false }
@@ -123,14 +168,15 @@ const TODO_FINANZAS: PermisosFinanzas = {
  */
 export function calcularPermisos(usuario: UsuarioParaPermisos | null | undefined, rol: RolGuardado | null): Permisos {
   if (!usuario) {
-    return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, clinica: { ...SIN_CLINICA }, rolNombre: 'Sin sesión', origen: 'ninguno' }
+    return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, clinica: { ...SIN_CLINICA }, farmacia: { ...SIN_FARMACIA }, rolNombre: 'Sin sesión', origen: 'ninguno' }
   }
   if (usuario.esSuperadmin) {
-    return { superadmin: true, panel: true, gestionarUsuarios: true, fin: { ...TODO_FINANZAS }, clinica: { ...TODO_CLINICA }, rolNombre: 'Superadministrador', origen: 'superadmin' }
+    return { superadmin: true, panel: true, gestionarUsuarios: true, fin: { ...TODO_FINANZAS }, clinica: { ...TODO_CLINICA }, farmacia: { ...TODO_FARMACIA }, rolNombre: 'Superadministrador', origen: 'superadmin' }
   }
   if (rol) {
     const f = rol.finanzas ?? {}
     const c = rol.clinica ?? {}
+    const fa = rol.farmacia ?? {}
     const ver: AlcanceDeVista = f.ver === 'todos' || f.ver === 'alcance' ? f.ver : 'propios'
     return {
       superadmin: false,
@@ -164,12 +210,27 @@ export function calcularPermisos(usuario: UsuarioParaPermisos | null | undefined
         agenda: Boolean(c.agenda) || Boolean(c.configurarAgenda),
         configurarAgenda: Boolean(c.configurarAgenda),
       },
+      farmacia: {
+        vender: Boolean(fa.vender),
+        verCostos: Boolean(fa.verCostos),
+        descuentos: Boolean(fa.descuentos),
+        catalogo: Boolean(fa.catalogo),
+        recibirCompras: Boolean(fa.recibirCompras),
+        ajustes: Boolean(fa.ajustes),
+        recetas: Boolean(fa.recetas),
+        aprobar: Boolean(fa.aprobar),
+        asignarRepartidor: Boolean(fa.asignarRepartidor),
+        entregas: Boolean(fa.entregas),
+        cierreDia: Boolean(fa.cierreDia),
+        reportes: Boolean(fa.reportes),
+        configurar: Boolean(fa.configurar),
+      },
       rolNombre: rol.nombre?.trim() || 'Rol sin nombre',
       origen: 'rol',
     }
   }
   /* Sin rol: no entra a nada. Quien administra usuarios le asigna uno. */
-  return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, clinica: { ...SIN_CLINICA }, rolNombre: 'Sin rol', origen: 'ninguno' }
+  return { superadmin: false, panel: false, gestionarUsuarios: false, fin: { ...SIN_FINANZAS }, clinica: { ...SIN_CLINICA }, farmacia: { ...SIN_FARMACIA }, rolNombre: 'Sin rol', origen: 'ninguno' }
 }
 
 /** ¿Tiene algo que hacer en Finanzas? */
@@ -186,4 +247,10 @@ export function esSoloCaptura(p: Permisos): boolean {
 /** ¿Tiene algo que hacer en la clínica (pacientes y expediente)? */
 export function usaClinica(p: Permisos): boolean {
   return p.superadmin || p.clinica.verPacientes
+}
+
+/** ¿Tiene algo que hacer en la farmacia (panel /admin/farmacia)? */
+export function usaFarmacia(p: Permisos): boolean {
+  const f = p.farmacia
+  return p.superadmin || Object.values(f).some(Boolean)
 }

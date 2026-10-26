@@ -76,12 +76,18 @@ export interface Config {
     'mas-cartilla': MasCartilla;
     'mas-notas': MasNota;
     'mas-documentos': MasDocumento;
-    tutores: Tutor;
     'codigos-vinculacion': CodigoVinculacion;
     importaciones: Importacion;
     recursos: Recurso;
     servicios: Servicio;
     citas: Cita;
+    tutores: Tutor;
+    'far-productos': FarProducto;
+    'far-presentaciones': FarPresentacion;
+    'far-almacenes': FarAlmacen;
+    'far-proveedores': FarProveedor;
+    'far-lotes': FarLote;
+    'far-movimientos': FarMovimiento;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -104,12 +110,18 @@ export interface Config {
     'mas-cartilla': MasCartillaSelect<false> | MasCartillaSelect<true>;
     'mas-notas': MasNotasSelect<false> | MasNotasSelect<true>;
     'mas-documentos': MasDocumentosSelect<false> | MasDocumentosSelect<true>;
-    tutores: TutoresSelect<false> | TutoresSelect<true>;
     'codigos-vinculacion': CodigosVinculacionSelect<false> | CodigosVinculacionSelect<true>;
     importaciones: ImportacionesSelect<false> | ImportacionesSelect<true>;
     recursos: RecursosSelect<false> | RecursosSelect<true>;
     servicios: ServiciosSelect<false> | ServiciosSelect<true>;
     citas: CitasSelect<false> | CitasSelect<true>;
+    tutores: TutoresSelect<false> | TutoresSelect<true>;
+    'far-productos': FarProductosSelect<false> | FarProductosSelect<true>;
+    'far-presentaciones': FarPresentacionesSelect<false> | FarPresentacionesSelect<true>;
+    'far-almacenes': FarAlmacenesSelect<false> | FarAlmacenesSelect<true>;
+    'far-proveedores': FarProveedoresSelect<false> | FarProveedoresSelect<true>;
+    'far-lotes': FarLotesSelect<false> | FarLotesSelect<true>;
+    'far-movimientos': FarMovimientosSelect<false> | FarMovimientosSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -130,11 +142,15 @@ export interface Config {
     'fin-configuracion': FinConfiguracion;
     'agenda-configuracion': AgendaConfiguracion;
     'sitio-configuracion': SitioConfiguracion;
+    'farmacia-configuracion': FarmaciaConfiguracion;
+    'instalacion-configuracion': InstalacionConfiguracion;
   };
   globalsSelect: {
     'fin-configuracion': FinConfiguracionSelect<false> | FinConfiguracionSelect<true>;
     'agenda-configuracion': AgendaConfiguracionSelect<false> | AgendaConfiguracionSelect<true>;
     'sitio-configuracion': SitioConfiguracionSelect<false> | SitioConfiguracionSelect<true>;
+    'farmacia-configuracion': FarmaciaConfiguracionSelect<false> | FarmaciaConfiguracionSelect<true>;
+    'instalacion-configuracion': InstalacionConfiguracionSelect<false> | InstalacionConfiguracionSelect<true>;
   };
   locale: null;
   widgets: {
@@ -250,6 +266,27 @@ export interface Rol {
     importar?: boolean | null;
     agenda?: boolean | null;
     configurarAgenda?: boolean | null;
+  };
+  /**
+   * Casillas del módulo de Farmacia (docs/FARMACIA-PROMPT.md). Se revisan en el servidor en cada respuesta.
+   */
+  farmacia?: {
+    vender?: boolean | null;
+    /**
+     * Sin esta casilla, ninguna respuesta de la API trae costos ni márgenes (no solo la pantalla). El vendedor de mostrador no la lleva.
+     */
+    verCostos?: boolean | null;
+    descuentos?: boolean | null;
+    catalogo?: boolean | null;
+    recibirCompras?: boolean | null;
+    ajustes?: boolean | null;
+    recetas?: boolean | null;
+    aprobar?: boolean | null;
+    asignarRepartidor?: boolean | null;
+    entregas?: boolean | null;
+    cierreDia?: boolean | null;
+    reportes?: boolean | null;
+    configurar?: boolean | null;
   };
   finanzas: {
     registrar?: boolean | null;
@@ -694,6 +731,182 @@ export interface FinOperacion {
   createdAt: string;
 }
 /**
+ * El catálogo de la farmacia. Las presentaciones (caja, blíster, frasco) y los precios van en «Presentaciones».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-productos".
+ */
+export interface FarProducto {
+  id: number;
+  folio?: string | null;
+  nombre: string;
+  principioActivo?: string | null;
+  laboratorio?: string | null;
+  linea: 'medicamento' | 'antiparasitario' | 'alimento' | 'dieta_prescripcion' | 'accesorio' | 'higiene' | 'suplemento';
+  grupo: 'I' | 'II' | 'III' | 'desregulado';
+  /**
+   * El de la etiqueta (letra Q farmacéuticos, B biológicos). Obligatorio para Grupo I y II.
+   */
+  registroSenasica?: string | null;
+  /**
+   * Vacío = todas. Se usa para validar contra el perfil de la mascota.
+   */
+  especies?: ('perro' | 'gato' | 'ave' | 'conejo' | 'roedor' | 'reptil' | 'otra')[] | null;
+  pesoMinKg?: number | null;
+  pesoMaxKg?: number | null;
+  edadMinMeses?: number | null;
+  /**
+   * Separados por coma. Si la mascota tiene una alergia que coincide, la venta se bloquea en la tienda y pide autorización en mostrador.
+   */
+  alergenos?: string | null;
+  /**
+   * tableta, ml, g, kg, pieza, dosis…
+   */
+  unidadBase: string;
+  refrigeracion?: boolean | null;
+  /**
+   * Cuántos días cubre una unidad base si no hay receta (p. ej. pipeta = 30). Sirve para el aviso de recompra.
+   */
+  duracionDias?: number | null;
+  descripcion?: string | null;
+  /**
+   * Temporal: en la fase 5 las imágenes se suben al almacén de la instalación.
+   */
+  imagenUrl?: string | null;
+  /**
+   * Grupo I nunca aparece en el catálogo público aunque esté marcado.
+   */
+  publicadoTienda?: boolean | null;
+  minimoInventario?: number | null;
+  /**
+   * Lo calcula el sistema con 8 semanas de ventas (fase 4).
+   */
+  puntoReordenPropuesto?: number | null;
+  puntoReordenAceptado?: number | null;
+  proveedorPreferente?: (number | null) | FarProveedor;
+  activo?: boolean | null;
+  notasInternas?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * A quién se le compra. Los días de entrega alimentan el punto de reorden.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-proveedores".
+ */
+export interface FarProveedor {
+  id: number;
+  nombre: string;
+  /**
+   * Con el RFC el XML de la factura reconoce al proveedor solo.
+   */
+  rfc?: string | null;
+  diasEntrega?: number | null;
+  contacto?: {
+    nombre?: string | null;
+    telefono?: string | null;
+    correo?: string | null;
+  };
+  notas?: string | null;
+  activo?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Cómo se vende cada producto: «Caja 30 tabletas» (factor 30), «Tableta» (factor 1, fraccionada), «Frasco 100 ml» (factor 100). El precio es por presentación.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-presentaciones".
+ */
+export interface FarPresentacion {
+  id: number;
+  producto: number | FarProducto;
+  /**
+   * Ej. «Caja 30 tabletas», «Tableta suelta», «Bolsa 2 kg».
+   */
+  nombre: string;
+  factor: number;
+  precio: number;
+  codigoBarras?: string | null;
+  fraccionada?: boolean | null;
+  activa?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Dónde está la existencia. Arranca con «Farmacia»; el inventario de la clínica se agrega después como otro almacén.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-almacenes".
+ */
+export interface FarAlmacen {
+  id: number;
+  nombre: string;
+  tipo: 'farmacia' | 'clinica' | 'sucursal';
+  activo?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Un lote por entrada de producto con su caducidad. La existencia la calcula el sistema a partir del kardex; aquí solo se consulta.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-lotes".
+ */
+export interface FarLote {
+  id: number;
+  folio?: string | null;
+  producto: number | FarProducto;
+  almacen: number | FarAlmacen;
+  numeroLote: string;
+  caducidad: string;
+  cantidadRecibida: number;
+  /**
+   * Suma del kardex. La mantiene el sistema.
+   */
+  existencia: number;
+  costoUnidad?: number | null;
+  /**
+   * Compra COM-… o motivo del ajuste.
+   */
+  referencia?: string | null;
+  /**
+   * Un lote vencido queda bloqueado solo; también se puede bloquear a mano (retiro, cuarentena).
+   */
+  bloqueado?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Kardex inmutable: cada entrada y salida por lote. No se edita ni se borra; una corrección es un movimiento inverso con motivo.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-movimientos".
+ */
+export interface FarMovimiento {
+  id: number;
+  tipo: 'compra' | 'venta' | 'ajuste' | 'merma' | 'traspaso' | 'devolucion';
+  producto: number | FarProducto;
+  lote: number | FarLote;
+  almacen: number | FarAlmacen;
+  /**
+   * Positiva entra, negativa sale.
+   */
+  cantidad: number;
+  costoUnidad?: number | null;
+  dia: string;
+  /**
+   * Folio de la compra, venta o pedido que lo originó.
+   */
+  referencia?: string | null;
+  motivo?: string | null;
+  usuario?: (number | null) | User;
+  existenciaDespues?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -834,10 +1047,6 @@ export interface PayloadLockedDocument {
         value: number | MasDocumento;
       } | null)
     | ({
-        relationTo: 'tutores';
-        value: number | Tutor;
-      } | null)
-    | ({
         relationTo: 'codigos-vinculacion';
         value: number | CodigoVinculacion;
       } | null)
@@ -856,6 +1065,34 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'citas';
         value: number | Cita;
+      } | null)
+    | ({
+        relationTo: 'tutores';
+        value: number | Tutor;
+      } | null)
+    | ({
+        relationTo: 'far-productos';
+        value: number | FarProducto;
+      } | null)
+    | ({
+        relationTo: 'far-presentaciones';
+        value: number | FarPresentacion;
+      } | null)
+    | ({
+        relationTo: 'far-almacenes';
+        value: number | FarAlmacen;
+      } | null)
+    | ({
+        relationTo: 'far-proveedores';
+        value: number | FarProveedor;
+      } | null)
+    | ({
+        relationTo: 'far-lotes';
+        value: number | FarLote;
+      } | null)
+    | ({
+        relationTo: 'far-movimientos';
+        value: number | FarMovimiento;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -985,6 +1222,23 @@ export interface RolesSelect<T extends boolean = true> {
         importar?: T;
         agenda?: T;
         configurarAgenda?: T;
+      };
+  farmacia?:
+    | T
+    | {
+        vender?: T;
+        verCostos?: T;
+        descuentos?: T;
+        catalogo?: T;
+        recibirCompras?: T;
+        ajustes?: T;
+        recetas?: T;
+        aprobar?: T;
+        asignarRepartidor?: T;
+        entregas?: T;
+        cierreDia?: T;
+        reportes?: T;
+        configurar?: T;
       };
   finanzas?:
     | T
@@ -1159,32 +1413,6 @@ export interface MasDocumentosSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "tutores_select".
- */
-export interface TutoresSelect<T extends boolean = true> {
-  nombre?: T;
-  telefono?: T;
-  cliente?: T;
-  vinculadoEn?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  email?: T;
-  resetPasswordToken?: T;
-  resetPasswordExpiration?: T;
-  salt?: T;
-  hash?: T;
-  loginAttempts?: T;
-  lockUntil?: T;
-  sessions?:
-    | T
-    | {
-        id?: T;
-        createdAt?: T;
-        expiresAt?: T;
-      };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "codigos-vinculacion_select".
  */
 export interface CodigosVinculacionSelect<T extends boolean = true> {
@@ -1277,6 +1505,147 @@ export interface CitasSelect<T extends boolean = true> {
   cargoFinanzas?: T;
   creadoPor?: T;
   creadoPorTutor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tutores_select".
+ */
+export interface TutoresSelect<T extends boolean = true> {
+  nombre?: T;
+  telefono?: T;
+  cliente?: T;
+  vinculadoEn?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-productos_select".
+ */
+export interface FarProductosSelect<T extends boolean = true> {
+  folio?: T;
+  nombre?: T;
+  principioActivo?: T;
+  laboratorio?: T;
+  linea?: T;
+  grupo?: T;
+  registroSenasica?: T;
+  especies?: T;
+  pesoMinKg?: T;
+  pesoMaxKg?: T;
+  edadMinMeses?: T;
+  alergenos?: T;
+  unidadBase?: T;
+  refrigeracion?: T;
+  duracionDias?: T;
+  descripcion?: T;
+  imagenUrl?: T;
+  publicadoTienda?: T;
+  minimoInventario?: T;
+  puntoReordenPropuesto?: T;
+  puntoReordenAceptado?: T;
+  proveedorPreferente?: T;
+  activo?: T;
+  notasInternas?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-presentaciones_select".
+ */
+export interface FarPresentacionesSelect<T extends boolean = true> {
+  producto?: T;
+  nombre?: T;
+  factor?: T;
+  precio?: T;
+  codigoBarras?: T;
+  fraccionada?: T;
+  activa?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-almacenes_select".
+ */
+export interface FarAlmacenesSelect<T extends boolean = true> {
+  nombre?: T;
+  tipo?: T;
+  activo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-proveedores_select".
+ */
+export interface FarProveedoresSelect<T extends boolean = true> {
+  nombre?: T;
+  rfc?: T;
+  diasEntrega?: T;
+  contacto?:
+    | T
+    | {
+        nombre?: T;
+        telefono?: T;
+        correo?: T;
+      };
+  notas?: T;
+  activo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-lotes_select".
+ */
+export interface FarLotesSelect<T extends boolean = true> {
+  folio?: T;
+  producto?: T;
+  almacen?: T;
+  numeroLote?: T;
+  caducidad?: T;
+  cantidadRecibida?: T;
+  existencia?: T;
+  costoUnidad?: T;
+  referencia?: T;
+  bloqueado?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-movimientos_select".
+ */
+export interface FarMovimientosSelect<T extends boolean = true> {
+  tipo?: T;
+  producto?: T;
+  lote?: T;
+  almacen?: T;
+  cantidad?: T;
+  costoUnidad?: T;
+  dia?: T;
+  referencia?: T;
+  motivo?: T;
+  usuario?: T;
+  existenciaDespues?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1532,6 +1901,77 @@ export interface SitioConfiguracion {
   createdAt?: string | null;
 }
 /**
+ * Avisos de caducidad, apartados, cierre del día, aprendizaje de mínimos y ligas con Finanzas.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "farmacia-configuracion".
+ */
+export interface FarmaciaConfiguracion {
+  id: number;
+  caducidad?: {
+    medicamentos?: number | null;
+    alimento?: number | null;
+    otros?: number | null;
+    urgente?: number | null;
+  };
+  horasApartado?: number | null;
+  /**
+   * Propuesta del asistente, pendiente de confirmar con Jano (docs/FARMACIA-PROMPT.md). Se puede apagar aquí.
+   */
+  cierreDiaActivo?: boolean | null;
+  /**
+   * Por confirmar con el Dr. Joni. Apagado por omisión.
+   */
+  recetaGrupoIIDomicilio?: boolean | null;
+  aprendizaje?: {
+    semanasHistorial?: number | null;
+    diasCobertura?: number | null;
+    diasEntregaPorOmision?: number | null;
+  };
+  promociones?:
+    | {
+        diasAntes: number;
+        descuentoPorciento: number;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Por confirmar con el Dr. Joni. Por omisión no se aceptan medicamentos salvo error de la farmacia.
+   */
+  politicaDevoluciones?: string | null;
+  almacenPorOmision?: (number | null) | FarAlmacen;
+  /**
+   * Cada venta crea una entrada y cada compra un gasto en Finanzas con esta área y categorías (fases 2 y 3).
+   */
+  finanzas?: {
+    area?: (number | null) | FinActividad;
+    categoriaVentas?: (number | null) | FinCategoria;
+    categoriaCompras?: (number | null) | FinCategoria;
+  };
+  pasarelaActiva?: ('ninguna' | 'mercadopago') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Qué módulos están encendidos en esta instalación. Finanzas siempre lo está. Apagar un módulo oculta sus pantallas, menús y API sin borrar datos.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instalacion-configuracion".
+ */
+export interface InstalacionConfiguracion {
+  id: number;
+  modulos?: {
+    clinica?: boolean | null;
+    farmacia?: boolean | null;
+    /**
+     * Todavía no existe la tienda: la casilla se guarda para cuando esté construida.
+     */
+    tienda?: boolean | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-configuracion_select".
  */
@@ -1604,6 +2044,66 @@ export interface SitioConfiguracionSelect<T extends boolean = true> {
         id?: T;
       };
   avisoPrivacidad?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "farmacia-configuracion_select".
+ */
+export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
+  caducidad?:
+    | T
+    | {
+        medicamentos?: T;
+        alimento?: T;
+        otros?: T;
+        urgente?: T;
+      };
+  horasApartado?: T;
+  cierreDiaActivo?: T;
+  recetaGrupoIIDomicilio?: T;
+  aprendizaje?:
+    | T
+    | {
+        semanasHistorial?: T;
+        diasCobertura?: T;
+        diasEntregaPorOmision?: T;
+      };
+  promociones?:
+    | T
+    | {
+        diasAntes?: T;
+        descuentoPorciento?: T;
+        id?: T;
+      };
+  politicaDevoluciones?: T;
+  almacenPorOmision?: T;
+  finanzas?:
+    | T
+    | {
+        area?: T;
+        categoriaVentas?: T;
+        categoriaCompras?: T;
+      };
+  pasarelaActiva?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instalacion-configuracion_select".
+ */
+export interface InstalacionConfiguracionSelect<T extends boolean = true> {
+  modulos?:
+    | T
+    | {
+        clinica?: T;
+        farmacia?: T;
+        tienda?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

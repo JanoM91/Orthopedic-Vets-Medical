@@ -1,9 +1,10 @@
 # Orthopedic Vet's — plataforma de clínica veterinaria (marca blanca)
 
-Plataforma de **Orthopedic Vet's Medical** (clínica veterinaria de ortopedia, Xalapa), pensada para replicarse a otras clínicas por configuración. Hoy tiene dos módulos:
+Plataforma de **Orthopedic Vet's Medical** (clínica veterinaria de ortopedia, Xalapa), pensada para replicarse a otras clínicas por configuración. Hoy tiene tres módulos:
 
 - **Finanzas** (octubre de 2026): réplica de **MacAuto Finanzas** (repo `Exkalibur-labs/macauto-xalapa`, docs/60–62) sin sitio público ni autos: cada entrada o gasto se asigna a un **área** (`fin-actividades`), a «general» o queda pendiente.
 - **Clínica** (20/21-oct-2026): clientes-tutores, mascotas, cartilla, pesos, notas clínicas firmables, documentos, importación desde CSV/Excel, **agenda y citas** (con cargo automático en Finanzas), **portal del tutor** (`/portal`, incluye pedir citas) y **sitio público** en la raíz (`app/(sitio)`, contenido en el global `sitio-configuracion`). Todo en `docs/CLINICA.md`.
+- **Farmacia** (25-oct-2026, fase 1 de 7): catálogo con grupo NOM-064, presentaciones por unidad base, inventario por lote con caducidad, kardex inmutable, importación con plantilla propia, roles de farmacia y **módulos activables** por instalación (Clínica, Farmacia, Tienda). Plan completo en `docs/FARMACIA-PROMPT.md` (una fase por sesión); lo construido en `docs/FARMACIA.md`.
 
 Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 
@@ -36,6 +37,16 @@ Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 - Marca blanca: nombre, colores, logotipo y teléfono salen de `lib/site.ts` (variables `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_BRAND_*`). No escribir datos de una clínica en el código.
 - Las citas solo se crean y cambian por `lib/clinica/agenda.ts` (candado por recurso en la transacción; transiciones en `TRANSICIONES`); por la API genérica solo se leen. Al finalizar una cita con servicio con precio, el cargo entra a Finanzas por `registrar()` con clave `cita-<id>`.
 - Pruebas con base local: `npm run test:clinica` (121 comprobaciones) con la app corriendo contra Postgres local vacío.
+
+## Reglas de la Farmacia (docs/FARMACIA.md y docs/FARMACIA-PROMPT.md)
+
+- Colecciones `far-*` y globales `farmacia-configuracion` e `instalacion-configuracion` tienen reglas propias (`collections/farmacia/acceso.ts`) y **no** se envuelven con `protegerColeccion`. Solo el equipo entra; la tienda (fase 5) tendrá su propia API pública.
+- La lógica va en `lib/farmacia/servicio.ts` e `importacion.ts`, expuesta en `app/api/farmacia/[...ruta]/route.ts`. **El kardex (`far-movimientos`) es inmutable** y solo lo escribe `registrarMovimiento()` dentro de una transacción con candado por lote; la API genérica responde 403 a crear, editar y borrar, incluso al superadmin. `far-lotes.existencia` = suma del kardex, recalculada en la misma transacción; nunca se edita a mano.
+- **Costos:** quien no tiene «Ver costos» no recibe costos en ninguna respuesta (acceso de campo en `costoUnidad` + el servicio los omite). No mandes `null`: omite la propiedad.
+- **Módulos activables** (`lib/modulos.ts`): un módulo apagado responde «no» en sus reglas de acceso (se esconde del panel), 404 en su API y aviso en su vista. Toda regla de acceso de la clínica va envuelta con `conModuloColeccion('clinica', …)` en `payload.config.ts`; las de farmacia llaman a `moduloActivo(req, 'farmacia')`. Finanzas siempre activo; `tutores` no se apaga con la clínica.
+- Inventario en **unidad base** (tableta, ml, g, pieza); cada presentación lleva un factor. Grupo I y II exigen registro SENASICA; alimento, accesorio e higiene no pueden ser I ni II (`validarProducto`). Lotes vencidos entran bloqueados y no se desbloquean.
+- Pruebas con base local: `npm run test:farmacia` (102 comprobaciones) contra `npm run start` con Postgres vacío. Orden sugerido: `test:clinica` → `test:farmacia` (los dos reutilizan el primer usuario y los roles).
+- Los 50 productos de `lib/farmacia/ejemplos.ts` son inventados para la plantilla; nunca los uses como catálogo real.
 
 ## Cambios al modelo de datos
 

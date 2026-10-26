@@ -1,0 +1,27 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Farmacia dentro del panel (25-oct-2026).
+   Reutiliza las clases fz-* de finanzas.css y cl-* de clinica.css; aquí solo
+   lo propio del módulo. Todo usable a 390 px; campos de 16 px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fa-app { max-width: 1180px; }
+.fa-filtros { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.fa-filtros .fz-input--compacto { max-width: 260px; }
+.fa-kpis { grid-template-columns: 1fr 1fr; }
+@media (min-width: 900px) { .fa-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.fa-kpi--aviso { border-color: var(--mx-amber); background: var(--mx-amber-soft); }
+.fa-kpi--malo { border-color: #b42330; background: #fdecee; }
+.fa-accesos { display: flex; flex-wrap: wrap; gap: 8px; }
+.fa-inactiva { opacity: 0.55; }
+.fa-entra { color: var(--mx-teal-text); font-weight: 650; }
+.fa-sale { color: #b42330; font-weight: 650; }
+.cl-grid--2 { grid-template-columns: minmax(0, 1fr); }
+.cl-grid--3 { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 560px) { .cl-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cl-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.fa-producto-lotes { border-top: 1px solid var(--mx-line); padding: 8px 14px 12px; }
+.fa-producto-lotes .cl-tabla { font-size: 13px; }
+.fa-resumen-import { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.fa-resumen-import div { background: var(--mx-sand); border-radius: 10px; padding: 8px 12px; }
+.fa-resumen-import b { display: block; font-size: 20px; }
+.fa-errores { max-height: 320px; overflow: auto; font-size: 13.5px; }
+.fa-errores li { padding: 4px 0; border-bottom: 1px solid var(--mx-line); }

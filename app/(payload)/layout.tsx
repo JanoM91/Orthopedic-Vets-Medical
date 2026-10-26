@@ -8,6 +8,8 @@ import './custom.css'
 import './finanzas.css'
 /* Clínica: reutiliza las clases fz-* y agrega las cl-*. */
 import './clinica.css'
+/* Farmacia (25-oct-2026): reutiliza fz-* y cl-*, agrega las fa-*. */
+import './farmacia.css'
 import { handleServerFunctions, RootLayout } from '@payloadcms/next/layouts'
 import React from 'react'
 

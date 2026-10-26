@@ -21,7 +21,7 @@ import type { Access, CollectionConfig, GlobalConfig, PayloadRequest } from 'pay
 import { calcularPermisos, type Permisos, type RolGuardado, usaFinanzas } from './permisosBase'
 
 export type { Permisos } from './permisosBase'
-export { esSoloCaptura, usaClinica, usaFinanzas } from './permisosBase'
+export { esSoloCaptura, usaClinica, usaFarmacia, usaFinanzas } from './permisosBase'
 
 type UsuarioConRol = {
   id?: number | string
@@ -115,8 +115,11 @@ const CON_REGLAS_PROPIAS = new Set(['users', 'roles'])
 export const COLECCIONES_CLINICA = new Set(['clientes', 'mascotas', 'tutores', 'codigos-vinculacion', 'importaciones', 'recursos', 'servicios', 'citas'])
 export const esColeccionClinica = (slug: string): boolean => COLECCIONES_CLINICA.has(slug) || slug.startsWith('mas-')
 
+/** Colecciones de la farmacia (collections/farmacia/*): reglas propias por permiso del rol. */
+export const esColeccionFarmacia = (slug: string): boolean => slug.startsWith('far-')
+
 export function protegerColeccion(c: CollectionConfig): CollectionConfig {
-  if (CON_REGLAS_PROPIAS.has(c.slug) || c.slug.startsWith('fin-') || esColeccionClinica(c.slug)) return c
+  if (CON_REGLAS_PROPIAS.has(c.slug) || c.slug.startsWith('fin-') || esColeccionClinica(c.slug) || esColeccionFarmacia(c.slug)) return c
   const access = { ...(c.access ?? {}) } as NonNullable<CollectionConfig['access']>
   for (const op of OPERACIONES) {
     ;(access as Record<string, Access>)[op] = envolver((c.access as Record<string, Access> | undefined)?.[op])
@@ -125,7 +128,7 @@ export function protegerColeccion(c: CollectionConfig): CollectionConfig {
 }
 
 export function protegerGlobal(g: GlobalConfig): GlobalConfig {
-  if (g.slug.startsWith('fin-') || g.slug === 'agenda-configuracion' || g.slug === 'sitio-configuracion') return g
+  if (g.slug.startsWith('fin-') || g.slug === 'agenda-configuracion' || g.slug === 'sitio-configuracion' || g.slug === 'farmacia-configuracion' || g.slug === 'instalacion-configuracion') return g
   const access = { ...(g.access ?? {}) } as NonNullable<GlobalConfig['access']>
   for (const op of ['read', 'update', 'readVersions'] as const) {
     ;(access as Record<string, Access>)[op] = envolver((g.access as Record<string, Access> | undefined)?.[op])

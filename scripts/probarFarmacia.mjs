@@ -203,6 +203,7 @@ async function main() {
   ok(r.status === 400 && /código de barras/.test(r.data.error), 'Código de barras repetido se rechaza', r.data)
   r = await encargado.post(`/api/farmacia/productos/${prod.id}/presentaciones`, { nombre: 'Tableta', factor: 1, precio: 28, fraccionada: true })
   ok(r.status === 201 && r.data.fraccionada, 'Crea presentación fraccionada', r.data)
+  const tableta = r.data
   r = await encargado.post(`/api/farmacia/presentaciones/${caja.id}`, { precio: 495 })
   ok(r.status === 200 && r.data.precio === 495, 'Actualiza precio', r.data)
   r = await encargado.post(`/api/farmacia/productos/${prod.id}`, { grupo: 'III', registroSenasica: null })
@@ -341,12 +342,180 @@ async function main() {
   r = await admin.get('/api/farmacia/catalogo')
   ok(r.status === 200, 'Farmacia vuelve a responder', r.status)
 
+  /* ── fase 2: compras desde XML CFDI, recepción, Finanzas, anulación ── */
+  console.log('\nCompras (fase 2)')
+  const cfdi = ({ uuid, folio, fecha, conceptos, rfc = 'PFA120101AB1', nombre = 'Proveedor Farmacéutico de Prueba' }) => {
+    const sub = conceptos.reduce((a, c) => a + c.cantidad * c.valorUnitario, 0)
+    const iva = Math.round(sub * 16) / 100
+    const conc = conceptos
+      .map(
+        (c) =>
+          `<cfdi:Concepto ClaveProdServ="51101500" NoIdentificacion="${c.clave}" Cantidad="${c.cantidad}" ClaveUnidad="H87" Unidad="Pieza" Descripcion="${c.descripcion}" ValorUnitario="${c.valorUnitario.toFixed(2)}" Importe="${(c.cantidad * c.valorUnitario).toFixed(2)}" ObjetoImp="02"><cfdi:Impuestos><cfdi:Traslados><cfdi:Traslado Base="${(c.cantidad * c.valorUnitario).toFixed(2)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="${(Math.round(c.cantidad * c.valorUnitario * 16) / 100).toFixed(2)}"/></cfdi:Traslados></cfdi:Impuestos></cfdi:Concepto>`,
+      )
+      .join('')
+    return `<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Serie="A" Folio="${folio}" Fecha="${fecha}T10:15:00" SubTotal="${sub.toFixed(2)}" Moneda="MXN" Total="${(sub + iva).toFixed(2)}" TipoDeComprobante="I" MetodoPago="PUE" FormaPago="03" LugarExpedicion="91000" Exportacion="01">
+  <cfdi:Emisor Rfc="${rfc}" Nombre="${nombre}" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="OVM200101XX1" Nombre="ORTHOPEDIC VETS PRUEBA" UsoCFDI="G03" DomicilioFiscalReceptor="91000" RegimenFiscalReceptor="601"/>
+  <cfdi:Conceptos>${conc}</cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="${iva.toFixed(2)}"><cfdi:Traslados><cfdi:Traslado Base="${sub.toFixed(2)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="${iva.toFixed(2)}"/></cfdi:Traslados></cfdi:Impuestos>
+  <cfdi:Complemento><tfd:TimbreFiscalDigital Version="1.1" UUID="${uuid}" FechaTimbrado="${fecha}T10:16:00" RfcProvCertif="SAT970701NN3" SelloCFD="x" NoCertificadoSAT="0001" SelloSAT="y"/></cfdi:Complemento>
+</cfdi:Comprobante>`
+  }
+  const xmlBytes = (x) => new TextEncoder().encode(x)
+  const uuid1 = `11111111-2222-4333-8444-${sufijo.padStart(12, '0')}`
+  const uuid2 = `11111111-2222-4333-8445-${sufijo.padStart(12, '0')}`
+  const hoyTxt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
+
+  /* cuenta de Finanzas para pagar de contado */
+  r = await admin.get('/api/fin-cuentas?where[nombre][equals]=Caja%20farmacia%20prueba&depth=0')
+  let cuenta = r.data?.docs?.[0]
+  if (!cuenta) {
+    r = await admin.post('/api/fin-cuentas', { nombre: 'Caja farmacia prueba', tipo: 'efectivo', activa: true, saldoInicial: 0, fechaInicio: '2026-01-01' })
+    cuenta = r.data?.doc
+  }
+  ok(cuenta?.id, 'Cuenta de Finanzas disponible para pagar compras', r.data)
+  r = await encargado.get('/api/farmacia/catalogo')
+  ok(r.status === 200 && r.data.finanzas.cuentas.some((x) => x.id === cuenta.id), 'Catálogo de farmacia trae las cuentas de Finanzas para «Recibir compras»', r.data.finanzas)
+  r = await vendedor.get('/api/farmacia/catalogo')
+  ok(r.status === 200 && r.data.finanzas.cuentas.length === 0, 'Vendedor (sin recibir compras) no recibe cuentas', r.data.finanzas)
+
+  r = await vendedor.subir('/api/farmacia/compras/xml', 'f.xml', xmlBytes(cfdi({ uuid: uuid1, folio: `F${sufijo}`, fecha: hoyTxt, conceptos: [{ clave: `P${sufijo}-CAJA`, descripcion: 'ANTIBIOTICO CAJA 20', cantidad: 3, valorUnitario: 250 }] })))
+  ok(r.status === 403, 'Vendedor no sube XML de compras', r.status)
+  r = await encargado.subir('/api/farmacia/compras/xml', 'basura.xml', xmlBytes('<html>no es cfdi</html>'))
+  ok(r.status === 400, 'Un XML que no es CFDI se rechaza', r.data)
+
+  const xml1 = cfdi({
+    uuid: uuid1,
+    folio: `F${sufijo}`,
+    fecha: hoyTxt,
+    conceptos: [
+      { clave: `P${sufijo}-CAJA`, descripcion: 'ANTIBIOTICO CAJA 20 TAB', cantidad: 3, valorUnitario: 250 },
+      { clave: `P${sufijo}-TAB`, descripcion: 'ANTIBIOTICO TABLETA SUELTA', cantidad: 10, valorUnitario: 14 },
+    ],
+  })
+  r = await encargado.subir('/api/farmacia/compras/xml', 'factura1.xml', xmlBytes(xml1))
+  ok(r.status === 201 && r.data.estado === 'borrador' && r.data.origen === 'xml' && r.data.uuid === uuid1 && r.data.renglones.length === 2, 'XML CFDI → compra en borrador con 2 renglones', r.data)
+  const compra1 = r.data
+  ok(compra1.proveedor.rfc === 'PFA120101AB1' && compra1.proveedor.nombre === 'Proveedor Farmacéutico de Prueba', 'Proveedor creado desde el RFC del emisor', compra1.proveedor)
+  ok(compra1.subtotal === 890 && compra1.iva === 142.4 && compra1.total === 1032.4 && compra1.folioFactura === `F${sufijo}` && compra1.serieFactura === 'A', 'Importes, serie y folio leídos del XML', { subtotal: compra1.subtotal, iva: compra1.iva, total: compra1.total })
+  ok(compra1.renglones.every((x) => !x.presentacionId) && compra1.faltantes.length >= 2 && Array.isArray(r.data.avisos), 'Claves nuevas: renglones sin presentación y lista de faltantes', compra1.faltantes)
+  ok(compra1.tieneXml, 'La compra guarda el XML', compra1.tieneXml)
+  r = await encargado.subir('/api/farmacia/compras/xml', 'factura1.xml', xmlBytes(xml1))
+  ok(r.status === 400 && /ya está registrada/.test(r.data.error) && r.data.error.includes(compra1.folio), 'El mismo UUID no se registra dos veces', r.data)
+
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}/recibir`)
+  ok(r.status === 400 && /No se puede recibir/.test(r.data.error), 'Recibir sin presentación, lote ni caducidad se rechaza', r.data)
+
+  r = await encargado.get(`/api/farmacia/presentaciones?q=${encodeURIComponent('Antibiótico prueba')}`)
+  ok(r.status === 200 && r.data.some((x) => x.id === caja.id) && r.data.some((x) => x.id === tableta.id), 'Búsqueda de presentaciones para ligar renglones', r.data?.length)
+
+  const renglonesListos = (c, lotes) => c.renglones.map((x, i) => ({ id: x.id, claveProveedor: x.claveProveedor, descripcion: x.descripcion, presentacionId: i === 0 ? caja.id : tableta.id, cantidad: x.cantidad, numeroLote: lotes[i].numeroLote, caducidad: lotes[i].caducidad }))
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}`, { condicion: 'contado', cuentaId: cuenta.id, renglones: renglonesListos(compra1, [{ numeroLote: `C-${sufijo}-1`, caducidad: '2028-12-31' }, { numeroLote: `C-${sufijo}-2`, caducidad: '' }]) })
+  ok(r.status === 200 && r.data.faltantes.length === 1 && /caducidad/.test(r.data.faltantes[0]), 'Borrador guardado: solo falta la caducidad del renglón 2', r.data.faltantes)
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}`, { renglones: renglonesListos(compra1, [{ numeroLote: `C-${sufijo}-1`, caducidad: '2028-12-31' }, { numeroLote: `C-${sufijo}-2`, caducidad: '2027-06-30' }]) })
+  ok(r.status === 200 && r.data.faltantes.length === 0 && r.data.renglones[0].factor === 20 && r.data.renglones[0].costoUnidadBase === 12.5, 'Renglones completos: factor 20 y costo por unidad base 12.50', r.data.renglones[0])
+  ok(r.data.renglones[0].valorUnitario === 250 && r.data.renglones[0].importe === 750, 'El XML manda en los importes (no se recalculan)', r.data.renglones[0])
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}`, { renglones: r.data.renglones.map((x) => ({ ...x, valorUnitario: 1 })) })
+  ok(r.status === 200 && r.data.renglones[0].valorUnitario === 250, 'En una compra desde XML el valor unitario no se edita', r.data.renglones[0])
+
+  const existenciaAntes = (await encargado.get(`/api/farmacia/productos/${prod.id}`)).data.existencia
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}/recibir`)
+  ok(r.status === 200 && r.data.estado === 'recibida' && r.data.gasto === 'registrado' && r.data.gastoFinanzasId && /^FIN-/.test(r.data.gastoFolio || ''), 'Recibir: estado recibida y gasto registrado en Finanzas', { estado: r.data?.estado, gasto: r.data?.gasto, folio: r.data?.gastoFolio, error: r.data?.error })
+  const compra1R = r.data
+  ok(compra1R.renglones.every((x) => x.loteId) && compra1R.recibidaPor?.nombre === 'Luis Encargado', 'Cada renglón quedó ligado a su lote y la recepción lleva firma', compra1R.renglones.map((x) => x.loteId))
+  r = await encargado.get(`/api/farmacia/productos/${prod.id}`)
+  ok(r.data.existencia === existenciaAntes + 70, `Existencia subió 70 unidades base (3×20 + 10): ${existenciaAntes} → ${r.data.existencia}`, r.data.existencia)
+  const loteC1 = r.data.lotes?.find?.((l) => l.numeroLote === `C-${sufijo}-1`) ?? r.data.lotes?.find?.((l) => l.id === compra1R.renglones[0].loteId)
+  ok(loteC1 && loteC1.existencia === 60 && loteC1.costoUnidad === 12.5 && loteC1.caducidad === '2028-12-31', 'Lote del renglón 1: 60 unidades, costo 12.50 y caducidad capturada', loteC1)
+  r = await encargado.get(`/api/farmacia/kardex?lote=${compra1R.renglones[0].loteId}`)
+  const movCompra = r.data.movimientos?.find?.((m) => m.tipo === 'compra') ?? (Array.isArray(r.data) ? r.data.find((m) => m.tipo === 'compra') : null)
+  ok(movCompra && movCompra.cantidad === 60 && movCompra.referencia === compra1.folio, 'Kardex: movimiento tipo compra con referencia COM-', movCompra)
+  r = await admin.get(`/api/finanzas/operaciones/${compra1R.gastoFinanzasId}`)
+  const op = r.data?.operacion
+  ok(r.status === 200 && op && op.totalCentavos === 103240 && op.estadoPago === 'liquidado' && op.tipo === 'gasto', 'El gasto en Finanzas es de contado (liquidado) por $1,032.40', { status: r.status, total: op?.totalCentavos, estado: op?.estadoPago, tipo: op?.tipo })
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}/gasto`)
+  ok(r.status === 200 && r.data.gastoFinanzasId === compra1R.gastoFinanzasId, 'Reintentar gasto es idempotente (misma operación)', r.data?.gastoFinanzasId)
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}`, { notas: 'ya recibida' })
+  ok(r.status === 400, 'Una compra recibida ya no se edita', r.data)
+  r = await encargado.get(`/api/farmacia/compras/${compra1.id}/xml`)
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes(uuid1), 'Descarga del XML original', r.status)
+  r = await vendedor.get(`/api/farmacia/compras/${compra1.id}`)
+  ok(r.status === 403, 'Vendedor no ve compras', r.status)
+  r = await encargado.get('/api/farmacia/compras?q=' + encodeURIComponent(compra1.folio))
+  ok(r.status === 200 && r.data.compras.some((x) => x.id === compra1.id), 'Historial encuentra por folio COM-', r.data?.total)
+
+  /* segunda factura: claves ya aprendidas */
+  r = await encargado.subir('/api/farmacia/compras/xml', 'factura2.xml', xmlBytes(cfdi({ uuid: uuid2, folio: `G${sufijo}`, fecha: '2020-01-15', conceptos: [{ clave: `P${sufijo}-CAJA`, descripcion: 'ANTIBIOTICO CAJA 20 TAB', cantidad: 2, valorUnitario: 260 }] })))
+  ok(r.status === 201 && r.data.renglones[0].presentacionId === caja.id && r.data.proveedor.id === compra1.proveedor.id, 'Segunda factura del mismo proveedor: clave reconocida y presentación ligada sola', r.data?.renglones?.[0])
+  const compra2 = r.data
+  r = await encargado.post(`/api/farmacia/compras/${compra2.id}`, { condicion: 'credito', venceEl: '2030-01-01', renglones: compra2.renglones.map((x) => ({ id: x.id, presentacionId: x.presentacionId, cantidad: x.cantidad, numeroLote: `C-${sufijo}-1`, caducidad: '2028-12-31' })) })
+  ok(r.status === 200 && r.data.faltantes.length === 0, 'Crédito no exige cuenta', r.data.faltantes)
+  r = await encargado.post(`/api/farmacia/compras/${compra2.id}/recibir`)
+  ok(r.status === 200 && r.data.estado === 'recibida' && r.data.gasto === 'registrado' && r.data.renglones[0].loteId === compra1R.renglones[0].loteId, 'Mismo lote y caducidad: se reutiliza el lote', { gasto: r.data?.gasto, lote: r.data?.renglones?.[0]?.loteId, error: r.data?.error })
+  const compra2R = r.data
+  r = await admin.get(`/api/finanzas/operaciones/${compra2R.gastoFinanzasId}`)
+  ok(r.status === 200 && r.data.operacion?.estadoPago === 'pendiente' && r.data.operacion?.venceEl === '2030-01-01' && [hoyTxt, '2020-01-15'].includes(r.data.operacion?.fechaReal), 'Crédito: gasto por pagar con vencimiento (fecha de la factura, u hoy si es anterior al corte de Finanzas)', { op: r.data?.operacion && { e: r.data.operacion.estadoPago, v: r.data.operacion.venceEl, f: r.data.operacion.fechaReal } })
+  r = await encargado.get(`/api/farmacia/productos/${prod.id}`)
+  ok(r.data.existencia === existenciaAntes + 110, `Existencia ${existenciaAntes + 110} tras la segunda compra (+40)`, r.data.existencia)
+
+  /* anulación */
+  r = await encargado.post(`/api/farmacia/compras/${compra2.id}/anular`, { motivo: 'no' })
+  ok(r.status === 400, 'Anular exige motivo de 5 caracteres', r.data)
+  r = await encargado.post(`/api/farmacia/compras/${compra2.id}/anular`, { motivo: 'Factura cancelada por el proveedor' })
+  ok(r.status === 200 && r.data.estado === 'anulada' && r.data.motivoAnulacion === 'Factura cancelada por el proveedor', 'Compra sin salidas se anula', r.data)
+  r = await encargado.get(`/api/farmacia/productos/${prod.id}`)
+  ok(r.data.existencia === existenciaAntes + 70, 'La anulación devolvió las 40 unidades (movimientos inversos)', r.data.existencia)
+  r = await encargado.get(`/api/farmacia/kardex?lote=${compra2R.renglones[0].loteId}&limite=5`)
+  const movs = r.data.movimientos ?? r.data
+  ok(Array.isArray(movs) && movs.some((m) => m.tipo === 'devolucion' && m.cantidad === -40), 'Kardex: devolución de −40 con la anulación', movs?.slice?.(0, 2))
+  r = await admin.get(`/api/finanzas/operaciones/${compra2R.gastoFinanzasId}`)
+  ok(r.status === 200 && r.data.operacion?.anulada === true && r.data.operacion?.estadoPago === 'anulado', 'El gasto de la compra anulada queda anulado en Finanzas', { status: r.status, op: r.data?.operacion })
+  /* una salida del lote de la compra 1 impide anularla */
+  r = await encargado.post('/api/farmacia/ajustes', { productoId: prod.id, loteId: compra1R.renglones[0].loteId, cantidad: -2, motivo: 'Salida de prueba' })
+  ok(r.status === 201, 'Salida de 2 del lote de la compra 1', r.data)
+  r = await encargado.post(`/api/farmacia/compras/${compra1.id}/anular`, { motivo: 'Intento tardío de anular' })
+  ok(r.status === 400 && /salidas/.test(r.data.error), 'Compra con salidas no se anula', r.data)
+
+  /* compra manual */
+  r = await encargado.post('/api/farmacia/compras', { proveedorId: compra1.proveedor.id, folioFactura: `REM-${sufijo}`, renglones: [] })
+  ok(r.status === 201 && r.data.origen === 'manual' && r.data.estado === 'borrador', 'Compra manual en borrador', r.data)
+  const compra3 = r.data
+  r = await encargado.post(`/api/farmacia/compras/${compra3.id}`, { condicion: 'contado', cuentaId: cuenta.id, renglones: [{ presentacionId: tableta.id, cantidad: 5, valorUnitario: 10, numeroLote: `M-${sufijo}`, caducidad: '2028-01-31' }] })
+  ok(r.status === 200 && r.data.subtotal === 50 && r.data.iva === 8 && r.data.total === 58 && r.data.faltantes.length === 0, 'Manual: totales calculados con IVA 16 % (50 + 8 = 58)', { subtotal: r.data?.subtotal, iva: r.data?.iva, total: r.data?.total })
+  r = await encargado.post(`/api/farmacia/compras/${compra3.id}`, { iva: 0, renglones: r.data.renglones.map((x) => ({ id: x.id, presentacionId: x.presentacionId, cantidad: x.cantidad, valorUnitario: x.valorUnitario, numeroLote: x.numeroLote, caducidad: x.caducidad })) })
+  ok(r.status === 200 && r.data.iva === 0 && r.data.total === 50, 'Manual: IVA explícito de 0 (tasa 0 %) se respeta', { iva: r.data?.iva, total: r.data?.total })
+  r = await encargado.post(`/api/farmacia/compras/${compra3.id}/recibir`)
+  ok(r.status === 200 && r.data.estado === 'recibida' && r.data.gasto === 'registrado', 'Compra manual recibida con gasto', { gasto: r.data?.gasto, error: r.data?.error })
+  ok(!trazasDeCosto((await vendedor.get('/api/farmacia/catalogo')).data).length, 'Vendedor sigue sin ver costos tras las compras')
+
+  /* conteo físico */
+  console.log('\nConteo físico (fase 2)')
+  r = await vendedor.get('/api/farmacia/conteo')
+  ok(r.status === 403, 'Vendedor no hace conteo', r.status)
+  r = await encargado.get(`/api/farmacia/conteo?q=${encodeURIComponent(`C-${sufijo}-1`)}`)
+  ok(r.status === 200 && r.data.renglones.length === 1 && r.data.renglones[0].existencia === 58, 'Conteo lista el lote con su existencia (58)', r.data?.renglones)
+  const renglonConteo = r.data.renglones[0]
+  r = await encargado.post('/api/farmacia/conteo', { motivo: '', renglones: [{ loteId: renglonConteo.loteId, contado: 55 }] })
+  ok(r.status === 400, 'Conteo sin motivo se rechaza', r.data)
+  r = await encargado.post('/api/farmacia/conteo', { motivo: 'Conteo mensual', renglones: [{ loteId: renglonConteo.loteId, contado: 55 }, { loteId: compra1R.renglones[1].loteId, contado: 10 }] })
+  ok(r.status === 201 && r.data.ajustes.length === 1 && r.data.ajustes[0].diferencia === -3 && r.data.sinCambio === 1, 'Conteo: un ajuste de −3 y un lote sin cambio', r.data)
+  r = await encargado.get(`/api/farmacia/conteo?q=${encodeURIComponent(`C-${sufijo}-1`)}`)
+  ok(r.data.renglones[0].existencia === 55, 'Existencia tras el conteo: 55', r.data?.renglones?.[0]?.existencia)
+  r = await encargado.get(`/api/farmacia/kardex?lote=${renglonConteo.loteId}&limite=3`)
+  const movsC = r.data.movimientos ?? r.data
+  ok(Array.isArray(movsC) && movsC.some((m) => m.tipo === 'ajuste' && m.cantidad === -3 && /Conteo mensual/.test(m.motivo || '')), 'Kardex: ajuste de −3 con el motivo del conteo', movsC?.[0])
+
   /* ── panel ── */
   console.log('\nPanel')
   for (const [ruta, texto] of [
     ['/admin/farmacia', 'Farmacia'],
     ['/admin/farmacia/productos', 'Productos'],
     ['/admin/farmacia/inventario', 'Inventario'],
+    ['/admin/farmacia/compras', 'Compras'],
+    ['/admin/farmacia/compras/nueva', 'Nueva compra'],
+    [`/admin/farmacia/compras/${compra1.id}`, 'fa-app'],
+    ['/admin/farmacia/conteo', 'Conteo físico'],
     ['/admin/farmacia/importar', 'Importar catálogo'],
     ['/admin/farmacia/configuracion', 'Configuración'],
     [`/admin/farmacia/productos/${prod.id}`, 'fa-app'],

@@ -1,6 +1,6 @@
-# Farmacia: catálogo, inventario por lote y kardex (fase 1)
+# Farmacia: catálogo, inventario, kardex, compras y conteo (fases 1 y 2)
 
-> 25-oct-2026. Módulo de Farmacia sobre la plataforma (Finanzas + Clínica), según `docs/FARMACIA-PROMPT.md`. Este documento es la referencia técnica del módulo y crece con cada fase. Lo que hay hoy es la **fase 1 de 7**: base del catálogo e inventario, permisos, módulos activables e importación. Compras, ventas, recetas, alertas, tienda y planes llegan en las fases 2 a 7.
+> 25-oct-2026. Módulo de Farmacia sobre la plataforma (Finanzas + Clínica), según `docs/FARMACIA-PROMPT.md`. Este documento es la referencia técnica del módulo y crece con cada fase. Lo que hay hoy son las **fases 1 y 2 de 7**: base del catálogo e inventario, permisos, módulos activables e importación (fase 1, 25-oct); compras desde el XML CFDI o a mano, recepción con lote y caducidad, gasto en Finanzas, anulación y conteo físico (fase 2, 26-oct; sección 10). Ventas, recetas, alertas, tienda y planes llegan en las fases 3 a 7.
 
 ## 1. Qué hace (fase 1)
 
@@ -130,5 +130,59 @@ Criterios de aceptación de la fase 1 (`docs/FARMACIA-PROMPT.md`):
 - **Lote con caducidad pasada** entra bloqueado; un lote vencido no se desbloquea (se retira con merma).
 - **Imagen del producto:** por ahora una URL (`imagenUrl`); en la fase 5 se sube al almacén de la instalación.
 - **Portal del tutor con Clínica apagada:** la API del portal responde 404 (es parte de la clínica); el «perfil ligero» de mascota para farmacias sin clínica se diseña en la fase 5.
-- **No incluido en esta fase (por diseño):** `far-proveedor-claves` (fase 2, con el XML), conteo físico (fase 2), alertas por correo y cron (fase 4), zonas de entrega (fase 5).
+- **No incluido en esta fase (por diseño):** `far-proveedor-claves` y conteo físico (hechos en la fase 2, sección 10), alertas por correo y cron (fase 4), zonas de entrega (fase 5).
 - **Nota sobre el repo:** `main` no trae el cron de Vercel (`vercel.json`), los correos de citas ni `docs/ARRANQUE.md` / `docs/MANUAL-*.md` que el prompt maestro da por existentes; están en el parche `0002-0003-correos-manuales-whatsapp.patch` de la etapa de clínica, pendiente de aplicar y mezclar. La fase 4 (resumen diario por correo) los necesita.
+
+## 10. Fase 2 · Compras e inventario operativo (26-oct-2026)
+
+### Qué hace
+
+- **Compras** (`/admin/farmacia/compras`, permiso «Recibir compras»): una compra nace en **borrador** desde el **XML CFDI 4.0** de la factura o por **captura manual**. Del XML se leen emisor (RFC y nombre), serie, folio, fecha, conceptos (clave del proveedor `NoIdentificacion`, descripción, cantidad, valor unitario, importe), IVA trasladado (impuesto 002) y el **UUID** del timbre. El proveedor se busca por RFC y, si no existe, se crea solo.
+- **Claves del proveedor** (`far-proveedor-claves`): la primera vez, cada renglón se liga a mano a una presentación del catálogo (buscador por nombre, principio activo o código de barras). Al recibir, el sistema aprende la relación; la **siguiente factura del mismo proveedor llega ligada sola**.
+- **Recepción:** cada renglón exige presentación, **lote y caducidad capturados a mano** (el XML no los trae) y cantidad > 0; contado exige la cuenta o caja de Finanzas con la que se pagó. «Recibir» en una sola transacción: crea o reutiliza el lote (mismo número y caducidad), registra el movimiento `compra` en el kardex con costo por unidad base = valor unitario ÷ factor y referencia `COM-…`, aprende las claves y marca la compra como recibida con firma y hora.
+- **Gasto en Finanzas:** al recibir se registra por `registrar()` con clave idempotente `compra-<id>`: contado → realizado con la cuenta elegida; crédito → por pagar con vencimiento. Va a la categoría y área configuradas en Farmacia → Configuración (o queda «pendiente de clasificar»). Si la factura es anterior a la fecha de corte de Finanzas, el gasto entra con la fecha de hoy. Si Finanzas falla, el inventario ya quedó y la compra muestra **«Reintentar gasto»** (idempotente). Sin importe (todo en cero) no genera gasto.
+- **Importes:** en una compra del XML mandan los de la factura (subtotal, IVA, total, valor unitario por renglón): no se editan. Quitar un renglón lo deja fuera del inventario, pero el gasto es el total del XML; un renglón agregado a una compra del XML entra **sin costo** (bonificación). En una compra manual los totales se recalculan; el IVA se puede escribir (botones 16 % y 0 %) y, si se omite, es 16 % del subtotal.
+- **Anulación** con motivo (mínimo 5 caracteres): un borrador se anula sin más; una compra recibida solo si **ningún lote suyo tuvo salidas** — genera movimientos inversos tipo `devolucion` y anula el gasto en Finanzas. Si ya hubo salidas, se rechaza (corresponde devolución al proveedor o merma).
+- **UUID único:** el mismo XML no se registra dos veces (aviso con el folio `COM-` existente). El XML original se guarda en la compra y se descarga desde la ficha.
+- **Conteo físico** (`/admin/farmacia/conteo`, permiso «Ajustes»): lista los lotes con existencia (filtro por producto, lote y almacén); el encargado escribe lo contado, ve la diferencia en vivo y al aplicar cada diferencia se registra como ajuste en el kardex con el motivo del conteo. Los lotes iguales no generan movimiento. «Dar por correctos los vacíos» rellena con la existencia del sistema.
+- **Costos:** el vendedor no ve compras; quien recibe sin «Ver costos» no recibe valor unitario, importes ni totales (acceso de campo + el servicio los omite).
+
+### Modelo y código
+
+| Pieza | Archivo |
+|---|---|
+| Colecciones `far-compras` (folio `COM-`, renglones, totales con `leeCostos`, condición, cuenta, gasto, firmas) y `far-proveedor-claves` | `collections/farmacia/compras.ts` |
+| Migración (+ RLS) | `migrations/20261026_152714_farmacia_compras.ts` |
+| Lectura del CFDI, compras, recepción, gasto, anulación, conteo | `lib/farmacia/compras.ts` |
+| Rutas `compras*`, `presentaciones?q=`, `conteo` | `app/api/farmacia/[...ruta]/route.ts` |
+| Pantallas Compras, Nueva compra, Ficha/recepción, Conteo | `components/admin/farmacia/Compras.tsx`, `Conteo.tsx` |
+
+`far-compras` solo se lee por la API genérica (con «Recibir compras»); crear, editar y borrar responden 403 incluso al superadmin: toda escritura pasa por `lib/farmacia/compras.ts`.
+
+**Dependencia nueva:** `fast-xml-parser` (sin dependencias, ~50 KB). Node no trae analizador de XML y leer el CFDI a mano es frágil (prefijos `cfdi:`/`tfd:`, comillas simples, atributos opcionales).
+
+### Verificación (26-oct-2026)
+
+| Prueba | Resultado |
+|---|---|
+| `npx tsc --noEmit`, `npm run lint`, `npm run build` | Sin errores (lint: solo avisos preexistentes) |
+| Arranque en producción contra Postgres local vacío | Aplicó las 7 migraciones solo |
+| `npm run test:clinica` → `npm run test:farmacia` → `npm run test:finanzas` | 121/121 · **157/157** (55 nuevas de compras y conteo) · 44/44 |
+| Recorrido en Chromium a 390 px y 1280 px (inicio, compras, nueva compra, ficha, conteo con diferencia) | Sin errores de JavaScript ni desbordamiento horizontal |
+
+Las pruebas encontraron y se corrigieron dos defectos antes de entregar: el valor unitario de una compra del XML se podía sobrescribir desde la API (alteraba el costo del lote) y la compra manual dejaba el IVA en cero.
+
+Criterios de aceptación de la fase 2:
+
+- [x] Un XML CFDI 4.0 de ejemplo llena la compra; el mismo UUID se rechaza la segunda vez.
+- [x] No se puede recibir sin lote y caducidad; recibir crea lotes, movimientos y un gasto en Finanzas (contado o por pagar).
+- [x] La segunda compra del mismo proveedor reconoce sola las claves ya relacionadas.
+- [x] Conteo físico genera ajustes con motivo; una merma sin motivo se rechaza.
+
+### Decisiones y pendientes de la fase 2
+
+- **El XML se guarda como texto** en la compra (unos KB), no en el almacén de archivos: no depende de Vercel Blob y se descarga desde la ficha.
+- **No se valida el RFC del receptor** contra el de la clínica: la instalación aún no guarda su RFC. Propuesta: agregarlo a Configuración y avisar (no bloquear) si la factura viene a otro RFC.
+- **No se valida el CFDI ante el SAT** (estatus vigente/cancelado); queda como mejora futura si Jano lo pide.
+- **Facturas con varios almacenes:** la compra entra al almacén por omisión; el campo existe para elegir otro cuando haya sucursales.
+- **Devolución al proveedor** (parcial, después de vender parte del lote) no está construida: hoy se resuelve con merma o ajuste con motivo. Se puede agregar en una fase posterior.

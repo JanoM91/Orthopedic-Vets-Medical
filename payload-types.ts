@@ -88,6 +88,8 @@ export interface Config {
     'far-proveedores': FarProveedor;
     'far-lotes': FarLote;
     'far-movimientos': FarMovimiento;
+    'far-proveedor-claves': FarProveedorClave;
+    'far-compras': FarCompra;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -122,6 +124,8 @@ export interface Config {
     'far-proveedores': FarProveedoresSelect<false> | FarProveedoresSelect<true>;
     'far-lotes': FarLotesSelect<false> | FarLotesSelect<true>;
     'far-movimientos': FarMovimientosSelect<false> | FarMovimientosSelect<true>;
+    'far-proveedor-claves': FarProveedorClavesSelect<false> | FarProveedorClavesSelect<true>;
+    'far-compras': FarComprasSelect<false> | FarComprasSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -907,6 +911,77 @@ export interface FarMovimiento {
   createdAt: string;
 }
 /**
+ * Qué presentación del catálogo es cada clave que usa el proveedor en su factura. Se aprende al recibir la primera compra.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-proveedor-claves".
+ */
+export interface FarProveedorClave {
+  id: number;
+  proveedor: number | FarProveedor;
+  clave: string;
+  presentacion: number | FarPresentacion;
+  descripcionProveedor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Compras a proveedores: nacen del XML de la factura o a mano; al recibirlas entran los lotes al inventario y el gasto a Finanzas.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-compras".
+ */
+export interface FarCompra {
+  id: number;
+  folio?: string | null;
+  estado: 'borrador' | 'recibida' | 'anulada';
+  proveedor: number | FarProveedor;
+  almacen?: (number | null) | FarAlmacen;
+  fecha: string;
+  serieFactura?: string | null;
+  folioFactura?: string | null;
+  /**
+   * Único: el mismo XML no se registra dos veces.
+   */
+  uuid?: string | null;
+  origen: 'xml' | 'manual';
+  xmlTexto?: string | null;
+  renglones?:
+    | {
+        claveProveedor?: string | null;
+        descripcion?: string | null;
+        presentacion?: (number | null) | FarPresentacion;
+        producto?: (number | null) | FarProducto;
+        cantidad: number;
+        valorUnitario?: number | null;
+        importe?: number | null;
+        numeroLote?: string | null;
+        caducidad?: string | null;
+        lote?: (number | null) | FarLote;
+        id?: string | null;
+      }[]
+    | null;
+  subtotal?: number | null;
+  iva?: number | null;
+  total?: number | null;
+  condicion: 'contado' | 'credito';
+  cuenta?: (number | null) | FinCuenta;
+  venceEl?: string | null;
+  /**
+   * Se crea al recibir. Si falló, «Reintentar gasto».
+   */
+  gastoFinanzas?: (number | null) | FinOperacion;
+  notas?: string | null;
+  capturadaPor?: (number | null) | User;
+  recibidaPor?: (number | null) | User;
+  recibidaEn?: string | null;
+  anuladaPor?: (number | null) | User;
+  anuladaEn?: string | null;
+  motivoAnulacion?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1093,6 +1168,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'far-movimientos';
         value: number | FarMovimiento;
+      } | null)
+    | ({
+        relationTo: 'far-proveedor-claves';
+        value: number | FarProveedorClave;
+      } | null)
+    | ({
+        relationTo: 'far-compras';
+        value: number | FarCompra;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -1646,6 +1729,65 @@ export interface FarMovimientosSelect<T extends boolean = true> {
   motivo?: T;
   usuario?: T;
   existenciaDespues?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-proveedor-claves_select".
+ */
+export interface FarProveedorClavesSelect<T extends boolean = true> {
+  proveedor?: T;
+  clave?: T;
+  presentacion?: T;
+  descripcionProveedor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-compras_select".
+ */
+export interface FarComprasSelect<T extends boolean = true> {
+  folio?: T;
+  estado?: T;
+  proveedor?: T;
+  almacen?: T;
+  fecha?: T;
+  serieFactura?: T;
+  folioFactura?: T;
+  uuid?: T;
+  origen?: T;
+  xmlTexto?: T;
+  renglones?:
+    | T
+    | {
+        claveProveedor?: T;
+        descripcion?: T;
+        presentacion?: T;
+        producto?: T;
+        cantidad?: T;
+        valorUnitario?: T;
+        importe?: T;
+        numeroLote?: T;
+        caducidad?: T;
+        lote?: T;
+        id?: T;
+      };
+  subtotal?: T;
+  iva?: T;
+  total?: T;
+  condicion?: T;
+  cuenta?: T;
+  venceEl?: T;
+  gastoFinanzas?: T;
+  notas?: T;
+  capturadaPor?: T;
+  recibidaPor?: T;
+  recibidaEn?: T;
+  anuladaPor?: T;
+  anuladaEn?: T;
+  motivoAnulacion?: T;
   updatedAt?: T;
   createdAt?: T;
 }

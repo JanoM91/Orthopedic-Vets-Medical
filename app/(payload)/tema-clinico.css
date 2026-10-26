@@ -744,3 +744,23 @@ h3 {
 .fa-entra {
   color: var(--mx-ok);
 }
+
+/* 3.9 Farmacia fase 2: renglones de compra y conteo físico */
+.fa-renglon,
+.fa-conteo__fila {
+  border-radius: 10px;
+  background: #ffffff;
+}
+.fa-renglon--pendiente,
+.fa-conteo__fila.is-dif {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+.fa-elegir--vacio {
+  border-style: dashed;
+  color: var(--mx-muted);
+}
+.fa-totales {
+  border-top: 1px solid var(--mx-line);
+}

@@ -112,9 +112,9 @@ export function GrupoPastilla({ grupo }: { grupo: Grupo }) {
   )
 }
 
-export function Select({ valor, onChange, children, ancho }: { valor: string; onChange: (v: string) => void; children: React.ReactNode; ancho?: 'auto' }) {
+export function Select({ valor, onChange, children, ancho, deshabilitado }: { valor: string; onChange: (v: string) => void; children: React.ReactNode; ancho?: 'auto'; deshabilitado?: boolean }) {
   return (
-    <select className={`fz-input${ancho ? ' fz-input--compacto' : ''}`} value={valor} onChange={(e) => onChange(e.target.value)}>
+    <select className={`fz-input${ancho ? ' fz-input--compacto' : ''}`} value={valor} onChange={(e) => onChange(e.target.value)} disabled={deshabilitado}>
       {children}
     </select>
   )

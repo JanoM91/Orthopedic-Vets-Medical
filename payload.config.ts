@@ -19,6 +19,7 @@ import { SitioConfiguracion } from './collections/clinica/sitio'
 import { InstalacionConfiguracion } from './collections/Instalacion'
 import { FarAlmacenes, FarPresentaciones, FarProductos, FarProveedores } from './collections/farmacia/catalogo'
 import { FarLotes, FarMovimientos } from './collections/farmacia/inventario'
+import { FarCompras, FarProveedorClaves } from './collections/farmacia/compras'
 import { FarmaciaConfiguracion } from './collections/farmacia/configuracion'
 import { protegerColeccion, protegerGlobal } from './lib/permisos'
 import { conModuloColeccion, conModuloGlobal } from './lib/modulosAcceso'
@@ -99,6 +100,8 @@ export default buildConfig({
     FarProveedores,
     FarLotes,
     FarMovimientos,
+    FarProveedorClaves,
+    FarCompras,
     FinCuentas,
     FinCategorias,
     FinActividades,

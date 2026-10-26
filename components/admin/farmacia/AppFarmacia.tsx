@@ -9,6 +9,10 @@
  *   productos/nuevo         alta de producto
  *   productos/:id           ficha: datos, presentaciones, lotes, kardex, ajustes
  *   inventario              existencias por producto y lote; kardex
+ *   compras                 historial de compras (fase 2)
+ *   compras/nueva           desde XML CFDI o a mano
+ *   compras/:id             recepción: presentación, lote y caducidad por renglón
+ *   conteo                  conteo físico → ajustes (fase 2)
  *   importar                importación con plantilla
  *   configuracion           parámetros, proveedores, almacenes
  *
@@ -18,7 +22,9 @@ import Link from 'next/link'
 import React, { useCallback, useState } from 'react'
 import type { CatalogoFarmacia } from '../../../lib/farmacia/tipos'
 import { api, Aviso, FarmaciaCtx, Icono, iniciales } from './comun'
+import { Compras, FichaCompra, NuevaCompra } from './Compras'
 import Configuracion from './Configuracion'
+import Conteo from './Conteo'
 import Importar from './Importar'
 import Inicio from './Inicio'
 import Inventario from './Inventario'
@@ -48,6 +54,11 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   else if (seccion === 'productos' && id === 'nuevo') pantalla = p.catalogo ? <FormularioProducto /> : <Aviso>Tu rol no incluye editar el catálogo.</Aviso>
   else if (seccion === 'productos' && numero(id)) pantalla = <FichaProducto key={id} id={numero(id)!} pestana={query.ver ?? null} />
   else if (seccion === 'inventario') pantalla = <Inventario solo={query.solo ?? null} q={query.q ?? ''} />
+  else if (seccion === 'compras' && !p.recibirCompras) pantalla = <Aviso>Tu rol no incluye recibir compras.</Aviso>
+  else if (seccion === 'compras' && !id) pantalla = <Compras estado={query.estado ?? null} />
+  else if (seccion === 'compras' && id === 'nueva') pantalla = <NuevaCompra />
+  else if (seccion === 'compras' && numero(id)) pantalla = <FichaCompra key={id} id={numero(id)!} />
+  else if (seccion === 'conteo') pantalla = <Conteo />
   else if (seccion === 'importar') pantalla = p.catalogo ? <Importar /> : <Aviso>Tu rol no incluye importar el catálogo.</Aviso>
   else if (seccion === 'configuracion') pantalla = p.configurar ? <Configuracion /> : <Aviso>La configuración de la farmacia la cambian el dueño o el superadministrador.</Aviso>
   else
@@ -74,6 +85,16 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
             <Link href={`${base}/inventario`} className={seccion === 'inventario' ? 'is-on' : ''}>
               Inventario
             </Link>
+            {p.recibirCompras && (
+              <Link href={`${base}/compras`} className={seccion === 'compras' ? 'is-on' : ''}>
+                Compras
+              </Link>
+            )}
+            {p.ajustes && (
+              <Link href={`${base}/conteo`} className={seccion === 'conteo' ? 'is-on' : ''}>
+                Conteo
+              </Link>
+            )}
             {p.catalogo && (
               <Link href={`${base}/importar`} className={seccion === 'importar' ? 'is-on' : ''}>
                 Importar catálogo
@@ -118,6 +139,12 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
               <Icono n="bandeja" />
               <span>Inventario</span>
             </Link>
+            {p.recibirCompras && (
+              <Link href={`${base}/compras`} className={seccion === 'compras' ? 'is-on' : ''}>
+                <Icono n="archivo" />
+                <span>Compras</span>
+              </Link>
+            )}
             {p.configurar && (
               <Link href={`${base}/configuracion`} className={seccion === 'configuracion' ? 'is-on' : ''}>
                 <Icono n="ajustes" />

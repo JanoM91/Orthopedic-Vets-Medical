@@ -25,6 +25,20 @@ import {
   producto,
 } from '@/lib/farmacia/servicio'
 import { importarProductos, plantillaProductosXlsx } from '@/lib/farmacia/importacion'
+import {
+  actualizarCompra,
+  anularCompra,
+  aplicarConteo,
+  buscarPresentaciones,
+  compra,
+  compras,
+  crearCompraDesdeXml,
+  crearCompraManual,
+  recibirCompra,
+  reintentarGasto,
+  renglonesConteo,
+  xmlDeCompra,
+} from '@/lib/farmacia/compras'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -51,6 +65,19 @@ import { importarProductos, plantillaProductosXlsx } from '@/lib/farmacia/import
  *   POST almacenes   | almacenes/:id
  *   POST configuracion
  *   POST arranque                               { que: 'almacen' | 'roles' }
+ *
+ * Fase 2 · compras y conteo físico:
+ *   GET  compras?estado=&q=                     historial
+ *   POST compras/xml  (multipart: archivo)      nueva compra en borrador desde el XML CFDI
+ *   POST compras                                nueva compra manual (borrador)
+ *   GET  compras/:id · POST compras/:id         detalle · editar borrador (renglones, lote, caducidad, condición)
+ *   POST compras/:id/recibir                    crea lotes, kardex y gasto en Finanzas
+ *   POST compras/:id/anular                     { motivo } (solo sin salidas)
+ *   POST compras/:id/gasto                      reintentar el gasto en Finanzas
+ *   GET  compras/:id/xml                        descarga del XML original
+ *   GET  presentaciones?q=                      para elegir la presentación de un renglón
+ *   GET  conteo?q=&almacen=                     lotes con existencia para contar
+ *   POST conteo                                 { motivo, renglones: [{ loteId, contado }] }
  */
 
 export const dynamic = 'force-dynamic'
@@ -128,6 +155,14 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     }
     if (a === 'productos' && b && !c) return json(await producto(ctx, idDeRuta(b)))
     if (a === 'inventario' && !b) return json(await inventario(ctx, { q: q.get('q') ?? '', solo: (q.get('solo') as 'todos' | null) ?? undefined }))
+    if (a === 'compras' && !b) return json(await compras(ctx, { estado: q.get('estado'), q: q.get('q') }))
+    if (a === 'compras' && b && c === 'xml') {
+      const { nombre, xml } = await xmlDeCompra(ctx, idDeRuta(b))
+      return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${nombre}"`, 'Cache-Control': 'private, no-store' } })
+    }
+    if (a === 'compras' && b && !c) return json(await compra(ctx, idDeRuta(b)))
+    if (a === 'presentaciones' && !b) return json(await buscarPresentaciones(ctx, q.get('q') ?? ''))
+    if (a === 'conteo' && !b) return json(await renglonesConteo(ctx, { q: q.get('q'), almacenId: q.get('almacen') ? idDeRuta(q.get('almacen')!) : null }))
     if (a === 'kardex' && !b) {
       return json(await kardex(ctx, { productoId: q.get('producto') ? idDeRuta(q.get('producto')!) : undefined, loteId: q.get('lote') ? idDeRuta(q.get('lote')!) : undefined, limite: q.get('limite') ? Number(q.get('limite')) : undefined }))
     }
@@ -143,6 +178,19 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'productos' && b && c === 'presentaciones') return json(await crearPresentacion(ctx, idDeRuta(b), await leerJson(req)), 201)
     if (a === 'presentaciones' && b && !c) return json(await actualizarPresentacion(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'ajustes' && !b) return json(await ajustar(ctx, await leerJson(req)), 201)
+    if (a === 'compras' && b === 'xml') {
+      const { archivo } = await leerArchivo(req)
+      return json(await crearCompraDesdeXml(ctx, archivo), 201)
+    }
+    if (a === 'compras' && !b) return json(await crearCompraManual(ctx, await leerJson(req)), 201)
+    if (a === 'compras' && b) {
+      const id = idDeRuta(b)
+      if (!c) return json(await actualizarCompra(ctx, id, await leerJson(req)))
+      if (c === 'recibir') return json(await recibirCompra(ctx, id))
+      if (c === 'anular') return json(await anularCompra(ctx, id, await leerJson(req)))
+      if (c === 'gasto') return json(await reintentarGasto(ctx, id))
+    }
+    if (a === 'conteo' && !b) return json(await aplicarConteo(ctx, await leerJson(req)), 201)
     if (a === 'lotes' && b && c === 'bloqueo') return json(await bloquearLote(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'proveedores' && !b) return json(await crearProveedor(ctx, await leerJson(req)), 201)
     if (a === 'proveedores' && b && !c) return json(await actualizarProveedor(ctx, idDeRuta(b), await leerJson(req)))

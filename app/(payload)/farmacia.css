@@ -25,3 +25,30 @@
 .fa-resumen-import b { display: block; font-size: 20px; }
 .fa-errores { max-height: 320px; overflow: auto; font-size: 13.5px; }
 .fa-errores li { padding: 4px 0; border-bottom: 1px solid var(--mx-line); }
+
+/* ───────── fase 2 · compras y conteo físico ───────── */
+.fa-renglon { border: 1px solid var(--mx-line); border-radius: 10px; padding: 10px 12px 12px; background: #fff; }
+.fa-renglon--pendiente { border-color: var(--mx-amber); background: var(--mx-amber-soft); }
+.fa-renglon__cab { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 8px; min-width: 0; }
+.fa-renglon__cab > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.fa-renglon__campos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 12px; }
+@media (min-width: 640px) { .fa-renglon__campos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fa-renglon__campos > :first-child { grid-column: 1 / -1; } }
+@media (min-width: 1000px) { .fa-renglon__campos { grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr; } .fa-renglon__campos > :first-child { grid-column: auto; } }
+.fa-elegir { display: flex; align-items: center; text-align: left; cursor: pointer; font-family: inherit; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fa-elegir--vacio { color: var(--mx-muted); border-style: dashed; }
+.fa-totales { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 20px; padding-top: 10px; border-top: 1px solid var(--mx-line); font-variant-numeric: tabular-nums; font-size: 14px; }
+.fa-totales b { font-size: 16px; }
+.fa-conteo { display: flex; flex-direction: column; gap: 6px; }
+.fa-conteo__fila { display: grid; grid-template-columns: auto auto 1fr; gap: 6px 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--mx-line); border-radius: 10px; background: #fff; }
+.fa-conteo__fila.is-dif { border-color: var(--mx-amber); background: var(--mx-amber-soft); }
+.fa-conteo__que { display: flex; flex-direction: column; gap: 2px; min-width: 0; grid-column: 1 / -1; }
+.fa-conteo__que b { overflow-wrap: anywhere; }
+.fa-conteo__sistema, .fa-conteo__contado { display: flex; flex-direction: column; gap: 2px; }
+.fa-conteo__contado .fz-input { width: 120px; font-variant-numeric: tabular-nums; }
+.fa-conteo__dif { min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+@media (min-width: 760px) {
+  .fa-conteo__fila { grid-template-columns: minmax(0, 1fr) 120px 140px 80px; }
+  .fa-conteo__que { grid-column: auto; }
+}
+.fa-totales__iva { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fa-totales__iva .fz-input { width: 110px; min-height: 36px; }

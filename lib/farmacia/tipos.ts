@@ -143,8 +143,8 @@ export type CatalogoFarmacia = {
   almacenes: AlmacenVista[]
   proveedores: ProveedorVista[]
   configuracion: ConfiguracionVista
-  /** Finanzas: áreas y categorías para la configuración (solo con «Configurar»). */
-  finanzas: { areas: { id: number; nombre: string }[]; categorias: { id: number; nombre: string; tipo: 'entrada' | 'gasto' }[] }
+  /** Finanzas: áreas y categorías para la configuración (solo con «Configurar»); cuentas para pagar compras (con «Recibir compras»). */
+  finanzas: { areas: { id: number; nombre: string }[]; categorias: { id: number; nombre: string; tipo: 'entrada' | 'gasto' }[]; cuentas: CuentaFinanzasBreve[] }
   totales: {
     productos: number
     productosActivos: number
@@ -207,4 +207,102 @@ export type ResumenImportacionProductos = {
   avisos: { fila: number; mensaje: string }[]
   /** Nombres de productos creados o actualizados (hasta 100). */
   productos: { folio: string | null; nombre: string; presentaciones: number; nuevo: boolean }[]
+}
+
+/* ───────── compras (fase 2) ───────── */
+
+export type RenglonCompraVista = {
+  id: string | null
+  claveProveedor: string | null
+  descripcion: string | null
+  presentacionId: number | null
+  presentacionNombre: string | null
+  productoId: number | null
+  productoNombre: string | null
+  unidadBase: string | null
+  factor: number | null
+  cantidad: number
+  /** Solo con «Ver costos». */
+  valorUnitario?: number | null
+  importe?: number | null
+  costoUnidadBase?: number | null
+  numeroLote: string | null
+  caducidad: string | null
+  loteId: number | null
+  /** Sugerencia de clave aprendida (cuando el renglón llegó sin presentación). */
+  sugerida: boolean
+}
+
+export type CompraVista = {
+  id: number
+  folio: string
+  estado: 'borrador' | 'recibida' | 'anulada'
+  origen: 'xml' | 'manual'
+  proveedor: { id: number; nombre: string; rfc: string | null }
+  almacen: { id: number; nombre: string } | null
+  fecha: string
+  serieFactura: string | null
+  folioFactura: string | null
+  uuid: string | null
+  tieneXml: boolean
+  renglones: RenglonCompraVista[]
+  /** Solo con «Ver costos». */
+  subtotal?: number | null
+  iva?: number | null
+  total?: number | null
+  condicion: 'contado' | 'credito'
+  cuentaId: number | null
+  venceEl: string | null
+  gastoFinanzasId: number | null
+  gastoFolio: string | null
+  notas: string | null
+  capturadaPor: PersonaBreve | null
+  recibidaPor: PersonaBreve | null
+  recibidaEn: string | null
+  anuladaPor: PersonaBreve | null
+  anuladaEn: string | null
+  motivoAnulacion: string | null
+  /** Qué falta para poder recibir (vacío = lista). */
+  faltantes: string[]
+  creadoEn: string
+}
+
+export type CompraBreve = Pick<CompraVista, 'id' | 'folio' | 'estado' | 'origen' | 'proveedor' | 'fecha' | 'folioFactura' | 'condicion' | 'creadoEn'> & { renglones: number; total?: number | null; gastoFolio: string | null }
+
+export type CuentaFinanzasBreve = { id: number; nombre: string; tipo: string }
+
+/** Lo que trae el XML antes de guardarlo (para mostrar y confirmar). */
+export type CfdiLeido = {
+  version: string
+  emisor: { rfc: string; nombre: string | null }
+  receptorRfc: string | null
+  serie: string | null
+  folio: string | null
+  fecha: string
+  uuid: string | null
+  subtotal: number
+  iva: number
+  total: number
+  conceptos: { clave: string | null; descripcion: string; cantidad: number; unidad: string | null; valorUnitario: number; importe: number }[]
+  avisos: string[]
+}
+
+/* ───────── conteo físico (fase 2) ───────── */
+
+export type RenglonConteo = {
+  loteId: number
+  loteFolio: string
+  numeroLote: string
+  caducidad: string
+  estado: EstadoLote
+  productoId: number
+  productoNombre: string
+  unidadBase: string
+  almacen: { id: number; nombre: string }
+  existencia: number
+}
+
+export type ResultadoConteo = {
+  ajustes: { loteId: number; productoNombre: string; numeroLote: string; antes: number; contado: number; diferencia: number }[]
+  sinCambio: number
 }

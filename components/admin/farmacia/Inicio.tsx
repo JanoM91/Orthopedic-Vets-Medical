@@ -44,14 +44,23 @@ export default function Inicio() {
             {t.productosActivos} productos activos · {t.publicados} publicados en la tienda · {t.lotesConExistencia} lotes con existencia
           </p>
         </div>
-        {p.catalogo && (
+        {(p.catalogo || p.recibirCompras) && (
           <div className="fz-acciones-fin">
-            <Link href={`${base}/importar`} className="fz-btn fz-btn--claro">
-              <Icono n="compartir" chico /> Importar catálogo
-            </Link>
-            <Link href={`${base}/productos/nuevo`} className="fz-btn fz-btn--navy">
-              <Icono n="mas" chico /> Nuevo producto
-            </Link>
+            {p.recibirCompras && (
+              <Link href={`${base}/compras/nueva`} className="fz-btn fz-btn--claro">
+                <Icono n="archivo" chico /> Recibir compra
+              </Link>
+            )}
+            {p.catalogo && (
+              <Link href={`${base}/importar`} className="fz-btn fz-btn--claro">
+                <Icono n="compartir" chico /> Importar catálogo
+              </Link>
+            )}
+            {p.catalogo && (
+              <Link href={`${base}/productos/nuevo`} className="fz-btn fz-btn--navy">
+                <Icono n="mas" chico /> Nuevo producto
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -123,6 +132,8 @@ export default function Inicio() {
           <div className="fa-accesos">
             <Link href={`${base}/productos`} className="fz-btn fz-btn--claro">Catálogo</Link>
             <Link href={`${base}/inventario`} className="fz-btn fz-btn--claro">Existencias y lotes</Link>
+            {p.recibirCompras && <Link href={`${base}/compras`} className="fz-btn fz-btn--claro">Compras y recepción</Link>}
+            {p.ajustes && <Link href={`${base}/conteo`} className="fz-btn fz-btn--claro">Conteo físico</Link>}
             {p.ajustes && <Link href={`${base}/inventario?solo=todos`} className="fz-btn fz-btn--claro">Ajustes y mermas</Link>}
             {p.configurar && <Link href={`${base}/configuracion`} className="fz-btn fz-btn--claro">Proveedores y almacenes</Link>}
             {p.panel && <a href={`${rutaAdmin}/globals/farmacia-configuracion`} className="fz-btn fz-btn--claro">Parámetros (panel)</a>}

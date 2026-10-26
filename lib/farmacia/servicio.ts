@@ -104,7 +104,7 @@ function exigirAlgo(ctx: Ctx): void {
  * movimientos simultáneos del mismo lote se ordenan y la existencia nunca se
  * calcula sobre datos a medias. Rango 8 000 000+ para no chocar con la agenda.
  */
-async function enTransaccion<T>(ctx: Ctx, fn: (req: PayloadRequest) => Promise<T>, lotesACandar: number[] = []): Promise<T> {
+export async function enTransaccion<T>(ctx: Ctx, fn: (req: PayloadRequest) => Promise<T>, lotesACandar: number[] = []): Promise<T> {
   const req = await createLocalReq({ user: ctx.user as User & { collection: 'users' } }, ctx.payload)
   const propia = await initTransaction(req)
   try {
@@ -210,7 +210,7 @@ function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista
   }
 }
 
-async function leerConfiguracion(payload: Payload): Promise<ConfiguracionVista> {
+export async function leerConfiguracion(payload: Payload): Promise<ConfiguracionVista> {
   try {
     return vistaConfiguracion((await payload.findGlobal({ slug: 'farmacia-configuracion', depth: 0, overrideAccess: true })) as FarmaciaConfiguracion)
   } catch {
@@ -219,7 +219,7 @@ async function leerConfiguracion(payload: Payload): Promise<ConfiguracionVista> 
 }
 
 /** Días de aviso de caducidad según la línea del producto. */
-function diasAvisoDe(cfg: ConfiguracionVista, linea: FarProducto['linea']): number {
+export function diasAvisoDe(cfg: ConfiguracionVista, linea: FarProducto['linea']): number {
   if (linea === 'medicamento' || linea === 'antiparasitario') return cfg.caducidad.medicamentos
   if (linea === 'alimento' || linea === 'dieta_prescripcion') return cfg.caducidad.alimento
   return cfg.caducidad.otros
@@ -289,7 +289,7 @@ function estadoDeLote(l: FarLote, diasAviso: number, urgente: number, hoy: strin
   return { estado: 'vigente', dias }
 }
 
-function vistaLote(l: FarLote, producto: Pick<FarProducto, 'id' | 'nombre' | 'linea'>, cfg: ConfiguracionVista, ctx: Ctx): LoteVista {
+export function vistaLote(l: FarLote, producto: Pick<FarProducto, 'id' | 'nombre' | 'linea'>, cfg: ConfiguracionVista, ctx: Ctx): LoteVista {
   const { estado, dias } = estadoDeLote(l, diasAvisoDe(cfg, producto.linea), cfg.caducidad.urgente, ctx.hoy)
   const alm = l.almacen as FarAlmacen | number
   const v: LoteVista = {
@@ -312,7 +312,7 @@ function vistaLote(l: FarLote, producto: Pick<FarProducto, 'id' | 'nombre' | 'li
   return v
 }
 
-function vistaMovimiento(m: FarMovimiento, ctx: Ctx, nombres: { producto: (id: number) => string; lote: (id: number) => { numero: string }; almacen: (id: number) => string }): MovimientoVista {
+export function vistaMovimiento(m: FarMovimiento, ctx: Ctx, nombres: { producto: (id: number) => string; lote: (id: number) => { numero: string }; almacen: (id: number) => string }): MovimientoVista {
   const productoId = idDe(m.producto)!
   const loteId = idDe(m.lote)!
   const almacenId = idDe(m.almacen)!
@@ -454,13 +454,18 @@ export async function catalogo(ctx: Ctx): Promise<CatalogoFarmacia> {
   const conMinimo = await ctx.payload.find({ collection: 'far-productos', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ activo: { equals: true } }, { or: [{ minimoInventario: { greater_than: 0 } }, { puntoReordenAceptado: { greater_than: 0 } }] }] } })
   const bajoMinimo = conMinimo.docs.filter((p) => (porProducto.get(p.id) ?? 0) <= (nOpc(p.puntoReordenAceptado) ?? n0(p.minimoInventario))).length
 
-  let finanzas: CatalogoFarmacia['finanzas'] = { areas: [], categorias: [] }
+  const finanzas: CatalogoFarmacia['finanzas'] = { areas: [], categorias: [], cuentas: [] }
   if (ctx.p.farmacia.configurar) {
     const [areas, cats] = await Promise.all([
       ctx.payload.find({ collection: 'fin-actividades', depth: 0, pagination: false, overrideAccess: true, sort: 'nombre' }),
       ctx.payload.find({ collection: 'fin-categorias', depth: 0, pagination: false, overrideAccess: true, sort: 'nombre' }),
     ])
-    finanzas = { areas: areas.docs.map((a) => ({ id: a.id, nombre: a.nombre })), categorias: cats.docs.map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo })) }
+    finanzas.areas = areas.docs.map((a) => ({ id: a.id, nombre: a.nombre }))
+    finanzas.categorias = cats.docs.map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo }))
+  }
+  if (ctx.p.farmacia.recibirCompras) {
+    const cuentas = await ctx.payload.find({ collection: 'fin-cuentas', depth: 0, pagination: false, overrideAccess: true, sort: 'nombre', where: { activa: { equals: true } } })
+    finanzas.cuentas = cuentas.docs.map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo }))
   }
   const roles = await ctx.payload.find({ collection: 'roles', depth: 0, pagination: false, overrideAccess: true, where: { nombre: { in: ROLES_FARMACIA.map((r) => r.nombre) } } })
 

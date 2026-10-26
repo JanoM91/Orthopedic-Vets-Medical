@@ -10,6 +10,8 @@ import './finanzas.css'
 import './clinica.css'
 /* Farmacia (25-oct-2026): reutiliza fz-* y cl-*, agrega las fa-*. */
 import './farmacia.css'
+/* Tema «Clínico» (opción C, 26-oct-2026): capa final que retematiza todo lo anterior. Quitar el import = tema anterior. */
+import './tema-clinico.css'
 import { handleServerFunctions, RootLayout } from '@payloadcms/next/layouts'
 import React from 'react'
 

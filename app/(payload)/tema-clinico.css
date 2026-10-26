@@ -1,0 +1,746 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tema «Clínico» (opción C, 26-oct-2026) — capa de tema sobre todo el panel
+   ═══════════════════════════════════════════════════════════════════════════
+   Decisión de Jano: implementar la opción C del lienzo «Panel Farmacia: 3
+   opciones de diseño» para las pruebas; el logotipo y la paleta oficiales
+   llegan después y se ajustan AQUÍ (sección 1), no en custom.css.
+
+   Cómo funciona: se importa al final (app/(payload)/layout.tsx), después de
+   custom.css, finanzas.css, clinica.css y farmacia.css, así que gana a todo
+   sin @layer ni !important. La sección 1 redefine los tokens --mx-* y los de
+   Payload (con eso cambia el 80 %); la sección 2 ajusta lo que no depende de
+   tokens: menú lateral blanco, botones y tarjetas con radio 8–12, pestañas
+   del subnav como píldoras, cifras en rejilla con separadores de 1 px, tablas
+   compactas, barra inferior con icono en píldora, estados por punto de color.
+
+   Para volver al tema anterior basta con quitar el import. Para la paleta
+   oficial: cambiar los valores de la sección 1-A.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+/* ─── 1-A · Tokens de la opción C (blanco frío, cobalto, pizarra) ─────────── */
+:root {
+  --mx-navy: #1d4ed8; /* primario (botones, activo) = cobalto */
+  --mx-navy-dark: #1e40af;
+  --mx-navy-light: #3b82f6;
+  --mx-teal: #1d4ed8; /* un solo acento: también cobalto */
+  --mx-teal-dark: #1e40af;
+  --mx-teal-light: #93c5fd;
+  --mx-teal-text: #1d4ed8; /* 6.3:1 sobre blanco */
+  --mx-teal-soft: #dbeafe;
+  --mx-ink: #0f172a;
+  --mx-muted: #475569; /* 7.3:1 sobre blanco */
+  --mx-sand: #f8fafc;
+  --mx-sand-dark: #f1f5f9;
+  --mx-line: #e2e8f0;
+  --mx-amber: #b45309;
+  --mx-amber-soft: #fef3c7;
+  --mx-offer: #b91c1c;
+  --mx-reserved: #b45309;
+  --mx-sold: #94a3b8;
+  --mx-ok: #047857;
+  --mx-ok-soft: #dcfce7;
+  --mx-slate: #0f172a; /* panel oscuro (inventario a costo) */
+
+  --mx-radius-card: 12px;
+  --mx-radius-panel: 16px;
+  --mx-radius-pill: 8px; /* los botones de Payload dejan de ser píldoras */
+  --mx-shadow-card: none;
+  --mx-shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.06);
+  --mx-shadow-lift: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+/* ─── 1-B · Variables de Payload ─────────────────────────────────────────── */
+:root,
+html[data-theme='light'] {
+  --theme-elevation-0: #ffffff;
+  --theme-elevation-50: #f8fafc;
+  --theme-elevation-100: #f1f5f9;
+  --theme-elevation-150: #e9eef4;
+  --theme-elevation-200: #e2e8f0;
+  --theme-elevation-250: #d5dce5;
+  --theme-elevation-300: #cbd5e1;
+  --theme-elevation-350: #b9c4d1;
+  --theme-elevation-400: #a7b3c2;
+  --theme-elevation-450: #94a3b8;
+  --theme-elevation-500: #7f8ea3;
+  --theme-elevation-550: #6b7a90;
+  --theme-elevation-600: #64748b;
+  --theme-elevation-650: #56657b;
+  --theme-elevation-700: #475569;
+  --theme-elevation-750: #3f4d61;
+  --theme-elevation-800: #334155;
+  --theme-elevation-850: #283448;
+  --theme-elevation-900: #1e293b;
+  --theme-elevation-950: #172033;
+  --theme-elevation-1000: #0f172a;
+
+  --theme-success-50: #eff6ff;
+  --theme-success-100: #dbeafe;
+  --theme-success-150: #c7dcfd;
+  --theme-success-200: #bfdbfe;
+  --theme-success-250: #a5c8fb;
+  --theme-success-300: #93c5fd;
+  --theme-success-350: #7ab2fb;
+  --theme-success-400: #60a5fa;
+  --theme-success-450: #4f94f0;
+  --theme-success-500: #3b82f6;
+  --theme-success-550: #2f6ee7;
+  --theme-success-600: #2563eb;
+  --theme-success-650: #2158e2;
+  --theme-success-700: #1d4ed8;
+  --theme-success-750: #1e47c4;
+  --theme-success-800: #1e40af;
+  --theme-success-850: #1c3a98;
+  --theme-success-900: #1e3a8a;
+  --theme-success-950: #172b63;
+
+  --theme-error-500: #b91c1c;
+  --theme-warning-500: #b45309;
+
+  --theme-bg: #f8fafc;
+  --theme-text: #0f172a;
+  --theme-border-color: #e2e8f0;
+  --theme-overlay: rgba(15, 23, 42, 0.5);
+
+  --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --style-radius-s: 6px;
+  --style-radius-m: 8px;
+  --style-radius-l: 12px;
+
+  --accessibility-outline: 2px solid #1d4ed8;
+}
+
+body,
+.fz-app,
+.cl-app,
+.fa-app {
+  font-family: var(--font-body);
+}
+
+/* ─── 2 · Payload: lo que no cambia con tokens ───────────────────────────── */
+
+/* 2.1 Tipografía: títulos en pizarra, no en color */
+h1,
+h2,
+h3,
+h4,
+.list-header__title,
+.doc-header__title,
+.card__title {
+  color: var(--mx-ink);
+  letter-spacing: -0.01em;
+}
+h1,
+.list-header__title,
+.doc-header__title {
+  font-weight: 600;
+}
+h2,
+h3 {
+  font-weight: 600;
+}
+
+/* 2.2 Menú lateral blanco con borde, activo en cobalto suave (el riel de
+   iconos de 72 px de la opción C requiere componentes propios: pendiente) */
+.nav {
+  background: #ffffff;
+  color: var(--mx-ink);
+  border-right: 1px solid var(--mx-line);
+}
+.nav-group__toggle,
+.mx-nav-etiqueta {
+  color: var(--mx-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.nav-group__toggle:hover,
+.nav-group__toggle:focus-visible {
+  color: var(--mx-ink);
+}
+.nav-group__toggle .stroke,
+.nav-group__indicator svg .stroke {
+  stroke: var(--mx-muted);
+}
+.nav__link,
+.nav a.nav__link {
+  color: var(--mx-muted);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.nav a.nav__link:hover,
+.nav a.nav__link:focus-visible {
+  color: var(--mx-ink);
+  background: var(--mx-sand-dark);
+}
+.nav__link.active,
+.nav__link:has(.nav__link-indicator) {
+  color: var(--mx-teal-text);
+  background: var(--mx-teal-soft);
+  font-weight: 600;
+}
+.nav__link-indicator {
+  display: none;
+}
+.nav__controls {
+  border-top: 1px solid var(--mx-line);
+}
+.nav__controls a,
+.nav__controls button,
+.nav__controls .btn {
+  color: var(--mx-muted);
+}
+.nav__controls .stroke,
+.nav__controls svg .stroke,
+.nav__log-out .stroke {
+  stroke: var(--mx-muted);
+}
+.nav__controls .fill,
+.nav__controls svg .fill {
+  fill: var(--mx-muted);
+}
+.nav__controls a:hover .stroke,
+.nav__controls button:hover .stroke {
+  stroke: var(--mx-ink);
+}
+.nav__mobile-close .stroke,
+.nav__header .hamburger .stroke {
+  stroke: var(--mx-ink);
+}
+
+/* 2.3 Encabezado y lienzo */
+.app-header {
+  background: #ffffff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--mx-line);
+}
+.template-default__wrap {
+  background: var(--mx-sand);
+}
+.collections__label {
+  color: var(--mx-muted);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+/* 2.4 Tarjetas, botones, tablas, píldoras */
+.card {
+  border-radius: 12px;
+  box-shadow: none;
+}
+.card--has-onclick:hover {
+  border-color: var(--mx-teal);
+  box-shadow: none;
+  transform: none;
+}
+.btn--style-primary,
+.btn--style-secondary,
+.btn--style-pill,
+.form-submit .btn {
+  border-radius: 8px;
+  font-weight: 600;
+}
+.btn--style-primary {
+  box-shadow: none;
+}
+.btn--style-secondary {
+  --btn-border: 1px solid #cbd5e1;
+  --color: var(--mx-ink);
+  --hover-color: var(--mx-ink);
+  --hover-btn-border: 1px solid var(--mx-muted);
+}
+.table {
+  border-radius: 12px;
+  box-shadow: none;
+}
+.table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  background: var(--mx-sand);
+  color: var(--mx-muted);
+}
+.table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+.table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+.table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+.pill {
+  border-radius: 6px;
+}
+.pill--style-success {
+  background: var(--mx-ok-soft);
+  color: #166534;
+}
+.payload-toast-item,
+.toast {
+  border-radius: 10px;
+}
+
+/* 2.5 Inicio de sesión: fondo claro, tarjeta con borde, sin degradados */
+.template-minimal {
+  background: var(--mx-sand);
+}
+.template-minimal__wrap {
+  border: 1px solid var(--mx-line);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* 2.6 Bienvenida del tablero: tarjeta blanca con borde, acciones como botones */
+.mx-bienvenida {
+  background: #ffffff;
+  color: var(--mx-ink);
+  border: 1px solid var(--mx-line);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.mx-bienvenida::after {
+  display: none;
+}
+.mx-bienvenida__fecha,
+.mx-bienvenida__bajada {
+  color: var(--mx-muted);
+}
+.mx-bienvenida__saludo {
+  color: var(--mx-ink);
+  font-weight: 600;
+}
+.mx-bienvenida__accion {
+  border-radius: 8px;
+  font-weight: 600;
+}
+.mx-bienvenida__accion--teal {
+  background: var(--mx-navy);
+  color: #ffffff;
+}
+.mx-bienvenida__accion--teal:hover {
+  background: var(--mx-navy-dark);
+  color: #ffffff;
+}
+.mx-bienvenida__accion--claro {
+  background: #ffffff;
+  color: var(--mx-ink);
+  border: 1px solid #cbd5e1;
+}
+.mx-bienvenida__accion--claro:hover {
+  background: var(--mx-sand);
+  color: var(--mx-ink);
+}
+
+/* ─── 3 · Módulos (fz-*, cl-*, fa-*) ─────────────────────────────────────── */
+
+/* 3.1 Subnavegación dentro del panel: pestañas como píldoras, sin subrayado */
+.fz-subnav {
+  border-bottom: 0;
+  gap: 2px;
+  margin: 4px 0 18px;
+  padding: 4px 0;
+}
+.fz-subnav__titulo {
+  font-weight: 600;
+  color: var(--mx-muted);
+  font-size: 13px;
+  margin-right: 8px;
+}
+.fz-subnav a {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border-bottom: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--mx-muted);
+}
+.fz-subnav a:hover {
+  background: var(--mx-sand);
+  color: var(--mx-ink);
+}
+.fz-subnav a.is-on {
+  background: var(--mx-sand-dark);
+  color: var(--mx-ink);
+  font-weight: 600;
+  border-bottom: 0;
+}
+
+/* 3.2 Cabecera y barra inferior de la app sola (teléfono) */
+.fz-cabecera {
+  background: #ffffff;
+  color: var(--mx-ink);
+  border-bottom: 1px solid var(--mx-line);
+}
+.fz-marca span {
+  color: var(--mx-muted);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.fz-avatar {
+  background: var(--mx-slate);
+  color: #ffffff;
+}
+.fz-cabecera__salir,
+.fz-cabecera .fz-cabecera__salir {
+  color: var(--mx-ink);
+  border-color: #cbd5e1;
+}
+.fz-barra a {
+  font-size: 10.5px;
+  font-weight: 500;
+  gap: 3px;
+}
+.fz-barra a .fz-i {
+  padding: 2px 10px;
+  box-sizing: content-box;
+  border-radius: 999px;
+}
+.fz-barra a.is-on {
+  color: var(--mx-teal-text);
+  font-weight: 600;
+}
+.fz-barra a.is-on .fz-i {
+  background: var(--mx-teal-soft);
+}
+
+/* 3.3 Tipografía de las pantallas */
+.fz-h1 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.fz-h2 {
+  font-weight: 600;
+}
+.fz-eyebrow {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 13px;
+}
+.fz-monto-grande,
+.fz-kpi__val {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* 3.4 Cifras en rejilla: un bloque con separadores de 1 px, estado por color del valor */
+.fz-kpis {
+  gap: 1px;
+  background: var(--mx-line);
+  border: 1px solid var(--mx-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.fz-kpis .fz-kpi {
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 16px 18px;
+}
+.fz-kpi__lbl {
+  font-weight: 500;
+  font-size: 12px;
+}
+.fz-kpi__val {
+  font-size: 28px;
+}
+.fz-kpis .fz-kpi--fondo {
+  background: var(--mx-slate);
+  color: #ffffff;
+}
+.fz-kpis .fz-kpi--fondo .fz-kpi__lbl,
+.fz-kpis .fz-kpi--fondo .fz-chico {
+  color: rgba(255, 255, 255, 0.75);
+}
+.fz-kpis .fa-kpi--aviso,
+.fz-kpis .fa-kpi--malo {
+  background: #ffffff;
+  border: 0;
+}
+.fa-kpi--aviso .fz-kpi__val,
+.fa-kpi--aviso .fz-kpi__lbl {
+  color: var(--mx-amber);
+}
+.fa-kpi--malo .fz-kpi__val,
+.fa-kpi--malo .fz-kpi__lbl {
+  color: var(--mx-offer);
+}
+.fa-kpi--aviso .fz-kpi__val::after,
+.fa-kpi--malo .fz-kpi__val::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 10px;
+  vertical-align: middle;
+  background: currentColor;
+}
+.fa-kpis {
+  grid-template-columns: 1fr 1fr;
+}
+@media (min-width: 900px) {
+  .fa-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .fa-kpis .fz-kpi--fondo {
+    grid-column: span 4;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 14px;
+  }
+}
+
+/* 3.5 Tarjetas, listas, tablas, píldoras, avisos */
+.fz-tarjeta,
+.fz-dl,
+.fz-pie,
+.cl-modal {
+  border-radius: 12px;
+}
+.fz-fila__t1 {
+  font-weight: 600;
+}
+.fz-fila__ico.is-sale,
+.fz-fila__ico.is-neutro {
+  background: var(--mx-sand-dark);
+  color: var(--mx-ink);
+}
+.fz-monto.is-entra,
+.fz-monto-grande.is-entra,
+.fz-cuadre.is-ok {
+  color: var(--mx-ok);
+}
+.fz-pill {
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 11px;
+}
+.fz-pill--ok {
+  background: var(--mx-ok-soft);
+  color: #166534;
+}
+.fz-pill--info {
+  background: var(--mx-teal-soft);
+  color: var(--mx-teal-text);
+}
+.fz-pill--malo {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.fz-pill--aviso {
+  background: var(--mx-amber-soft);
+  color: #92400e;
+}
+.fz-aviso {
+  border-radius: 10px;
+  border: 1px solid var(--mx-line);
+  background: #ffffff;
+}
+.fz-aviso--info,
+.fz-aviso--gris {
+  background: #ffffff;
+  color: var(--mx-ink);
+}
+.fz-aviso--ok {
+  background: var(--mx-ok-soft);
+  border-color: #bbf7d0;
+  color: #166534;
+}
+.fz-aviso--aviso {
+  border-color: #fde68a;
+}
+.fz-aviso--malo {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.cl-tabla {
+  font-size: 13px;
+}
+.cl-tabla th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--mx-sand);
+}
+.cl-tabla th,
+.cl-tabla td {
+  padding: 9px 12px;
+}
+.cl-tabla tr:hover td {
+  background: #fbfcfe;
+}
+.cl-avatar {
+  background: var(--mx-slate);
+}
+.cl-avatar.is-perro {
+  background: #2563eb;
+}
+.cl-avatar.is-gato {
+  background: #b45309;
+}
+.cl-avatar.is-otra {
+  background: #0f766e;
+}
+.cl-alerta {
+  background: #fee2e2;
+  color: #991b1b;
+  border-left: 0;
+  border: 1px solid #fecaca;
+}
+.cl-codigo b {
+  color: var(--mx-ink);
+}
+.cl-soap b {
+  color: var(--mx-muted);
+}
+
+/* 3.6 Botones, chips, segmentos, formularios */
+.fz-btn {
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 42px;
+}
+.fz-btn--chico {
+  min-height: 36px;
+  font-size: 13px;
+}
+.fz-btn--claro {
+  border-color: #cbd5e1;
+}
+.fz-btn--peligro {
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.fz-chip {
+  border-radius: 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 13.5px;
+}
+.fz-chip.is-on {
+  background: var(--mx-sand-dark);
+  border-color: var(--mx-sand-dark);
+  color: var(--mx-ink);
+  font-weight: 600;
+}
+.fz-seg {
+  border-radius: 9px;
+}
+.fz-seg button {
+  border-radius: 7px;
+  min-height: 36px;
+  font-size: 13px;
+}
+.fz-pestanas button.is-on {
+  border-bottom-color: var(--mx-teal);
+}
+.fz-input {
+  border-color: #cbd5e1;
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
+}
+.fz-input:focus {
+  outline: 2px solid rgba(29, 78, 216, 0.3);
+  border-color: var(--mx-teal);
+}
+.fz-etiqueta {
+  font-weight: 500;
+  color: var(--mx-muted);
+  font-size: 12.5px;
+}
+.cl-check input {
+  accent-color: var(--mx-teal);
+}
+.fz-folio {
+  border-radius: 4px;
+}
+
+/* 3.7 Inicio de Finanzas: acciones grandes como tarjetas planas */
+.fz-accion--teal,
+.fz-accion--navy {
+  background: var(--mx-navy);
+}
+.fz-accion--claro .fz-accion__ico {
+  background: var(--mx-sand-dark);
+  color: var(--mx-ink);
+}
+.fz-grabar {
+  box-shadow: none;
+}
+
+/* 3.8 Farmacia: lista de productos con panel lateral de detalle (opción C) */
+.fa-productos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .fa-productos--con-panel {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+.fa-panel {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  background: #ffffff;
+  border: 1px solid var(--mx-line);
+  border-radius: 12px;
+}
+.fa-panel__kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.fa-panel__kpi {
+  padding: 12px;
+  background: var(--mx-sand);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fa-panel__kpi b {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.fa-panel__titulo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mx-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.fa-panel__linea {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 8px 0;
+  border-top: 1px solid var(--mx-sand-dark);
+}
+.fz-fila.is-elegida {
+  background: #eff6ff;
+  box-shadow: inset 3px 0 0 var(--mx-teal);
+}
+.fa-entra {
+  color: var(--mx-ok);
+}

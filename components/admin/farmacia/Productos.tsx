@@ -44,6 +44,9 @@ export function Productos({ q: qInicial, filtro }: { q: string; filtro: string }
   const [res, setRes] = useState<ResultadoProductos | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
+  /* Panel lateral de detalle (tema «Clínico»): en pantallas anchas, tocar una fila la abre al lado sin salir de la lista. */
+  const [elegido, setElegido] = useState<number | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -118,20 +121,41 @@ export function Productos({ q: qInicial, filtro }: { q: string; filtro: string }
       </div>
 
       {error && <Aviso tono="malo">{error}</Aviso>}
+      {msg && <Aviso tono="ok">{msg}</Aviso>}
       {res && (
-        <div className={`fz-tarjeta fz-lista${cargando ? ' cl-cargando' : ''}`}>
-          {res.productos.length === 0 && (
-            <p className="fz-tenue" style={{ padding: 14 }}>
-              {q || linea || grupo || bajoMinimo ? 'Ningún producto coincide.' : 'Todavía no hay productos. Importa la plantilla o da de alta el primero.'}
-            </p>
-          )}
-          {res.productos.map((pr) => (
-            <FilaProducto key={pr.id} pr={pr} />
-          ))}
-          {res.productos.length >= 60 && (
-            <p className="fz-tenue fz-chico" style={{ padding: 12 }}>
-              Se muestran los primeros 60. Afina la búsqueda para ver otros.
-            </p>
+        <div className={`fa-productos${elegido ? ' fa-productos--con-panel' : ''}`}>
+          <div className={`fz-tarjeta fz-lista${cargando ? ' cl-cargando' : ''}`}>
+            {res.productos.length === 0 && (
+              <p className="fz-tenue" style={{ padding: 14 }}>
+                {q || linea || grupo || bajoMinimo ? 'Ningún producto coincide.' : 'Todavía no hay productos. Importa la plantilla o da de alta el primero.'}
+              </p>
+            )}
+            {res.productos.map((pr) => (
+              <FilaProducto key={pr.id} pr={pr} elegida={elegido === pr.id} alElegir={setElegido} />
+            ))}
+            {res.productos.length >= 60 && (
+              <p className="fz-tenue fz-chico" style={{ padding: 12 }}>
+                Se muestran los primeros 60. Afina la búsqueda para ver otros.
+              </p>
+            )}
+          </div>
+          {elegido && (
+            <PanelProducto
+              key={elegido}
+              id={elegido}
+              onCerrar={() => setElegido(null)}
+              alCambiar={(m) => {
+                setMsg(m)
+                setCargando(true)
+                api.get<ResultadoProductos>('productos', { q, linea, grupo, inactivos, bajoMinimo }).then(
+                  (r) => {
+                    setRes(r)
+                    setCargando(false)
+                  },
+                  () => setCargando(false),
+                )
+              }}
+            />
           )}
         </div>
       )}
@@ -139,10 +163,117 @@ export function Productos({ q: qInicial, filtro }: { q: string; filtro: string }
   )
 }
 
-function FilaProducto({ pr }: { pr: ProductoBreve }) {
-  const { base } = useFarmacia()
+/** Panel lateral con el detalle del producto elegido en la lista (solo pantallas anchas). */
+function PanelProducto({ id, onCerrar, alCambiar }: { id: number; onCerrar: () => void; alCambiar: (msg: string) => void }) {
+  const { catalogo, base, recargarCatalogo } = useFarmacia()
+  const p = catalogo.permisos
+  const ficha = useCarga(() => api.get<ProductoConLotes>(`productos/${id}`), [id])
+  const [modalAjuste, setModalAjuste] = useState(false)
+  if (ficha.error) return <Aviso tono="malo">{ficha.error}</Aviso>
+  const pr = ficha.datos
   return (
-    <Link href={`${base}/productos/${pr.id}`} className="fz-fila">
+    <aside className="fa-panel" aria-label="Detalle del producto">
+      <div className="fz-entre" style={{ alignItems: 'flex-start' }}>
+        <div className="fz-stack" style={{ gap: 2 }}>
+          <span className="fz-chico fz-tenue">{pr ? `${pr.folio} · ${LINEA_LABEL[pr.linea]}` : 'Cargando…'}</span>
+          <h2 className="fz-h2" style={{ fontSize: 16, lineHeight: 1.3 }}>
+            {pr?.nombre ?? ''} {pr && <GrupoPastilla grupo={pr.grupo} />}
+          </h2>
+          {pr && (
+            <span className="fz-chico fz-tenue">
+              {pr.principioActivo ?? 'Sin principio activo'}
+              {pr.laboratorio ? ` · ${pr.laboratorio}` : ''}
+              {pr.registroSenasica ? ` · SENASICA ${pr.registroSenasica}` : ''}
+            </span>
+          )}
+        </div>
+        <button type="button" className="cl-cerrar" onClick={onCerrar} aria-label="Cerrar detalle">
+          ×
+        </button>
+      </div>
+      {pr && (
+        <>
+          <div className="fa-panel__kpis">
+            <div className="fa-panel__kpi">
+              <span className="fz-chico fz-tenue">Existencia vigente</span>
+              <b>
+                {cantidad(pr.existencia)} <span className="fz-chico fz-tenue" style={{ fontWeight: 400 }}>{pr.unidadBase}(s)</span>
+              </b>
+            </div>
+            <div className="fa-panel__kpi">
+              <span className="fz-chico fz-tenue">Mínimo · reorden</span>
+              <b>
+                {pr.puntoReordenAceptado ?? pr.minimoInventario}{' '}
+                {pr.puntoReordenPropuesto != null && <span className="fz-chico fz-tenue" style={{ fontWeight: 400 }}>propuesto {pr.puntoReordenPropuesto}</span>}
+              </b>
+            </div>
+          </div>
+          <div>
+            <span className="fa-panel__titulo">Presentaciones</span>
+            {pr.presentaciones.length === 0 && <p className="fz-chico fz-tenue" style={{ margin: '6px 0 0' }}>Sin presentaciones: agrega una en la ficha.</p>}
+            {pr.presentaciones.map((x) => (
+              <div key={x.id} className={`fa-panel__linea${x.activa ? '' : ' fa-inactiva'}`}>
+                <span>
+                  {x.nombre} <span className="fz-tenue">· {cantidad(x.factor, pr.unidadBase)}{x.fraccionada ? ' · fraccionada' : ''}</span>
+                </span>
+                <span className="fz-num">{dinero(x.precio, true)}</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <span className="fa-panel__titulo">Lotes con existencia</span>
+            {pr.lotes.filter((l) => l.existencia > 0).length === 0 && <p className="fz-chico fz-tenue" style={{ margin: '6px 0 0' }}>Sin existencia.</p>}
+            {pr.lotes
+              .filter((l) => l.existencia > 0)
+              .map((l) => (
+                <div key={l.id} className="fa-panel__linea">
+                  <span>
+                    {l.numeroLote} <span className="fz-tenue">· cad. {fecha(l.caducidad)}</span> <Pastilla tono={ESTADO_LOTE_TONO[l.estado]}>{ESTADO_LOTE_LABEL[l.estado]}</Pastilla>
+                  </span>
+                  <b className="fz-num">{cantidad(l.existencia)}</b>
+                </div>
+              ))}
+          </div>
+          <div className="fz-acciones-fin" style={{ paddingTop: 4 }}>
+            {p.ajustes && (
+              <Boton tono="navy" chico onClick={() => setModalAjuste(true)}>
+                Entrada o ajuste
+              </Boton>
+            )}
+            <Link href={`${base}/productos/${pr.id}`} className="fz-btn fz-btn--claro fz-btn--chico">
+              Abrir ficha
+            </Link>
+          </div>
+          {modalAjuste && (
+            <ModalAjuste
+              producto={pr}
+              lote={null}
+              onCerrar={() => setModalAjuste(false)}
+              alGuardar={(m) => {
+                setModalAjuste(false)
+                ficha.recargar()
+                recargarCatalogo()
+                alCambiar(m)
+              }}
+            />
+          )}
+        </>
+      )}
+    </aside>
+  )
+}
+
+function FilaProducto({ pr, elegida, alElegir }: { pr: ProductoBreve; elegida: boolean; alElegir: (id: number) => void }) {
+  const { base } = useFarmacia()
+  /* En pantallas anchas la fila abre el panel lateral; en el teléfono va directo a la ficha. */
+  const abrir = (e: React.MouseEvent) => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1100px)').matches) {
+      e.preventDefault()
+      alElegir(pr.id)
+    }
+  }
+  return (
+    <Link href={`${base}/productos/${pr.id}`} className={`fz-fila${elegida ? ' is-elegida' : ''}`} onClick={abrir} aria-current={elegida ? 'true' : undefined}>
       <span className="fz-fila__main">
         <span className="fz-fila__t1">
           {pr.nombre} <GrupoPastilla grupo={pr.grupo} />

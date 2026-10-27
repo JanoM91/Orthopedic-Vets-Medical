@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import React, { useState } from 'react'
 import type { ResumenImportacionProductos } from '../../../lib/farmacia/tipos'
-import { api, Aviso, Boton, Campo, ErrorForm, Pastilla, useFarmacia } from './comun'
+import { api, Aviso, Ayuda, Boton, Campo, ErrorForm, Pastilla, useFarmacia } from './comun'
 
 /**
  * Importación del catálogo con la plantilla del sistema, en dos pasos con el
@@ -52,16 +52,15 @@ export default function Importar() {
         <p className="fz-eyebrow">Farmacia</p>
         <h1 className="fz-h1">Importar catálogo</h1>
         <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-          Plantilla propia del sistema: una fila por presentación de producto. Lotes y existencias no van aquí.
+          Una fila por presentación. Lotes y existencias van aparte.
         </p>
       </div>
 
       <div className="cl-dos">
         <form className="fz-tarjeta cl-caja fz-stack fz-stack--chico" onSubmit={(e) => void revisar(e)}>
           <h2 className="fz-h2">1 · Archivo</h2>
-          <p className="fz-chico">
-            Descarga la plantilla, llénala (borra las filas de ejemplo) y súbela. Acepta <b>.xlsx</b> o <b>.csv</b> con los encabezados de la plantilla. Para probar el sistema, la plantilla con 50 productos de ejemplo se importa tal cual.
-          </p>
+          <p className="fz-chico">Descarga la plantilla, llénala y súbela (.xlsx o .csv).</p>
+          <Ayuda>Borra las filas de ejemplo antes de cargar tu catálogo. Para probar el sistema, la plantilla con 50 productos de ejemplo se importa tal cual.</Ayuda>
           <Campo etiqueta="Archivo *">
             <input className="fz-input" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => { setArchivo(e.target.files?.[0] ?? null); setPlan(null); setResultado(null) }} required />
           </Campo>

@@ -10,7 +10,7 @@ export const FarmaciaConfiguracion: GlobalConfig = {
   slug: 'farmacia-configuracion',
   typescript: { interface: 'FarmaciaConfiguracion' },
   label: 'Farmacia: parámetros',
-  admin: { group: 'Farmacia', description: 'Avisos de caducidad, apartados, cierre del día, aprendizaje de mínimos y ligas con Finanzas.' },
+  admin: { group: 'Farmacia', description: 'Reglas de la farmacia.' },
   access: { read: equipoFarmacia, update: farmaciaCon('configurar') },
   fields: [
     {

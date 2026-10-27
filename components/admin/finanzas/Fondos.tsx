@@ -15,7 +15,7 @@
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import type { Fondos as FondosT } from '../../../lib/finanzas/tipos'
-import { api, Aviso, fecha, fmt, Icono, useFinanzas } from './comun'
+import { api, Aviso, Ayuda, fecha, fmt, Icono, useFinanzas } from './comun'
 
 export default function Fondos() {
   const { base, rutaAdmin, catalogo } = useFinanzas()
@@ -32,7 +32,8 @@ export default function Fondos() {
   return (
     <div className="fz-stack">
       <h1 className="fz-h1">Fondos a cargo del equipo</h1>
-      <p className="fz-ayuda">Dinero entregado a una persona para gastos del negocio. Se le entrega con un traspaso a su fondo, ella registra lo que gasta «desde su fondo» y devuelve el sobrante con otro traspaso.</p>
+      <p className="fz-ayuda">Dinero que una persona tiene para gastos del negocio.</p>
+      <Ayuda>Se le entrega con un traspaso a su fondo, ella registra lo que gasta «desde su fondo» y devuelve el sobrante con otro traspaso.</Ayuda>
       {error && <Aviso tono="malo">{error}</Aviso>}
       {!data && !error && <div className="fz-tarjeta fz-vacio">Cargando…</div>}
       {data && (

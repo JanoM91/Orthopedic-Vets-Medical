@@ -59,9 +59,6 @@ export function Recetas({ ver }: { ver: string | null }) {
         <div>
           <p className="fz-eyebrow">Farmacia</p>
           <h1 className="fz-h1">Recetas</h1>
-          <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-            Internas: el MVZ las emite y firma desde el expediente. Externas: se capturan aquí y las valida el encargado.
-          </p>
         </div>
         <div className="fz-acciones-fin">
           <Link href={`${base}/recetas/nueva`} className="fz-btn fz-btn--navy">
@@ -402,7 +399,7 @@ export function NuevaRecetaExterna({ mascotaInicial }: { mascotaInicial: number 
         <p className="fz-eyebrow">Farmacia</p>
         <h1 className="fz-h1">Receta externa</h1>
         <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-          De un MVZ de fuera. Queda «por validar» hasta que el encargado la revise contra la foto.
+          Queda por validar hasta que el encargado la revise.
         </p>
       </div>
       <section className="fz-tarjeta cl-caja fz-stack fz-stack--chico">

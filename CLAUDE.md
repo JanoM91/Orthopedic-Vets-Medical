@@ -66,6 +66,13 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 
 Marca **OVM Centro Veterinario** (27-oct-2026, decisión de Jano; dominio `ovetsmedical.com`): logotipo de rodilla en círculo con cruz y siluetas de perro y gato, menta `#36dab7` y trazos negros. La menta no se lee sobre blanco (1.8:1), así que el **primario oscuro** es `#0f2f2a` (cabeceras del portal y sitio, iconos, barra del teléfono) y el **acento de uso** es `#0b6b59` (botones, enlaces, activo; 6.4:1); la menta queda para detalles y fondos oscuros. El portal y el sitio toman primario y acento de `lib/site.ts` (`NEXT_PUBLIC_BRAND_PRIMARY` / `_ACCENT`, o esos mismos valores); los correos y las páginas imprimibles usan `site.brand.accent` para sus botones. Logotipos en `public/` (se regeneran desde los JPG originales con `scripts/marca/procesar-logos.py`): `logo-mark.png` (isotipo, fondos claros), `logo-mark-white.png` (trazos en blanco, fondos oscuros), `logo-ovm.png` (completo con el nombre, pantalla de acceso); iconos del celular en `public/finanzas/` (`scripts/iconos-finanzas/generar-iconos.py`, fondo `#0f2f2a`, texto menta). **Peluqueadogs** es la submarca de la estética veterinaria dentro de la misma plataforma (OVM es la marca padre): `public/marcas/peluqueadogs.png`, para cuando exista el módulo de estética. Los tokens de `custom.css` (`--mx-*`, marca anterior «Veterinaria Exkalibur», azul marino `#243a63`) quedan como base y el tema clínico los reemplaza. El nombre sale de `NEXT_PUBLIC_SITE_NAME`.
 
+**Reglas de front (revisión del 27-oct-2026; se probó de 320 a 1440 px):**
+- Poco texto: título + una línea como máximo. Lo que explica «cómo funciona» va plegado en `<Ayuda>` (`components/admin/finanzas/comun.tsx`, reexportado en clínica y farmacia).
+- Barras de pestañas que no caben: `components/Carriles.tsx` (montado en las tres apps del panel y en el portal) marca `data-izq`/`data-der` para el desvanecido y centra la pestaña activa. Si una barra pasa de ~8 opciones, las poco usadas van en `<MenuMas>` (`components/admin/MenuMas.tsx`), como en Farmacia.
+- Campos de 16 px en el teléfono (iOS acerca la pantalla con menos); `tema-clinico.css` §4 lo fuerza también en los formularios de Payload. Botones de al menos 40–44 px de alto.
+- Fechas, horas y archivos con estilo propio (Safari y Firefox los dibujan distinto). `100vh` siempre con respaldo `100dvh`; `:has()` solo para adornos.
+- Auditoría automática: `scripts/auditoria-front.mjs` (desbordes, campos chicos, botones chicos, errores de consola) contra `npm run start` con datos de prueba.
+
 ## Convenciones
 
 Contenido visible en español de México; código y commits en inglés, convencionales. Secretos solo en variables de entorno; `NEXT_PUBLIC_*` nunca como «Sensitive» en Vercel.

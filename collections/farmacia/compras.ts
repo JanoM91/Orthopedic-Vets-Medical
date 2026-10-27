@@ -35,7 +35,7 @@ export const FarProveedorClaves: CollectionConfig = {
     group: 'Farmacia',
     defaultColumns: ['proveedor', 'clave', 'presentacion', 'updatedAt'],
     listSearchableFields: ['clave', 'descripcionProveedor'],
-    description: 'Qué presentación del catálogo es cada clave que usa el proveedor en su factura. Se aprende al recibir la primera compra.',
+    description: 'Claves del proveedor ligadas al catálogo. Se aprenden solas.',
   },
   access: {
     read: equipoFarmacia,
@@ -69,7 +69,7 @@ export const FarCompras: CollectionConfig = {
     group: 'Farmacia',
     defaultColumns: ['folio', 'proveedor', 'fecha', 'folioFactura', 'total', 'estado'],
     listSearchableFields: ['folioFactura', 'uuid'],
-    description: 'Compras a proveedores: nacen del XML de la factura o a mano; al recibirlas entran los lotes al inventario y el gasto a Finanzas.',
+    description: 'Compras a proveedores (XML o a mano).',
   },
   access: {
     read: farmaciaCon('recibirCompras'),

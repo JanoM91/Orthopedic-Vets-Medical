@@ -37,7 +37,7 @@ export const FarLotes: CollectionConfig = {
     group: 'Farmacia',
     defaultColumns: ['folio', 'producto', 'numeroLote', 'caducidad', 'existencia', 'almacen'],
     listSearchableFields: ['numeroLote'],
-    description: 'Un lote por entrada de producto con su caducidad. La existencia la calcula el sistema a partir del kardex; aquí solo se consulta.',
+    description: 'Lotes con caducidad. Solo consulta.',
   },
   access: {
     read: equipoFarmacia,
@@ -96,7 +96,7 @@ export const FarMovimientos: CollectionConfig = {
     useAsTitle: 'id',
     group: 'Farmacia',
     defaultColumns: ['createdAt', 'tipo', 'producto', 'lote', 'cantidad', 'usuario'],
-    description: 'Kardex inmutable: cada entrada y salida por lote. No se edita ni se borra; una corrección es un movimiento inverso con motivo.',
+    description: 'Entradas y salidas por lote. No se editan.',
   },
   access: {
     read: equipoFarmacia,

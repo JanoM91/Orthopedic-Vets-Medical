@@ -8,7 +8,7 @@
 import React, { createContext, useContext } from 'react'
 import type { CatalogoFarmacia, EstadoLote, Grupo, Linea } from '../../../lib/farmacia/tipos'
 
-export { Aviso, Icono, Pastilla, Volver } from '../finanzas/comun'
+export { Aviso, Ayuda, Icono, Pastilla, Volver } from '../finanzas/comun'
 export { Boton, Campo, ErrorForm, fecha, InputFecha, iniciales, Modal, momento, useCarga, ErrorApi } from '../clinica/comun'
 
 export type ContextoFarmacia = { catalogo: CatalogoFarmacia; base: string; rutaAdmin: string; recargarCatalogo: () => void }

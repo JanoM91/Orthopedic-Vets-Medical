@@ -6,15 +6,16 @@
 :root {
   --st-primary: #0f2f2a;
   --st-accent: #0b6b59;
-  --st-bg: #f6f8fb;
+  --st-bg: #f5f8f7;
   --st-surface: #ffffff;
-  --st-line: #d9e1ec;
-  --st-ink: #1a2238;
-  --st-muted: #5c6880;
+  --st-line: #dce5e2;
+  --st-ink: #14201d;
+  --st-muted: #56655f;
   --st-gold: #36dab7; /* detalle de marca (menta del logotipo) sobre fondos oscuros */
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--st-bg); color: var(--st-ink); }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .st-body { font: 16px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: -0.015em; }
 h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 800; }
@@ -84,14 +85,18 @@ a { color: var(--st-accent); }
 .st-servicios .st-btn { align-self: flex-start; margin-top: 4px; }
 
 .st-main { max-width: 860px; margin: 0 auto; padding: 32px 16px 56px; display: flex; flex-direction: column; gap: 12px; }
-.st-main--centro { min-height: 100vh; justify-content: center; align-items: center; text-align: center; gap: 10px; }
+.st-main--centro { min-height: 100vh; min-height: 100dvh; justify-content: center; align-items: center; text-align: center; gap: 10px; }
 .st-prosa p { margin-bottom: 12px; }
 
 .st-pie { background: var(--st-primary); color: #fff; padding-block: 32px; font-size: 14px; }
 .st-pie .st-tenue { color: rgba(255, 255, 255, 0.75); }
 .st-pie__in { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 @media (min-width: 700px) { .st-pie__in { grid-template-columns: 1.2fr 1fr; } }
-.st-pie__ligas { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.st-pie__ligas { display: flex; flex-wrap: wrap; gap: 0 18px; }
+.st-pie__ligas a { display: inline-flex; align-items: center; min-height: 40px; }
 .st-pie a { color: #fff; }
 /* Sobre el fondo oscuro del hero, el botón primario va en la menta del logotipo con texto oscuro (8:1). */
 .st-hero .st-btn--primario { background: var(--st-gold); border-color: var(--st-gold); color: var(--st-primary); }
+/* En el teléfono el logotipo ya está en la cabecera: el del hero baja de tamaño o se oculta para que el botón de cita quede a la vista. */
+@media (max-width: 819px) { .st-hero__logo { width: 150px; } .st-hero__in { padding-block: 36px 40px; } }
+@media (max-width: 599px) { .st-hero__logo { display: none; } }

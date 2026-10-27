@@ -55,7 +55,7 @@ export const FarProductos: CollectionConfig = {
     group: 'Farmacia',
     defaultColumns: ['folio', 'nombre', 'linea', 'grupo', 'publicadoTienda', 'activo', 'updatedAt'],
     listSearchableFields: ['nombre', 'principioActivo', 'laboratorio', 'registroSenasica'],
-    description: 'El catálogo de la farmacia. Las presentaciones (caja, blíster, frasco) y los precios van en «Presentaciones».',
+    description: 'Catálogo de la farmacia. Precios en «Presentaciones».',
   },
   access: {
     read: equipoFarmacia,
@@ -177,7 +177,7 @@ export const FarPresentaciones: CollectionConfig = {
     group: 'Farmacia',
     defaultColumns: ['producto', 'nombre', 'factor', 'precio', 'codigoBarras', 'activa'],
     listSearchableFields: ['nombre', 'codigoBarras'],
-    description: 'Cómo se vende cada producto: «Caja 30 tabletas» (factor 30), «Tableta» (factor 1, fraccionada), «Frasco 100 ml» (factor 100). El precio es por presentación.',
+    description: 'Cómo se vende cada producto (caja, tableta, frasco) y su precio.',
   },
   access: {
     read: equipoFarmacia,
@@ -224,7 +224,7 @@ export const FarAlmacenes: CollectionConfig = {
     useAsTitle: 'nombre',
     group: 'Farmacia',
     defaultColumns: ['nombre', 'tipo', 'activo'],
-    description: 'Dónde está la existencia. Arranca con «Farmacia»; el inventario de la clínica se agrega después como otro almacén.',
+    description: 'Dónde está la existencia.',
   },
   access: {
     read: equipoFarmacia,

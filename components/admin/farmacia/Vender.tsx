@@ -206,7 +206,7 @@ export default function Vender() {
             </Boton>
           )}
         </div>
-        {!paciente && <p className="fz-chico fz-tenue">{catalogo.clinica ? 'Opcional. Con mascota se revisa especie, peso, edad y alergias.' : 'La clínica está apagada: la venta va sin mascota.'}</p>}
+        {!paciente && <p className="fz-chico fz-tenue">{catalogo.clinica ? 'Opcional: revisa especie, peso y alergias.' : 'La clínica está apagada: la venta va sin mascota.'}</p>}
         {paciente && (
           <div className="fa-paciente">
             <div>

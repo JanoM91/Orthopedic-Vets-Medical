@@ -244,7 +244,7 @@ export function Pendientes({ inicial }: { inicial: string | null }) {
   return (
     <div className="fz-stack">
       <h1 className="fz-h1">Pendientes</h1>
-      <p className="fz-ayuda">{p.revisarComprobantes ? 'Subir un comprobante y revisarlo son pasos distintos: se guarda quién hizo cada uno.' : 'Lo que falta completar en tus movimientos. Puedes subir el comprobante, pero no cambiar el importe.'}</p>
+      <p className="fz-ayuda">{p.revisarComprobantes ? 'Comprobantes por subir y por revisar.' : 'Lo que falta completar en tus movimientos.'}</p>
       <div className="fz-pestanas" role="tablist">
         {visibles.map(([k, l, lista]) => (
           <button key={k} type="button" role="tab" aria-selected={pestana === k} className={pestana === k ? 'is-on' : ''} onClick={() => setPestana(k)}>
@@ -281,7 +281,7 @@ export function Saldos() {
   return (
     <div className="fz-stack">
       <h1 className="fz-h1">Saldos</h1>
-      <p className="fz-ayuda">Saldo = saldo inicial + entradas − salidas realizadas. Los compromisos pendientes no lo cambian.</p>
+      <p className="fz-ayuda">Saldo inicial + entradas − salidas. Lo pendiente no cuenta.</p>
       {error && <Aviso tono="malo">{error}</Aviso>}
       {data && (
         <>

@@ -36,9 +36,6 @@ export function Compras({ estado: estadoInicial }: { estado: string | null }) {
         <div>
           <p className="fz-eyebrow">Farmacia</p>
           <h1 className="fz-h1">Compras</h1>
-          <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-            Del XML de la factura o a mano. Lote y caducidad siempre se capturan al recibir.
-          </p>
         </div>
         <div className="fz-acciones-fin">
           <Link href={`${base}/compras/nueva`} className="fz-btn fz-btn--navy">

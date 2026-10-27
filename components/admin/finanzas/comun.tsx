@@ -162,6 +162,16 @@ export function Volver({ a, etiqueta = 'Volver' }: { a: string; etiqueta?: strin
   )
 }
 
+/** Explicación plegada: la pantalla queda limpia y el detalle está a un toque. */
+export function Ayuda({ titulo = '¿Cómo funciona?', children }: { titulo?: string; children: React.ReactNode }) {
+  return (
+    <details className="fz-masinfo">
+      <summary>{titulo}</summary>
+      <div className="fz-masinfo__cuerpo">{children}</div>
+    </details>
+  )
+}
+
 export function Pastilla({ tono, children }: { tono: 'ok' | 'aviso' | 'malo' | 'info' | 'gris'; children: React.ReactNode }) {
   return <span className={`fz-pill fz-pill--${tono}`}>{children}</span>
 }

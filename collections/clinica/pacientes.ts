@@ -57,7 +57,7 @@ export const Clientes: CollectionConfig = {
     group: 'Clínica',
     defaultColumns: ['folio', 'nombreCompleto', 'telefono', 'email', 'activo', 'updatedAt'],
     listSearchableFields: ['nombre', 'apellidos', 'telefono', 'telefonoAlterno', 'email', 'nombreCompleto'],
-    description: 'Las personas responsables de las mascotas. La ficha se vincula a su cuenta del portal con un código.',
+    description: 'Dueños de las mascotas.',
   },
   access: {
     read: leerEquipoOTutor('verPacientes', (clienteId) => ({ id: { equals: clienteId } })),
@@ -140,7 +140,7 @@ export const Mascotas: CollectionConfig = {
     group: 'Clínica',
     defaultColumns: ['folio', 'nombre', 'especie', 'raza', 'estado', 'updatedAt'],
     listSearchableFields: ['nombre', 'raza', 'microchip'],
-    description: 'Un expediente por mascota. Cartilla, pesos, notas clínicas y documentos cuelgan de aquí.',
+    description: 'Un expediente por mascota.',
   },
   access: {
     read: leerEquipoOTutor('verPacientes', mascotasDelCliente),

@@ -23,6 +23,8 @@
  *
  * Quien no entra al panel completo la ve sola, con encabezado y barra inferior.
  */
+import { Carriles } from '../../Carriles'
+import { MenuMas } from '../MenuMas'
 import Link from 'next/link'
 import React, { useCallback, useState } from 'react'
 import type { CatalogoFarmacia } from '../../../lib/farmacia/tipos'
@@ -90,75 +92,55 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
 
   const quien = catalogo.usuario.nombre
   const esProductos = seccion === 'productos'
+  type Opcion = { href: string; on: boolean; texto: string; extra?: React.ReactNode; ver: boolean }
+  const opciones: (Opcion & { mas?: boolean })[] = [
+    { ver: true, href: base, on: !seccion, texto: 'Inicio' },
+    { ver: p.vender, href: `${base}/vender`, on: seccion === 'vender', texto: 'Vender' },
+    { ver: p.vender, href: `${base}/ventas`, on: seccion === 'ventas', texto: 'Ventas' },
+    { ver: p.vender || p.recetas, href: `${base}/recetas`, on: seccion === 'recetas', texto: 'Recetas' },
+    {
+      ver: true,
+      href: `${base}/alertas`,
+      on: seccion === 'alertas',
+      texto: 'Alertas',
+      extra: catalogo.hoy.alertasAbiertas ? <span className={`fa-contador${catalogo.hoy.alertasCriticas ? ' fa-contador--malo' : ''}`}>{catalogo.hoy.alertasAbiertas}</span> : null,
+    },
+    { ver: true, href: `${base}/productos`, on: esProductos, texto: 'Productos' },
+    { ver: true, href: `${base}/inventario`, on: seccion === 'inventario', texto: 'Inventario' },
+    { ver: p.recibirCompras, href: `${base}/compras`, on: seccion === 'compras', texto: 'Compras', mas: true },
+    { ver: p.recibirCompras || p.aprobar || p.reportes, href: `${base}/reabasto`, on: seccion === 'reabasto', texto: 'Reabasto', mas: true },
+    {
+      ver: p.vender || p.aprobar,
+      href: `${base}/promociones`,
+      on: seccion === 'promociones',
+      texto: 'Promociones',
+      extra: catalogo.hoy.promocionesPropuestas && p.aprobar ? <span className="fa-contador">{catalogo.hoy.promocionesPropuestas}</span> : null,
+      mas: true,
+    },
+    { ver: p.ajustes, href: `${base}/conteo`, on: seccion === 'conteo', texto: 'Conteo', mas: true },
+    { ver: p.cierreDia && catalogo.configuracion.cierreDiaActivo, href: `${base}/cierre`, on: seccion === 'cierre', texto: 'Cierre del día', mas: true },
+    { ver: p.catalogo, href: `${base}/importar`, on: seccion === 'importar', texto: 'Importar catálogo', mas: true },
+    { ver: p.configurar, href: `${base}/configuracion`, on: seccion === 'configuracion', texto: 'Configuración', mas: true },
+  ]
+  const principales = opciones.filter((x) => x.ver && !x.mas)
+  const secundarias = opciones.filter((x) => x.ver && x.mas)
   return (
     <FarmaciaCtx.Provider value={{ catalogo, base, rutaAdmin, recargarCatalogo }}>
       <div className={`fz-app cl-app fa-app${p.panel ? '' : ' fz-app--solo'}`}>
+        <Carriles />
         {p.panel ? (
-          <nav className="fz-subnav" aria-label="Secciones de la farmacia">
-            <span className="fz-subnav__titulo">Farmacia</span>
-            <Link href={base} className={!seccion ? 'is-on' : ''}>
-              Inicio
-            </Link>
-            {p.vender && (
-              <Link href={`${base}/vender`} className={seccion === 'vender' ? 'is-on' : ''}>
-                Vender
-              </Link>
-            )}
-            {p.vender && (
-              <Link href={`${base}/ventas`} className={seccion === 'ventas' ? 'is-on' : ''}>
-                Ventas
-              </Link>
-            )}
-            {(p.vender || p.recetas) && (
-              <Link href={`${base}/recetas`} className={seccion === 'recetas' ? 'is-on' : ''}>
-                Recetas
-              </Link>
-            )}
-            <Link href={`${base}/alertas`} className={seccion === 'alertas' ? 'is-on' : ''}>
-              Alertas{catalogo.hoy.alertasAbiertas ? <span className={`fa-contador${catalogo.hoy.alertasCriticas ? ' fa-contador--malo' : ''}`}>{catalogo.hoy.alertasAbiertas}</span> : null}
-            </Link>
-            <Link href={`${base}/productos`} className={esProductos ? 'is-on' : ''}>
-              Productos
-            </Link>
-            <Link href={`${base}/inventario`} className={seccion === 'inventario' ? 'is-on' : ''}>
-              Inventario
-            </Link>
-            {p.recibirCompras && (
-              <Link href={`${base}/compras`} className={seccion === 'compras' ? 'is-on' : ''}>
-                Compras
-              </Link>
-            )}
-            {(p.recibirCompras || p.aprobar || p.reportes) && (
-              <Link href={`${base}/reabasto`} className={seccion === 'reabasto' ? 'is-on' : ''}>
-                Reabasto
-              </Link>
-            )}
-            {(p.vender || p.aprobar) && (
-              <Link href={`${base}/promociones`} className={seccion === 'promociones' ? 'is-on' : ''}>
-                Promociones{catalogo.hoy.promocionesPropuestas && p.aprobar ? <span className="fa-contador">{catalogo.hoy.promocionesPropuestas}</span> : null}
-              </Link>
-            )}
-            {p.ajustes && (
-              <Link href={`${base}/conteo`} className={seccion === 'conteo' ? 'is-on' : ''}>
-                Conteo
-              </Link>
-            )}
-            {p.cierreDia && catalogo.configuracion.cierreDiaActivo && (
-              <Link href={`${base}/cierre`} className={seccion === 'cierre' ? 'is-on' : ''}>
-                Cierre del día
-              </Link>
-            )}
-            {p.catalogo && (
-              <Link href={`${base}/importar`} className={seccion === 'importar' ? 'is-on' : ''}>
-                Importar catálogo
-              </Link>
-            )}
-            {p.configurar && (
-              <Link href={`${base}/configuracion`} className={seccion === 'configuracion' ? 'is-on' : ''}>
-                Configuración
-              </Link>
-            )}
-          </nav>
+          <div className="fz-subnav-fila">
+            <nav className="fz-subnav" aria-label="Secciones de la farmacia">
+              <span className="fz-subnav__titulo">Farmacia</span>
+              {principales.map((x) => (
+                <Link key={x.href} href={x.href} className={x.on ? 'is-on' : ''}>
+                  {x.texto}
+                  {x.extra}
+                </Link>
+              ))}
+            </nav>
+            {secundarias.length > 0 && <MenuMas opciones={secundarias} />}
+          </div>
         ) : (
           <header className="fz-cabecera">
             <Link href={base} className="fz-marca" aria-label={`${marca.nombre}: ir al inicio`}>

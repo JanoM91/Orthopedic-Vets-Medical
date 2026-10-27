@@ -253,7 +253,7 @@ export interface User {
   collection: 'users';
 }
 /**
- * Qué puede hacer cada tipo de persona. Lo editan los dueños y el superadministrador. Para asignarlo, entra a Usuarios.
+ * Qué puede hacer cada tipo de persona.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "roles".
@@ -334,7 +334,7 @@ export interface Rol {
   createdAt: string;
 }
 /**
- * A qué área de la clínica corresponde una entrada o un gasto (consulta, cirugía, rehabilitación, administración…).
+ * Áreas de la clínica para clasificar entradas y gastos.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-actividades".
@@ -347,7 +347,7 @@ export interface FinActividad {
   createdAt: string;
 }
 /**
- * Las personas responsables de las mascotas. La ficha se vincula a su cuenta del portal con un código.
+ * Dueños de las mascotas.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "clientes".
@@ -382,7 +382,7 @@ export interface Cliente {
   createdAt: string;
 }
 /**
- * Un expediente por mascota. Cartilla, pesos, notas clínicas y documentos cuelgan de aquí.
+ * Un expediente por mascota.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "mascotas".
@@ -519,7 +519,7 @@ export interface MasDocumento {
   createdAt: string;
 }
 /**
- * Cuentas con las que los tutores entran al portal. Se vinculan a su ficha de cliente con un código.
+ * Cuentas de tutores en el portal.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "tutores".
@@ -617,7 +617,7 @@ export interface Importacion {
   createdAt: string;
 }
 /**
- * Consultorios, quirófano y espacios que se ocupan en la agenda. Desactivar no borra las citas pasadas.
+ * Consultorios y espacios de la agenda.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "recursos".
@@ -632,7 +632,7 @@ export interface Recurso {
   createdAt: string;
 }
 /**
- * Lo que se agenda. La duración y el recurso por defecto arman la agenda; el precio (opcional) genera el cargo en Finanzas al finalizar la cita.
+ * Lo que se agenda. Con precio, la cita genera su cargo en Finanzas.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "servicios".
@@ -666,7 +666,7 @@ export interface Servicio {
   createdAt: string;
 }
 /**
- * En qué se ingresó o en qué se gastó. Las restringidas (como nómina) solo las ve quien tenga esa casilla en su rol.
+ * En qué se ingresó o se gastó.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-categorias".
@@ -755,7 +755,7 @@ export interface FinOperacion {
   createdAt: string;
 }
 /**
- * El catálogo de la farmacia. Las presentaciones (caja, blíster, frasco) y los precios van en «Presentaciones».
+ * Catálogo de la farmacia. Precios en «Presentaciones».
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-productos".
@@ -838,7 +838,7 @@ export interface FarProveedor {
   createdAt: string;
 }
 /**
- * Cómo se vende cada producto: «Caja 30 tabletas» (factor 30), «Tableta» (factor 1, fraccionada), «Frasco 100 ml» (factor 100). El precio es por presentación.
+ * Cómo se vende cada producto (caja, tableta, frasco) y su precio.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-presentaciones".
@@ -859,7 +859,7 @@ export interface FarPresentacion {
   createdAt: string;
 }
 /**
- * Dónde está la existencia. Arranca con «Farmacia»; el inventario de la clínica se agrega después como otro almacén.
+ * Dónde está la existencia.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-almacenes".
@@ -873,7 +873,7 @@ export interface FarAlmacen {
   createdAt: string;
 }
 /**
- * Un lote por entrada de producto con su caducidad. La existencia la calcula el sistema a partir del kardex; aquí solo se consulta.
+ * Lotes con caducidad. Solo consulta.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-lotes".
@@ -903,7 +903,7 @@ export interface FarLote {
   createdAt: string;
 }
 /**
- * Kardex inmutable: cada entrada y salida por lote. No se edita ni se borra; una corrección es un movimiento inverso con motivo.
+ * Entradas y salidas por lote. No se editan.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-movimientos".
@@ -931,7 +931,7 @@ export interface FarMovimiento {
   createdAt: string;
 }
 /**
- * Qué presentación del catálogo es cada clave que usa el proveedor en su factura. Se aprende al recibir la primera compra.
+ * Claves del proveedor ligadas al catálogo. Se aprenden solas.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-proveedor-claves".
@@ -946,7 +946,7 @@ export interface FarProveedorClave {
   createdAt: string;
 }
 /**
- * Compras a proveedores: nacen del XML de la factura o a mano; al recibirlas entran los lotes al inventario y el gasto a Finanzas.
+ * Compras a proveedores (XML o a mano).
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-compras".
@@ -1032,7 +1032,7 @@ export interface FinCuenta {
   createdAt: string;
 }
 /**
- * Recetas internas (emitidas desde el expediente; firmadas = inmutables) y externas (foto validada por el encargado).
+ * Recetas internas y externas.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-recetas".
@@ -1084,7 +1084,7 @@ export interface FarReceta {
   createdAt: string;
 }
 /**
- * Ventas de mostrador (y de la tienda, fase 5). Cada una descuenta por FEFO y crea su entrada en Finanzas.
+ * Ventas de mostrador. Cada una descuenta inventario y entra a Finanzas.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-ventas".
@@ -1161,7 +1161,7 @@ export interface FarVenta {
   createdAt: string;
 }
 /**
- * Asiento automático e inmutable por cada salida de Grupo I (NOM-064-ZOO-2000). Una venta anulada agrega un asiento de cancelación; nunca se edita.
+ * Asientos automáticos de Grupo I (NOM-064). No se editan.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-libro-control".
@@ -1213,7 +1213,7 @@ export interface FarCierreDia {
   createdAt: string;
 }
 /**
- * Caducidad, desabasto, reorden sugerido, sin rotación y recetas. Las genera el sistema (cron diario o «Recalcular»); una sola abierta por objeto y tipo.
+ * Las genera el sistema cada día.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-alertas".
@@ -1250,7 +1250,7 @@ export interface FarAlerta {
   createdAt: string;
 }
 /**
- * Propuestas por caducidad (solo Grupo III y desregulados) que un humano aprueba. Se aplican en la tienda (fase 5) y solo al lote afectado.
+ * Descuentos por caducidad que aprueba un encargado.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "far-promociones".
@@ -2497,7 +2497,7 @@ export interface AgendaConfiguracion {
   createdAt?: string | null;
 }
 /**
- * Lo que ven los visitantes en la página principal. Los servicios y el horario salen de la agenda.
+ * Lo que ven los visitantes en la página principal.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "sitio-configuracion".
@@ -2552,7 +2552,7 @@ export interface SitioConfiguracion {
   createdAt?: string | null;
 }
 /**
- * Avisos de caducidad, apartados, cierre del día, aprendizaje de mínimos y ligas con Finanzas.
+ * Reglas de la farmacia.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "farmacia-configuracion".
@@ -2634,7 +2634,7 @@ export interface FarmaciaConfiguracion {
   createdAt?: string | null;
 }
 /**
- * Qué módulos están encendidos en esta instalación. Finanzas siempre lo está. Apagar un módulo oculta sus pantallas, menús y API sin borrar datos.
+ * Enciende o apaga módulos. Apagar no borra datos.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "instalacion-configuracion".

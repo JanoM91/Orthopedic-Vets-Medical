@@ -793,3 +793,309 @@ h3 {
 .fa-hoy--aviso {
   background: #fffbeb;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4 · Revisión de front (27-oct-2026): teléfonos de 320 px a monitores,
+   Safari iOS, Chrome, Firefox y Samsung Internet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 4.1 iOS acerca la pantalla al enfocar un campo de menos de 16 px. Payload usa
+   13 px en sus formularios: en el teléfono todos los campos van a 16 px. */
+@media (max-width: 820px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea,
+  .rs__control,
+  .rs__input,
+  .rs__single-value {
+    font-size: 16px !important;
+  }
+}
+
+/* 4.2 Carriles desplazables (components/Carriles.tsx marca data-izq / data-der):
+   un desvanecido avisa que hay más pestañas a ese lado. */
+.fz-subnav[data-der],
+.fz-pestanas[data-der],
+.fz-chips--scroll[data-der] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+}
+.fz-subnav[data-izq],
+.fz-pestanas[data-izq],
+.fz-chips--scroll[data-izq] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent);
+}
+.fz-subnav[data-izq][data-der],
+.fz-pestanas[data-izq][data-der],
+.fz-chips--scroll[data-izq][data-der] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+}
+.fz-subnav,
+.fz-pestanas,
+.fz-chips--scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 4.3 Explicaciones plegadas (Ayuda): la pantalla queda limpia. */
+.fz-masinfo {
+  font-size: 13px;
+  color: var(--mx-muted);
+}
+.fz-masinfo > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--mx-teal-text);
+  font-weight: 500;
+}
+.fz-masinfo > summary::-webkit-details-marker {
+  display: none;
+}
+.fz-masinfo > summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.fz-masinfo[open] > summary::before {
+  transform: rotate(45deg);
+}
+.fz-masinfo__cuerpo {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--mx-teal-light);
+  background: var(--mx-sand);
+  border-radius: 0 8px 8px 0;
+  line-height: 1.5;
+}
+.fz-masinfo__cuerpo > * + * {
+  margin-top: 6px;
+}
+
+/* 4.4 Cifras: nunca se cortan en teléfonos angostos. */
+.fz-kpi {
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .fz-kpis .fz-kpi {
+    padding: 12px 14px;
+  }
+  .fz-kpi__val {
+    font-size: clamp(19px, 6vw, 28px);
+    overflow-wrap: anywhere;
+  }
+}
+
+/* 4.5 Botón de archivo con el estilo de la app (el nativo se ve distinto en
+   cada navegador y a veces en inglés). */
+input[type='file'] {
+  max-width: 100%;
+  font-size: 14px;
+}
+input[type='file']::file-selector-button {
+  margin-right: 10px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--mx-line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--mx-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+input[type='file']::file-selector-button:hover {
+  background: var(--mx-sand);
+}
+
+/* 4.6 Payload: menos ruido y objetivos táctiles cómodos. La pestaña «API» es
+   para programadores; el equipo no la necesita. */
+.doc-tab[href$='/api'],
+a.doc-tab[href*='/api?'] {
+  display: none !important;
+}
+@media (max-width: 820px) {
+  .nav-group__toggle,
+  .nav__log-out,
+  .app-header__account,
+  .app-header__mobile-nav-toggler,
+  .nav__mobile-close {
+    min-height: 40px;
+    min-width: 40px;
+  }
+  .nav__link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* 4.7 Fechas y horas: Safari dibuja estos campos más altos o más anchos que el
+   resto; se igualan. */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'],
+input[type='month'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* 4.8 Acceso: isotipo y nombre centrados, sin repetir el nombre dentro del logotipo. */
+.mx-logo-login__logo {
+  width: clamp(84px, 24vw, 108px);
+}
+.mx-logo-login__nombre {
+  text-align: center;
+  line-height: 1.15;
+  color: var(--mx-ink);
+}
+
+/* 4.9 Ficha de cliente y expediente en teléfonos angostos: el avatar arriba del
+   nombre para que el texto use todo el ancho. */
+@media (max-width: 420px) {
+  .cl-cabecera-ficha {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .cl-avatar--grande {
+    width: 48px;
+    height: 48px;
+    font-size: 17px;
+  }
+}
+
+/* 4.10 Barra de secciones con «Más ▾» (components/admin/MenuMas.tsx). */
+.fz-subnav-fila {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  margin: 4px 0 18px;
+  min-width: 0;
+}
+.fz-subnav-fila > .fz-subnav {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.fz-mas {
+  flex: none;
+  position: relative;
+}
+.fz-mas > summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--mx-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.fz-mas > summary::-webkit-details-marker {
+  display: none;
+}
+.fz-mas > summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+.fz-mas > summary:hover,
+.fz-mas[open] > summary {
+  background: var(--mx-sand);
+  color: var(--mx-ink);
+}
+.fz-mas.is-on > summary {
+  background: var(--mx-sand-dark);
+  color: var(--mx-ink);
+  font-weight: 600;
+}
+.fz-mas__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid var(--mx-line);
+  border-radius: 12px;
+  box-shadow: var(--mx-shadow-lift);
+}
+.fz-mas__menu a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--mx-ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+.fz-mas__menu a:hover {
+  background: var(--mx-sand);
+}
+.fz-mas__menu a.is-on {
+  background: var(--mx-teal-soft);
+  color: var(--mx-teal-text);
+  font-weight: 600;
+}
+@media (max-width: 820px) {
+  .fz-mas > summary {
+    min-height: 44px;
+  }
+}
+
+/* 4.11 Payload en el teléfono: botones de al menos 40 px y el menú lateral
+   cerrado no empuja la página de lado. */
+@media (max-width: 820px) {
+  .btn,
+  .pill,
+  .popup-button,
+  .step-nav__home,
+  .dropdown-indicator {
+    min-height: 40px;
+  }
+  .step-nav__home {
+    display: inline-flex;
+    align-items: center;
+    min-width: 32px;
+  }
+}
+@supports (overflow: clip) {
+  .template-default {
+    overflow-x: clip;
+  }
+}

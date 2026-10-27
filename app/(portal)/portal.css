@@ -6,18 +6,19 @@
 :root {
   --pt-primary: #0f2f2a;
   --pt-accent: #0b6b59;
-  --pt-bg: #f3f6fa;
+  --pt-bg: #f4f7f6;
   --pt-surface: #ffffff;
-  --pt-line: #d9e1ec;
-  --pt-ink: #1a2238;
-  --pt-muted: #5c6880;
+  --pt-line: #dce5e2;
+  --pt-ink: #14201d;
+  --pt-muted: #56655f;
   --pt-ok-bg: #e3f8f2; --pt-ok: #0b6b59;
   --pt-warn-bg: #fdf5e1; --pt-warn: #8a6410;
   --pt-bad-bg: #fbe3e0; --pt-bad: #ad2a20;
-  --pt-info-bg: #e3eaf6; --pt-info: #2b4a85;
+  --pt-info-bg: #eaf1ef; --pt-info: #29433d;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--pt-bg); color: var(--pt-ink); }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .pt-body { font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; min-height: 100dvh; }
 h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: -0.01em; }
 h1 { font-size: 24px; } h2 { font-size: 18px; } h3 { font-size: 16px; }
@@ -102,3 +103,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pt-hueco[disabled] { opacity: 0.35; text-decoration: line-through; cursor: not-allowed; }
 .pt-hueco.is-on { background: var(--pt-primary); color: #fff; border-color: var(--pt-primary); }
 .pt-contacto .pt-acciones { margin-top: 8px; }
+
+/* Revisión de front (27-oct-2026) */
+/* Pestañas que no caben: desvanecido del lado donde hay más (components/Carriles.tsx). */
+.pt-tabs { scroll-behavior: smooth; }
+.pt-tabs[data-der] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+.pt-tabs[data-izq] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); }
+.pt-tabs[data-izq][data-der] { -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+/* Fechas, horas y archivos iguales en Safari, Chrome y Firefox. */
+input[type='date'], input[type='time'] { -webkit-appearance: none; appearance: none; min-width: 0; }
+input[type='date']::-webkit-date-and-time-value, input[type='time']::-webkit-date-and-time-value { text-align: left; }
+input[type='file'] { max-width: 100%; font-size: 14px; }
+input[type='file']::file-selector-button { margin-right: 10px; min-height: 40px; padding: 0 14px; border: 1px solid var(--pt-line); border-radius: 10px; background: #fff; color: var(--pt-ink); font: inherit; font-weight: 600; }
+/* En tableta y computadora la barra inferior acompaña al contenido (640 px) en vez de estirarse a todo lo ancho. */
+@media (min-width: 720px) {
+  .pt-barra { left: 50%; right: auto; width: 640px; transform: translateX(-50%); bottom: 12px; border: 1px solid var(--pt-line); border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 47, 42, 0.12); padding-bottom: 0; overflow: hidden; }
+  .pt-main { padding-bottom: 104px; }
+}
+/* Enlaces de regreso y pequeños: zona de toque cómoda sin cambiar su aspecto. */
+.pt-main > a.pt-chico, .pt-volver { display: inline-flex; align-items: center; min-height: 36px; }

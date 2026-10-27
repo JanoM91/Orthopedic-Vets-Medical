@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import type { AlertaVista, GrupoReabasto, PromocionVista, ResultadoRecalculo } from '../../../lib/farmacia/alertas'
-import { api, Aviso, Boton, Campo, cantidad, ErrorForm, fecha, Modal, momento, Pastilla, useFarmacia } from './comun'
+import { api, Aviso, Ayuda, Boton, Campo, cantidad, ErrorForm, fecha, Modal, momento, Pastilla, useFarmacia } from './comun'
 
 /**
  * Fase 4: alertas (caducidad, desabasto, reorden, sin rotación, recetas),
@@ -75,9 +75,7 @@ export function Alertas({ tipo: tipoInicial }: { tipo: string | null }) {
         <div>
           <p className="fz-eyebrow">Farmacia</p>
           <h1 className="fz-h1">Alertas</h1>
-          <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-            Se recalculan cada día a las 8:00 y llega un resumen por correo a quien tiene «Reportes». Una sola alerta abierta por objeto; las que ya no aplican se cierran solas.
-          </p>
+          <Ayuda>Se recalculan cada día a las 8:00 y llega un resumen por correo a quien tiene «Reportes». Una sola alerta abierta por objeto; las que ya no aplican se cierran solas.</Ayuda>
         </div>
         {(p.aprobar || p.ajustes) && (
           <div className="fz-acciones-fin">
@@ -223,9 +221,10 @@ export function Reabasto() {
           <p className="fz-eyebrow">Farmacia</p>
           <h1 className="fz-h1">Reabasto sugerido</h1>
           {datos && (
-            <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-              Productos en o bajo su punto de reorden. Cantidad = punto de reorden + demanda diaria × {datos.diasCobertura} días − disponible, redondeada a la presentación de compra.
-            </p>
+            <>
+              <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>Lo que hay que pedir, por proveedor.</p>
+              <Ayuda>Productos en o bajo su punto de reorden. Cantidad = punto de reorden + demanda diaria × {datos.diasCobertura} días − disponible, redondeada a la presentación de compra.</Ayuda>
+            </>
           )}
         </div>
         <div className="fz-acciones-fin">
@@ -313,9 +312,8 @@ export function Promociones() {
       <div>
         <p className="fz-eyebrow">Farmacia</p>
         <h1 className="fz-h1">Promociones por caducidad</h1>
-        <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-          El sistema propone descuento a los lotes de Grupo III y desregulados que se acercan a su caducidad (nunca receta ni controlados). Un encargado aprueba; la promoción aplica solo a ese lote y vence un día antes de caducar. Se mostrarán en la tienda (fase 5).
-        </p>
+        <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>Descuentos propuestos para lotes por caducar.</p>
+        <Ayuda>Solo lotes de Grupo III y desregulados (nunca receta ni controlados). Un encargado aprueba; la promoción aplica solo a ese lote y vence un día antes de caducar.</Ayuda>
       </div>
       <div className="fz-seg" style={{ maxWidth: 520 }} role="radiogroup" aria-label="Estado">
         {(['propuesta', 'aprobada', 'rechazada', 'vencida'] as const).map((e) => (

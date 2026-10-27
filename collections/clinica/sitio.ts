@@ -15,7 +15,7 @@ export const SitioConfiguracion: GlobalConfig = {
   slug: 'sitio-configuracion',
   typescript: { interface: 'SitioConfiguracion' },
   label: 'Sitio público',
-  admin: { group: 'Clínica', description: 'Lo que ven los visitantes en la página principal. Los servicios y el horario salen de la agenda.' },
+  admin: { group: 'Clínica', description: 'Lo que ven los visitantes en la página principal.' },
   access: { read: () => true, update: equipoCon('configurarAgenda') },
   fields: [
     {

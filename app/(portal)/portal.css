@@ -4,14 +4,14 @@
    las variables de entorno (marca blanca). Prefijo pt- para no chocar.
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --pt-primary: #243a63;
-  --pt-accent: #3a9db0;
+  --pt-primary: #0f2f2a;
+  --pt-accent: #0b6b59;
   --pt-bg: #f3f6fa;
   --pt-surface: #ffffff;
   --pt-line: #d9e1ec;
   --pt-ink: #1a2238;
   --pt-muted: #5c6880;
-  --pt-ok-bg: #e6f4f7; --pt-ok: #22778a;
+  --pt-ok-bg: #e3f8f2; --pt-ok: #0b6b59;
   --pt-warn-bg: #fdf5e1; --pt-warn: #8a6410;
   --pt-bad-bg: #fbe3e0; --pt-bad: #ad2a20;
   --pt-info-bg: #e3eaf6; --pt-info: #2b4a85;
@@ -54,8 +54,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pt-fila__t1 { font-weight: 650; }
 .pt-fila__t2 { font-size: 13px; color: var(--pt-muted); }
 .pt-avatar { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 18px; color: #fff; background: var(--pt-accent); }
-.pt-avatar.is-perro { background: #5fb3c4; }
-.pt-avatar.is-gato { background: #d4a94a; }
+.pt-avatar.is-perro { background: #13967c; }
+.pt-avatar.is-gato { background: #475569; }
 .pt-avatar--grande { width: 64px; height: 64px; font-size: 24px; }
 .pt-cabecera-mascota { display: flex; gap: 14px; align-items: center; }
 

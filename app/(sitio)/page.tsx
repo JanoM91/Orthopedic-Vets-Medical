@@ -50,7 +50,7 @@ export default async function Inicio() {
               </p>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="st-hero__logo" src={c.marca.logo} alt="" />
+            <img className="st-hero__logo" src={c.marca.logoClaro} alt="" />
           </div>
         </section>
 

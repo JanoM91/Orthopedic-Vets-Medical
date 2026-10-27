@@ -14,21 +14,25 @@
    compactas, barra inferior con icono en píldora, estados por punto de color.
 
    Para volver al tema anterior basta con quitar el import. Para la paleta
-   oficial: cambiar los valores de la sección 1-A.
+   oficial: cambiar los valores de la sección 1-A (hecho el 27-oct-2026 con la
+   paleta de OVM Centro Veterinario).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
-/* ─── 1-A · Tokens de la opción C (blanco frío, cobalto, pizarra) ─────────── */
+/* ─── 1-A · Tokens: paleta oficial de OVM Centro Veterinario (27-oct-2026) ──
+   El logotipo usa menta #36dab7 y trazos negros. La menta no se lee como texto
+   ni como botón sobre blanco (1.8:1), así que el acento de uso es su versión
+   profunda #0b6b59 (6.4:1) y la menta queda para detalles y fondos oscuros. */
 :root {
-  --mx-navy: #1d4ed8; /* primario (botones, activo) = cobalto */
-  --mx-navy-dark: #1e40af;
-  --mx-navy-light: #3b82f6;
-  --mx-teal: #1d4ed8; /* un solo acento: también cobalto */
-  --mx-teal-dark: #1e40af;
-  --mx-teal-light: #93c5fd;
-  --mx-teal-text: #1d4ed8; /* 6.3:1 sobre blanco */
-  --mx-teal-soft: #dbeafe;
+  --mx-navy: #0b6b59; /* primario (botones, activo) = verde OVM profundo */
+  --mx-navy-dark: #0a5c4d;
+  --mx-navy-light: #13967c;
+  --mx-teal: #0b6b59; /* un solo acento */
+  --mx-teal-dark: #0a5c4d;
+  --mx-teal-light: #36dab7; /* menta del logotipo */
+  --mx-teal-text: #0b6b59; /* 6.4:1 sobre blanco */
+  --mx-teal-soft: #e3f8f2;
   --mx-ink: #0f172a;
   --mx-muted: #475569; /* 7.3:1 sobre blanco */
   --mx-sand: #f8fafc;
@@ -76,25 +80,25 @@ html[data-theme='light'] {
   --theme-elevation-950: #172033;
   --theme-elevation-1000: #0f172a;
 
-  --theme-success-50: #eff6ff;
-  --theme-success-100: #dbeafe;
-  --theme-success-150: #c7dcfd;
-  --theme-success-200: #bfdbfe;
-  --theme-success-250: #a5c8fb;
-  --theme-success-300: #93c5fd;
-  --theme-success-350: #7ab2fb;
-  --theme-success-400: #60a5fa;
-  --theme-success-450: #4f94f0;
-  --theme-success-500: #3b82f6;
-  --theme-success-550: #2f6ee7;
-  --theme-success-600: #2563eb;
-  --theme-success-650: #2158e2;
-  --theme-success-700: #1d4ed8;
-  --theme-success-750: #1e47c4;
-  --theme-success-800: #1e40af;
-  --theme-success-850: #1c3a98;
-  --theme-success-900: #1e3a8a;
-  --theme-success-950: #172b63;
+  --theme-success-50: #ecfbf7;
+  --theme-success-100: #d3f6ec;
+  --theme-success-150: #bef2e4;
+  --theme-success-200: #a9eedd;
+  --theme-success-250: #8ce8d2;
+  --theme-success-300: #6fe3c8;
+  --theme-success-350: #52dec0;
+  --theme-success-400: #36dab7;
+  --theme-success-450: #2ac9a8;
+  --theme-success-500: #1fb898;
+  --theme-success-550: #16a185;
+  --theme-success-600: #0e8a72;
+  --theme-success-650: #0c7a66;
+  --theme-success-700: #0b6b59;
+  --theme-success-750: #0a6453;
+  --theme-success-800: #0a5c4d;
+  --theme-success-850: #0c4c40;
+  --theme-success-900: #0f3b34;
+  --theme-success-950: #0f2f2a;
 
   --theme-error-500: #b91c1c;
   --theme-warning-500: #b45309;
@@ -110,7 +114,7 @@ html[data-theme='light'] {
   --style-radius-m: 8px;
   --style-radius-l: 12px;
 
-  --accessibility-outline: 2px solid #1d4ed8;
+  --accessibility-outline: 2px solid #0b6b59;
 }
 
 body,
@@ -585,13 +589,13 @@ h3 {
   background: var(--mx-slate);
 }
 .cl-avatar.is-perro {
-  background: #2563eb;
+  background: #0b6b59;
 }
 .cl-avatar.is-gato {
   background: #b45309;
 }
 .cl-avatar.is-otra {
-  background: #0f766e;
+  background: #475569;
 }
 .cl-alerta {
   background: #fee2e2;
@@ -653,7 +657,7 @@ h3 {
   padding: 9px 12px;
 }
 .fz-input:focus {
-  outline: 2px solid rgba(29, 78, 216, 0.3);
+  outline: 2px solid rgba(11, 107, 89, 0.3);
   border-color: var(--mx-teal);
 }
 .fz-etiqueta {
@@ -738,7 +742,7 @@ h3 {
   border-top: 1px solid var(--mx-sand-dark);
 }
 .fz-fila.is-elegida {
-  background: #eff6ff;
+  background: #ecfbf7;
   box-shadow: inset 3px 0 0 var(--mx-teal);
 }
 .fa-entra {
@@ -777,11 +781,11 @@ h3 {
   box-shadow: inset 3px 0 0 #f59e0b;
 }
 .fa-cobrado {
-  border-color: #1d4ed8;
-  box-shadow: inset 3px 0 0 #1d4ed8;
+  border-color: #0b6b59;
+  box-shadow: inset 3px 0 0 #0b6b59;
 }
 .fa-cobrado__cambio {
-  color: #1d4ed8;
+  color: #0b6b59;
 }
 .fa-hoy {
   background: #f1f5f9;

@@ -716,6 +716,10 @@ export interface Cita {
       }[]
     | null;
   cargoFinanzas?: (number | null) | FinOperacion;
+  /**
+   * Lo escribe el recordatorio diario (un solo correo por cita).
+   */
+  recordatorioEnviadoEn?: string | null;
   creadoPor?: (number | null) | User;
   creadoPorTutor?: (number | null) | Tutor;
   updatedAt: string;
@@ -1872,6 +1876,7 @@ export interface CitasSelect<T extends boolean = true> {
         id?: T;
       };
   cargoFinanzas?: T;
+  recordatorioEnviadoEn?: T;
   creadoPor?: T;
   creadoPorTutor?: T;
   updatedAt?: T;
@@ -2480,6 +2485,14 @@ export interface AgendaConfiguracion {
   anticipacionHoras?: number | null;
   diasAdelante?: number | null;
   cancelacionHoras?: number | null;
+  /**
+   * Separados por coma. Reciben un aviso cuando un tutor pide, reprograma o cancela desde el portal. Vacío: no se avisa por correo.
+   */
+  correoAvisos?: string | null;
+  /**
+   * Solo a tutores con correo que aceptan avisos. Requiere CRON_SECRET y RESEND_API_KEY en Vercel.
+   */
+  recordatoriosActivos?: boolean | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -2667,6 +2680,8 @@ export interface AgendaConfiguracionSelect<T extends boolean = true> {
   anticipacionHoras?: T;
   diasAdelante?: T;
   cancelacionHoras?: T;
+  correoAvisos?: T;
+  recordatoriosActivos?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 import { site } from '../../lib/site'
+import { enlaceWhatsApp, mensajes } from '../../lib/whatsapp'
 
 /* ───────── piezas de servidor (sin estado) ───────── */
 
@@ -111,6 +112,32 @@ export function GraficaPeso({ pesos }: { pesos: { fecha: string; kg: number }[] 
           ))}
         </svg>
       )}
+    </div>
+  )
+}
+
+/** «¿Duda o urgencia?»: WhatsApp con mensaje listo y teléfono de la clínica (NEXT_PUBLIC_BRAND_PHONE). Sin teléfono no se muestra. */
+export function TarjetaContacto({ mascota, contacto }: { mascota?: string | null; contacto: { telefono: string | null; whatsapp: string | null; urgencias?: string | null } }) {
+  const tel = contacto.telefono
+  const wa = enlaceWhatsApp(contacto.whatsapp, mensajes.aLaClinica(mascota))
+  if (!tel && !wa) return null
+  return (
+    <div className="pt-card pt-contacto">
+      <h2>¿Duda o urgencia?</h2>
+      <p className="pt-chico pt-tenue">Escríbenos o llámanos. Si es una urgencia, llama directamente.</p>
+      {contacto.urgencias && <p className="pt-chico">Urgencias: {contacto.urgencias}</p>}
+      <div className="pt-acciones">
+        {wa && (
+          <a href={wa} target="_blank" rel="noreferrer" className="pt-btn pt-btn--acento">
+            WhatsApp
+          </a>
+        )}
+        {tel && (
+          <a href={`tel:${tel.replace(/[^\d+]/g, '')}`} className="pt-btn">
+            Llamar {tel}
+          </a>
+        )}
+      </div>
     </div>
   )
 }

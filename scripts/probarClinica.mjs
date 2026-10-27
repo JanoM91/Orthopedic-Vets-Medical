@@ -10,7 +10,16 @@
  * Recepción y una de Médico, y recorre los flujos. Idempotente a medias: si la
  * base ya tiene primer usuario, usa las credenciales de abajo.
  */
+import fs from 'node:fs'
+
 const BASE = process.argv[2] || 'http://localhost:3000'
+/* CRON_SECRET de .env (solo para probar el recordatorio de citas). */
+const ENV = Object.fromEntries(
+  (fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') : '')
+    .split('\n')
+    .filter((l) => /^[A-Z_]+=/.test(l))
+    .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '')]),
+)
 const CORREO = 'prueba-superadmin@ejemplo.mx'
 const PASS = 'Prueba-123456'
 
@@ -401,6 +410,49 @@ async function main() {
   ok(r.status === 400, 'Portal: no cancela una cita finalizada')
   r = await tutor.get('/api/citas?depth=0')
   ok(r.status === 200 && r.data.docs.every((x) => x.notasInternas === undefined && (x.historial === undefined || x.historial.length === 0)), 'API genérica: el tutor no ve notas internas ni historial de citas', r.data.docs?.[0] && Object.keys(r.data.docs[0]))
+
+  /* ── avisos, recordatorio de la víspera y cartilla imprimible (27-oct-2026) ── */
+  console.log('\nAvisos, recordatorios y cartilla imprimible')
+  r = await admin.post('/api/globals/agenda-configuracion', { correoAvisos: 'recepcion@ejemplo.mx, no-es-correo', recordatoriosActivos: true })
+  ok(r.status === 200, 'Superadmin configura correos de avisos y recordatorios', r.status)
+  const manana = (() => {
+    const hoyMx = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
+    const [y, m, d] = hoyMx.split('-').map(Number)
+    return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
+  })()
+  r = await recepcion.post('/api/clinica/agenda/citas', { mascotaId: toby.id, servicioId: consulta.id, dia: manana, hora: '16:00', confirmar: true })
+  ok(r.status === 201 && r.data.estado === 'confirmada', 'Cita confirmada para mañana (el aviso al tutor no estorba la operación)', { status: r.status, e: r.data?.error })
+  const cManana = r.data
+  const cron = (auth) => fetch(`${BASE}/api/clinica/cron/recordatorios`, { headers: auth ? { authorization: auth } : {} }).then(async (x) => ({ status: x.status, data: await x.json().catch(() => null) }))
+  r = await cron(null)
+  ok(r.status === 401 || r.status === 503, 'El recordatorio sin CRON_SECRET no corre', r.status)
+  if (ENV.CRON_SECRET) {
+    r = await cron(`Bearer ${ENV.CRON_SECRET}`)
+    ok(r.status === 200 && r.data.dia === manana && r.data.revisadas >= 1 && r.data.enviados >= 1, 'Recordatorio: revisa las citas de mañana y avisa al tutor con correo', r.data)
+    r = await cron(`Bearer ${ENV.CRON_SECRET}`)
+    ok(r.status === 200 && r.data.revisadas === 0, 'Segunda corrida: ninguna cita recibe dos recordatorios', r.data)
+    r = await recepcion.post(`/api/clinica/agenda/citas/${cManana.id}/reprogramar`, { dia: manana, hora: '17:00' })
+    ok(r.status === 200 && r.data.horaInicio === '17:00', 'Reprogramar la cita', r.data?.error)
+    r = await cron(`Bearer ${ENV.CRON_SECRET}`)
+    ok(r.status === 200 && r.data.revisadas === 1, 'Reprogramada: le toca un recordatorio nuevo', r.data)
+    await admin.post('/api/globals/agenda-configuracion', { recordatoriosActivos: false })
+    r = await cron(`Bearer ${ENV.CRON_SECRET}`)
+    ok(r.status === 200 && r.data.omitido, 'Con recordatorios apagados, el cron no manda nada', r.data)
+    await admin.post('/api/globals/agenda-configuracion', { recordatoriosActivos: true })
+  } else ok(false, 'Falta CRON_SECRET en .env para probar el recordatorio')
+  r = await recepcion.post(`/api/clinica/agenda/citas/${cManana.id}/estado`, { estado: 'cancelada', motivo: 'Prueba de aviso de cancelación' })
+  ok(r.status === 200 && r.data.estado === 'cancelada', 'Cancelar desde el panel avisa al tutor sin estorbar', r.data?.error)
+  r = await tutor.post('/api/clinica/portal/citas', { mascotaId: luna.id, servicioId: bano.id, dia: martes, hora: '15:00' })
+  ok(r.status === 201 && r.data.estado === 'solicitada', 'Portal: pedir cita avisa al tutor y a los correos de la clínica sin estorbar', { status: r.status, e: r.data?.error })
+  r = await recepcion.get(`/api/clinica/mascotas/${toby.id}/cartilla`)
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('Cartilla de Toby') && r.data.includes('Múltiple canina') && r.data.includes('window.print'), 'Panel: cartilla imprimible de Toby', r.status)
+  ok(typeof r.data === 'string' && !r.data.includes('Postoperatorio de rodilla'), 'La cartilla impresa no lleva alertas internas de manejo')
+  r = await tutor.get(`/api/clinica/portal/mascotas/${toby.id}/cartilla`)
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('Cartilla de Toby'), 'Portal: el tutor imprime la cartilla de su mascota', r.status)
+  r = await tutor.get(`/api/clinica/portal/mascotas/${max.id}/cartilla`)
+  ok(r.status === 404, 'Portal: no imprime la cartilla de una mascota ajena', r.status)
+  r = await new Sesion().get(`/api/clinica/mascotas/${toby.id}/cartilla`)
+  ok(r.status === 401, 'Sin sesión no hay cartilla', r.status)
 
   /* ── visitante y sitio público ── */
   console.log('\nVisitante y sitio público')

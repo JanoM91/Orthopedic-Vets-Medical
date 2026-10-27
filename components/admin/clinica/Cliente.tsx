@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
 import type { ClienteVista, CodigoVista, FichaCliente as Ficha } from '../../../lib/clinica/tipos'
-import { api, Avatar, Aviso, Boton, Campo, ErrorForm, ESPECIE_LABEL, fecha, Icono, momento, Pastilla, telefonoBonito, useCarga, useClinica } from './comun'
+import { api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, fecha, Icono, momento, Pastilla, telefonoBonito, useCarga, useClinica } from './comun'
+import { site } from '../../../lib/site'
+import { mensajes } from '../../../lib/whatsapp'
 
 /* ───────────────────────────── formulario ───────────────────────────── */
 
@@ -221,6 +223,11 @@ export function FichaCliente({ id }: { id: number }) {
               {c.telefonoAlterno ? ` · ${telefonoBonito(c.telefonoAlterno)}` : ''}
               {c.email ? ` · ${c.email}` : ''}
             </p>
+            {c.comunicacion.whatsapp && (
+              <div style={{ marginTop: 6 }}>
+                <BotonWhatsApp telefono={c.telefono} mensaje={mensajes.saludo(c.nombre, site.brand.name)} />
+              </div>
+            )}
           </div>
         </div>
         <div className="fz-acciones-fin">

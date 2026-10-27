@@ -90,7 +90,7 @@ Duplicados: tutor existente por **teléfono o correo** (o por nombre completo ex
 | `NEXT_PUBLIC_BRAND_PRIMARY` | Color primario oscuro `#rrggbb` (portal y panel) | Verde pino de la instalación actual |
 | `NEXT_PUBLIC_BRAND_ACCENT` | Acento `#rrggbb` | Menta de la instalación actual |
 | `NEXT_PUBLIC_BRAND_LOGO` | Logotipo para fondo oscuro (ruta en `public/` o URL) | `/logo-mark-white.png` |
-| `NEXT_PUBLIC_BRAND_PHONE` | Teléfono que se muestra en el portal | Nada |
+| `NEXT_PUBLIC_BRAND_PHONE` | Teléfono de respaldo si «Sitio público → Contacto» está vacío | Nada |
 | `CLINICA_BLOB_READ_WRITE_TOKEN` | Almacén **privado** de Vercel Blob para documentos del expediente | Usa `FINANZAS_BLOB_READ_WRITE_TOKEN`; sin ninguno, subir documentos responde 503 y lo demás funciona |
 | `RESEND_API_KEY`, `LEADS_FROM_EMAIL` | «Olvidé mi contraseña» del portal (mismo adaptador que el panel) | No se envía el correo |
 
@@ -116,3 +116,14 @@ El panel toma sus colores de `app/(payload)/custom.css`; si se definen las dos v
 - Recordatorios de citas por WhatsApp/correo; vista semanal de la agenda; citas recurrentes.
 - Hospedaje, tienda, farmacia, laboratorio, mensajes (etapas del plan de desarrollo).
 - Diseño final del panel y del portal (hoy reutilizan los estilos de Finanzas).
+
+## Avisos, recordatorios, WhatsApp, cartilla imprimible y manuales (27-oct-2026)
+
+> Reconstrucción del trabajo del 22-oct-2026, cuyo parche se perdió. Rama `feat/clinica-avisos`.
+
+- **Correos de citas** (`lib/clinica/avisos.ts`, por el adaptador de Resend): al tutor cuando la cita se solicita, se confirma, se reprograma o se cancela (con motivo); a la clínica (Clínica → «Agenda: horario y reglas» → «Correos de la clínica para avisos») cuando el tutor pide, mueve o cancela desde el portal. El tutor recibe correo solo si su ficha tiene correo y acepta «Avisos» por «correo». Un aviso nunca hace fallar la operación de la cita. Sin `RESEND_API_KEY` no sale nada y nada falla.
+- **Recordatorio de la víspera**: `GET /api/clinica/cron/recordatorios`, Vercel Cron a las 00:00 UTC = **18:00 de México** (`vercel.json`), con `Authorization: Bearer $CRON_SECRET` (`lib/cron.ts`, compartido con el cron de farmacia). Citas de mañana solicitadas o confirmadas; cada cita recibe uno solo (`citas.recordatorioEnviadoEn`, se marca antes de mandar); reprogramar lo reinicia. Interruptor «Mandar recordatorio…» en la configuración de la agenda. Con la clínica apagada no hace nada.
+- **WhatsApp con mensaje prellenado** (`lib/whatsapp.ts`, `BotonWhatsApp`): en la ficha del cliente (si acepta WhatsApp), en la cita (solicitada o confirmada: «Recordar por WhatsApp») y en el expediente (tutor principal). Portal: tarjeta «¿Duda o urgencia?» con WhatsApp y llamada al teléfono de la clínica (`lib/sitio/contacto.ts`: «Sitio público → Contacto», con respaldo en `NEXT_PUBLIC_BRAND_PHONE`; lo usan también los correos de citas y la cartilla impresa). Teléfonos de 10 dígitos → +52. No se envía nada solo: abre WhatsApp con el texto para revisarlo.
+- **Cartilla imprimible** (`lib/clinica/cartilla.ts`): `GET /api/clinica/mascotas/:id/cartilla` (equipo) y `GET /api/clinica/portal/mascotas/:id/cartilla` (tutor, solo sus mascotas). Página HTML con «Imprimir o guardar PDF»; datos, alergias, vacunas y desparasitaciones con próximas fechas (vencidas en rojo). No lleva alertas internas de manejo ni notas.
+- **Manuales**: `docs/ARRANQUE.md` (dejar una clínica funcionando en un día, incluye variables de Vercel y crons), `docs/MANUAL-EQUIPO.md` y `docs/MANUAL-TUTOR.md` (para compartir con clientes).
+- Migración `20261027_154211_clinica_avisos` (solo columnas nuevas). Pruebas: `npm run test:clinica` → 136 comprobaciones (recordatorios con `CRON_SECRET` de `.env` y cartilla con sus reglas de acceso).

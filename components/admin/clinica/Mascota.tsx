@@ -7,8 +7,10 @@ import type { CartillaVista, CitaVista, ClienteVista, ConfiguracionAgenda, Docum
 import { DetalleCita, EstadoCita } from './Agenda'
 import { FormularioCliente } from './Cliente'
 import RecetasMascota from '../farmacia/RecetasMascota'
+import { site } from '../../../lib/site'
+import { mensajes } from '../../../lib/whatsapp'
 import {
-  api, Avatar, Aviso, Boton, Campo, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
+  api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
   TIPO_CARTILLA_LABEL, useCarga, useClinica,
 } from './comun'
 
@@ -350,6 +352,14 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
               ))}
               {m.medicoTratante ? ` · Médico: ${m.medicoTratante.nombre}` : ''}
             </p>
+            {(() => {
+              const t = m.tutores.find((x) => x.principal) ?? m.tutores[0]
+              return t ? (
+                <div style={{ marginTop: 6 }}>
+                  <BotonWhatsApp telefono={t.telefono} mensaje={mensajes.mascota(t.nombre.split(' ')[0], m.nombre, site.brand.name)} etiqueta={`WhatsApp a ${t.nombre.split(' ')[0]}`} />
+                </div>
+              ) : null
+            })()}
           </div>
         </div>
         {p.editarPacientes && <Boton onClick={() => setEditando(true)}>Editar datos</Boton>}
@@ -633,6 +643,12 @@ function Cartilla({ mascotaId, lista, onCambio }: { mascotaId: number; lista: Ca
   const [editando, setEditando] = useState<CartillaVista | null>(null)
   const hoy = hoyISO()
   return (
+    <>
+    <div className="fz-acciones-fin" style={{ marginBottom: 10 }}>
+      <a href={`/api/clinica/mascotas/${mascotaId}/cartilla`} target="_blank" rel="noreferrer" className="fz-btn fz-btn--claro fz-btn--chico">
+        Imprimir cartilla
+      </a>
+    </div>
     <div className="cl-dos">
       <div className="fz-tarjeta fz-lista">
         {lista.map((c) => (
@@ -677,6 +693,7 @@ function Cartilla({ mascotaId, lista, onCambio }: { mascotaId: number; lista: Ca
         />
       )}
     </div>
+    </>
   )
 }
 

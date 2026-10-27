@@ -39,6 +39,39 @@ import {
   renglonesConteo,
   xmlDeCompra,
 } from '@/lib/farmacia/compras'
+import {
+  actualizarRecetaInterna,
+  archivoReceta,
+  buscarPacientes,
+  cancelarReceta,
+  crearRecetaExterna,
+  crearRecetaInterna,
+  firmarReceta,
+  marcarOriginal,
+  paciente,
+  receta,
+  recetas,
+  recetasParaProducto,
+  validarReceta,
+} from '@/lib/farmacia/recetas'
+import {
+  anularVenta,
+  buscarParaVenta,
+  cierreDia,
+  cierres,
+  confirmarPago,
+  enviarTicket,
+  libroControl,
+  libroControlCsv,
+  porCodigo,
+  registrarCierre,
+  registrarVenta,
+  reintentarFinanzas,
+  ticketHtml,
+  venta,
+  ventas,
+} from '@/lib/farmacia/ventas'
+import { ErrorConCodigo } from '@/lib/farmacia/util'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -78,6 +111,24 @@ import {
  *   GET  presentaciones?q=                      para elegir la presentación de un renglón
  *   GET  conteo?q=&almacen=                     lotes con existencia para contar
  *   POST conteo                                 { motivo, renglones: [{ loteId, contado }] }
+ *
+ * Fase 3 · venta de mostrador, recetas, libro de control y cierre del día:
+ *   GET  codigo?c=                              presentación por código de barras
+ *   GET  vender/buscar?q=                       presentaciones con precio y existencia vendible (sin costos)
+ *   GET  pacientes?q= · pacientes/:id           mascota con peso vigente, edad y alergias
+ *   GET  ventas?dia=&estado=&q= · ventas/:id    historial · detalle
+ *   POST ventas                                 cobrar (clave de reintento, renglones, pagos, autorización)
+ *   GET  ventas/:id/ticket                      ticket imprimible (HTML) · POST { correo } lo envía
+ *   POST ventas/:id/finanzas                    reintentar la entrada en Finanzas
+ *   POST ventas/:id/pagos/:n/confirmar          confirmar una transferencia
+ *   POST ventas/:id/anular                      { motivo } (solo del día)
+ *   GET  recetas?estado=&mascota=&q=&original=true · recetas/:id · recetas/:id/archivo
+ *   GET  recetas/para?mascota=&producto=        recetas vigentes que cubren el producto
+ *   POST recetas                                interna (expediente) · POST recetas/:id editar borrador
+ *   POST recetas/externa  (JSON o multipart: datos + archivo)
+ *   POST recetas/:id/firmar | validar | original | cancelar
+ *   GET  libro?desde=&hasta= · libro/csv        libro de control del Grupo I
+ *   GET  cierre?fecha=&cuenta= · POST cierre · GET cierres
  */
 
 export const dynamic = 'force-dynamic'
@@ -134,7 +185,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
   const ctx: Ctx | null = await contextoDesdeHeaders(payload, req.headers)
   if (!ctx) return json({ error: 'Tu sesión terminó. Vuelve a entrar al panel.' }, 401)
   const q = req.nextUrl.searchParams
-  const [a, b, c] = ruta
+  const [a, b, c, d] = ruta
 
   if (metodo === 'GET') {
     if (a === 'catalogo' && !b) return json(await catalogo(ctx))
@@ -163,6 +214,23 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'compras' && b && !c) return json(await compra(ctx, idDeRuta(b)))
     if (a === 'presentaciones' && !b) return json(await buscarPresentaciones(ctx, q.get('q') ?? ''))
     if (a === 'conteo' && !b) return json(await renglonesConteo(ctx, { q: q.get('q'), almacenId: q.get('almacen') ? idDeRuta(q.get('almacen')!) : null }))
+    if (a === 'codigo' && !b) return json(await porCodigo(ctx, q.get('c') ?? ''))
+    if (a === 'vender' && b === 'buscar') return json(await buscarParaVenta(ctx, q.get('q') ?? ''))
+    if (a === 'pacientes' && !b) return json(await buscarPacientes(ctx, q.get('q') ?? ''))
+    if (a === 'pacientes' && b && !c) return json(await paciente(ctx, idDeRuta(b)))
+    if (a === 'ventas' && !b) return json(await ventas(ctx, { dia: q.get('dia'), estado: q.get('estado'), q: q.get('q') }))
+    if (a === 'ventas' && b && c === 'ticket') return new Response(await ticketHtml(ctx, idDeRuta(b)), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' } })
+    if (a === 'ventas' && b && !c) return json(await venta(ctx, idDeRuta(b)))
+    if (a === 'recetas' && b === 'para') return json(await recetasParaProducto(ctx, { mascotaId: q.get('mascota') ? idDeRuta(q.get('mascota')!) : null, productoId: idDeRuta(q.get('producto') ?? '') }))
+    if (a === 'recetas' && !b) return json(await recetas(ctx, { estado: q.get('estado'), mascotaId: q.get('mascota') ? idDeRuta(q.get('mascota')!) : null, q: q.get('q'), originalPendiente: q.get('original') === 'true' }))
+    if (a === 'recetas' && b && c === 'archivo') return archivoReceta(ctx, idDeRuta(b))
+    if (a === 'recetas' && b && !c) return json(await receta(ctx, idDeRuta(b)))
+    if (a === 'libro' && b === 'csv') {
+      return new Response(await libroControlCsv(ctx, { desde: q.get('desde'), hasta: q.get('hasta') }), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="libro-control-grupo-I.csv"', 'Cache-Control': 'private, no-store' } })
+    }
+    if (a === 'libro' && !b) return json(await libroControl(ctx, { desde: q.get('desde'), hasta: q.get('hasta') }))
+    if (a === 'cierre' && !b) return json(await cierreDia(ctx, { fecha: q.get('fecha'), cuentaId: q.get('cuenta') ? idDeRuta(q.get('cuenta')!) : null }))
+    if (a === 'cierres' && !b) return json(await cierres(ctx))
     if (a === 'kardex' && !b) {
       return json(await kardex(ctx, { productoId: q.get('producto') ? idDeRuta(q.get('producto')!) : undefined, loteId: q.get('lote') ? idDeRuta(q.get('lote')!) : undefined, limite: q.get('limite') ? Number(q.get('limite')) : undefined }))
     }
@@ -191,6 +259,42 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       if (c === 'gasto') return json(await reintentarGasto(ctx, id))
     }
     if (a === 'conteo' && !b) return json(await aplicarConteo(ctx, await leerJson(req)), 201)
+    if (a === 'ventas' && !b) {
+      const r = await registrarVenta(ctx, await leerJson(req))
+      return json(r, r.duplicado ? 200 : 201)
+    }
+    if (a === 'ventas' && b) {
+      const id = idDeRuta(b)
+      if (c === 'finanzas') return json(await reintentarFinanzas(ctx, id))
+      if (c === 'anular') return json(await anularVenta(ctx, id, await leerJson(req)))
+      if (c === 'ticket') return json(await enviarTicket(ctx, id, await leerJson(req)))
+      if (c === 'pagos' && d && ruta[4] === 'confirmar') return json(await confirmarPago(ctx, id, Number(d), await leerJson(req).catch(() => ({}))))
+    }
+    if (a === 'recetas' && b === 'externa') {
+      if ((req.headers.get('content-type') ?? '').includes('multipart/form-data')) {
+        const form = await req.formData().catch(() => null)
+        if (!form) return json({ error: 'No llegaron los datos.' }, 400)
+        const archivo = form.get('archivo')
+        let datos: unknown = {}
+        try {
+          datos = JSON.parse(String(form.get('datos') ?? '{}'))
+        } catch {
+          return json({ error: 'Los datos de la receta no son válidos.' }, 400)
+        }
+        return json(await crearRecetaExterna(ctx, datos, archivo instanceof File ? archivo : null), 201)
+      }
+      return json(await crearRecetaExterna(ctx, await leerJson(req), null), 201)
+    }
+    if (a === 'recetas' && !b) return json(await crearRecetaInterna(ctx, await leerJson(req)), 201)
+    if (a === 'recetas' && b) {
+      const id = idDeRuta(b)
+      if (!c) return json(await actualizarRecetaInterna(ctx, id, await leerJson(req)))
+      if (c === 'firmar') return json(await firmarReceta(ctx, id))
+      if (c === 'validar') return json(await validarReceta(ctx, id, await leerJson(req)))
+      if (c === 'original') return json(await marcarOriginal(ctx, id))
+      if (c === 'cancelar') return json(await cancelarReceta(ctx, id, await leerJson(req)))
+    }
+    if (a === 'cierre' && !b) return json(await registrarCierre(ctx, await leerJson(req)), 201)
     if (a === 'lotes' && b && c === 'bloqueo') return json(await bloquearLote(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'proveedores' && !b) return json(await crearProveedor(ctx, await leerJson(req)), 201)
     if (a === 'proveedores' && b && !c) return json(await actualizarProveedor(ctx, idDeRuta(b), await leerJson(req)))
@@ -205,6 +309,7 @@ async function manejar(metodo: 'GET' | 'POST', req: NextRequest, contexto: Conte
   try {
     return await atender(metodo, req, ruta)
   } catch (e) {
+    if (e instanceof ErrorConCodigo) return json({ error: e.message, codigo: e.codigo, detalle: e.detalle ?? null }, e.estado)
     if (e instanceof ErrorFarmacia) return json({ error: e.message }, e.estado)
     const msg = (e as { message?: string })?.message
     const st = (e as { status?: number })?.status

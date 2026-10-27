@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react'
 import type { CartillaVista, CitaVista, ClienteVista, ConfiguracionAgenda, DocumentoVista, Expediente as Exp, MascotaVista, NotaVista, PesoVista, RecursoVista, ResultadoBusqueda, ServicioVista } from '../../../lib/clinica/tipos'
 import { DetalleCita, EstadoCita } from './Agenda'
 import { FormularioCliente } from './Cliente'
+import RecetasMascota from '../farmacia/RecetasMascota'
 import {
   api, Avatar, Aviso, Boton, Campo, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
   TIPO_CARTILLA_LABEL, useCarga, useClinica,
@@ -285,13 +286,13 @@ export function FormularioMascota({ existente, clienteInicial, onGuardado, onCan
 
 /* ═══════════════════════════ expediente ═══════════════════════════ */
 
-type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'documentos' | 'citas'
+type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'recetas' | 'documentos' | 'citas'
 
 export function Expediente({ id, pestana }: { id: number; pestana: string | null }) {
-  const { base, catalogo } = useClinica()
+  const { base, catalogo, rutaAdmin } = useClinica()
   const p = catalogo.permisos
   const { datos, error, cargando, recargar, poner } = useCarga(() => api.get<Exp>(`mascotas/${id}`), [id])
-  const [tab, setTab] = useState<Pestana>((['resumen', 'cartilla', 'pesos', 'notas', 'documentos', 'citas'].includes(pestana ?? '') ? pestana : 'resumen') as Pestana)
+  const [tab, setTab] = useState<Pestana>((['resumen', 'cartilla', 'pesos', 'notas', 'recetas', 'documentos', 'citas'].includes(pestana ?? '') ? pestana : 'resumen') as Pestana)
   const [editando, setEditando] = useState(false)
 
   if (error) return <Aviso tono="malo">{error}</Aviso>
@@ -316,6 +317,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
     ['cartilla', 'Cartilla', datos.cartilla.length],
     ['pesos', 'Peso', datos.pesos.length],
     ['notas', 'Notas clínicas', datos.notas ? datos.notas.length : null],
+    ...(datos.notas ? ([['recetas', 'Recetas', null]] as [Pestana, string, number | null][]) : []),
     ['documentos', 'Documentos', datos.documentos.length],
     ...(p.agenda ? ([['citas', 'Citas', null]] as [Pestana, string, number | null][]) : []),
   ]
@@ -425,6 +427,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
       {tab === 'cartilla' && <Cartilla mascotaId={m.id} lista={datos.cartilla} onCambio={recargar} />}
       {tab === 'pesos' && <Pesos mascotaId={m.id} lista={datos.pesos} onCambio={recargar} />}
       {tab === 'notas' && <Notas mascotaId={m.id} lista={datos.notas} onCambio={recargar} />}
+      {tab === 'recetas' && datos.notas && <RecetasMascota mascotaId={m.id} puedeEmitir={p.escribirExpediente} notas={datos.notas.map((n) => ({ id: n.id, titulo: `${n.fecha} · ${n.titulo}` }))} rutaFarmacia={`${rutaAdmin}/farmacia`} />}
       {tab === 'documentos' && <Documentos mascotaId={m.id} lista={datos.documentos} onCambio={recargar} />}
       {tab === 'citas' && <CitasMascota mascotaId={m.id} />}
     </div>

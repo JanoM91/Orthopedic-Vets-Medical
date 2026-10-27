@@ -88,6 +88,9 @@ export default function Configuracion() {
             <Check checked={c.recetaGrupoIIDomicilio} onChange={(v) => setC({ ...c, recetaGrupoIIDomicilio: v })}>
               Grupo II (con receta) a domicilio <Pastilla tono="aviso">confirmar con el Dr. Joni</Pastilla>
             </Check>
+            <Check checked={c.exigirOriginalGrupoII} onChange={(v) => setC({ ...c, exigirOriginalGrupoII: v })}>
+              Exigir el original físico antes de surtir una receta externa de Grupo II <Pastilla tono="aviso">confirmar con el Dr. Joni</Pastilla>
+            </Check>
           </div>
           <Campo etiqueta="Política de devoluciones" ayuda="Pendiente con el Dr. Joni. Por omisión no se aceptan medicamentos salvo error de la farmacia.">
             <textarea className="fz-input" rows={3} value={c.politicaDevoluciones ?? ''} onChange={(e) => setC({ ...c, politicaDevoluciones: e.target.value || null })} />
@@ -144,6 +147,68 @@ export default function Configuracion() {
               </Select>
             </Campo>
           </div>
+        </div>
+        <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
+          <h2 className="fz-h2">Métodos de pago del mostrador (fase 3)</h2>
+          <p className="fz-chico fz-tenue">Cada cobro entra a la cuenta o caja de Finanzas de su método. La cuenta del efectivo es la caja del cierre del día. Lo «por confirmar» (transferencia) entra a Finanzas cuando el encargado lo confirma.</p>
+          {c.metodosPago.map((m, i) => {
+            const setM = (cambio: Partial<typeof m>) => setC({ ...c, metodosPago: c.metodosPago.map((x, k) => (k === i ? { ...x, ...cambio } : x)) })
+            return (
+              <div key={i} className="fa-renglon">
+                <div className="cl-grid cl-grid--3">
+                  <Campo etiqueta="Nombre visible">
+                    <input className="fz-input" value={m.nombre} onChange={(e) => setM({ nombre: e.target.value })} />
+                  </Campo>
+                  <Campo etiqueta="Tipo">
+                    <Select valor={m.tipo} onChange={(v) => setM({ tipo: v as typeof m.tipo, porConfirmar: v === 'transferencia' ? true : m.porConfirmar })}>
+                      <option value="efectivo">Efectivo (da cambio)</option>
+                      <option value="terminal">Terminal bancaria o Clip</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="otro">Otro</option>
+                    </Select>
+                  </Campo>
+                  <Campo etiqueta="Cuenta o caja de Finanzas *">
+                    <Select valor={m.cuentaId ? String(m.cuentaId) : ''} onChange={(v) => setM({ cuentaId: v ? Number(v) : null })}>
+                      <option value="">Elige…</option>
+                      {catalogo.finanzas.cuentas.map((x) => (
+                        <option key={x.id} value={String(x.id)}>
+                          {x.nombre}
+                        </option>
+                      ))}
+                    </Select>
+                  </Campo>
+                </div>
+                <div className="fz-entre">
+                  <span className="fa-filtros">
+                    <Check checked={m.porConfirmar} onChange={(v) => setM({ porConfirmar: v })}>
+                      Queda por confirmar
+                    </Check>
+                    <Check checked={m.activo} onChange={(v) => setM({ activo: v })}>
+                      Activo
+                    </Check>
+                  </span>
+                  <button type="button" className="fz-link" onClick={() => setC({ ...c, metodosPago: c.metodosPago.filter((_, k) => k !== i) })}>
+                    Quitar
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+          {catalogo.finanzas.cuentas.length === 0 && <Aviso tono="aviso">No hay cuentas activas en Finanzas. Créalas en Finanzas → Configuración → Cuentas y cajas.</Aviso>}
+          <button
+            type="button"
+            className="fz-btn fz-btn--claro fz-btn--chico"
+            style={{ alignSelf: 'flex-start' }}
+            onClick={() => {
+              const nombre = 'Clip'
+              let clave = nombre.toLowerCase()
+              let n = 2
+              while (c.metodosPago.some((x) => x.clave === clave)) clave = `otro${n++}`
+              setC({ ...c, metodosPago: [...c.metodosPago, { clave, nombre, tipo: 'terminal', cuentaId: null, porConfirmar: false, activo: true }] })
+            }}
+          >
+            Agregar método
+          </button>
         </div>
         <ErrorForm error={error} />
         <div className="fz-acciones-fin">

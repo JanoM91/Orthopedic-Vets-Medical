@@ -90,6 +90,10 @@ export interface Config {
     'far-movimientos': FarMovimiento;
     'far-proveedor-claves': FarProveedorClave;
     'far-compras': FarCompra;
+    'far-recetas': FarReceta;
+    'far-ventas': FarVenta;
+    'far-libro-control': FarLibroControl;
+    'far-cierres-dia': FarCierreDia;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -126,6 +130,10 @@ export interface Config {
     'far-movimientos': FarMovimientosSelect<false> | FarMovimientosSelect<true>;
     'far-proveedor-claves': FarProveedorClavesSelect<false> | FarProveedorClavesSelect<true>;
     'far-compras': FarComprasSelect<false> | FarComprasSelect<true>;
+    'far-recetas': FarRecetasSelect<false> | FarRecetasSelect<true>;
+    'far-ventas': FarVentasSelect<false> | FarVentasSelect<true>;
+    'far-libro-control': FarLibroControlSelect<false> | FarLibroControlSelect<true>;
+    'far-cierres-dia': FarCierresDiaSelect<false> | FarCierresDiaSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -209,6 +217,10 @@ export interface TutoreAuthOperations {
 export interface User {
   id: number;
   name: string;
+  /**
+   * Solo para médicos veterinarios: aparece en las recetas que emiten desde el expediente.
+   */
+  cedulaProfesional?: string | null;
   /**
    * Define qué puede ver y hacer esta persona en el panel y en Finanzas. Los roles se editan en Sistema → Roles.
    */
@@ -1012,6 +1024,187 @@ export interface FinCuenta {
   createdAt: string;
 }
 /**
+ * Recetas internas (emitidas desde el expediente; firmadas = inmutables) y externas (foto validada por el encargado).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-recetas".
+ */
+export interface FarReceta {
+  id: number;
+  folio?: string | null;
+  origen: 'interna' | 'externa';
+  estado: 'borrador' | 'por_validar' | 'valida' | 'rechazada' | 'cancelada';
+  mascota?: (number | null) | Mascota;
+  cliente?: (number | null) | Cliente;
+  pacienteTexto?: string | null;
+  nota?: (number | null) | MasNota;
+  mvzNombre: string;
+  mvzCedula?: string | null;
+  emitidaPor?: (number | null) | User;
+  fechaEmision: string;
+  vigenteHasta: string;
+  folioCuantificado?: string | null;
+  pesoKg?: number | null;
+  indicaciones?: string | null;
+  renglones?:
+    | {
+        producto?: (number | null) | FarProducto;
+        principio?: string | null;
+        dosis?: string | null;
+        frecuencia?: string | null;
+        duracion?: string | null;
+        surtidosPermitidos?: number | null;
+        surtidosUsados?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Ruta en el almacén privado.
+   */
+  archivo?: string | null;
+  archivoNombre?: string | null;
+  firmadaPor?: (number | null) | User;
+  firmadaEn?: string | null;
+  validadaPor?: (number | null) | User;
+  validadaEn?: string | null;
+  motivoRechazo?: string | null;
+  originalRecibido?: boolean | null;
+  originalRecibidoPor?: (number | null) | User;
+  originalRecibidoEn?: string | null;
+  capturadaPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Ventas de mostrador (y de la tienda, fase 5). Cada una descuenta por FEFO y crea su entrada en Finanzas.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-ventas".
+ */
+export interface FarVenta {
+  id: number;
+  folio?: string | null;
+  canal: 'mostrador' | 'tienda';
+  estado: 'pagada' | 'por_confirmar' | 'anulada';
+  claveIdempotencia: string;
+  dia: string;
+  almacen?: (number | null) | FarAlmacen;
+  cliente?: (number | null) | Cliente;
+  mascota?: (number | null) | Mascota;
+  pesoUsadoKg?: number | null;
+  renglones?:
+    | {
+        presentacion: number | FarPresentacion;
+        producto: number | FarProducto;
+        descripcion: string;
+        grupo?: string | null;
+        cantidad: number;
+        factor: number;
+        unidades: number;
+        precioUnitario: number;
+        descuentoPorciento?: number | null;
+        importe: number;
+        costo?: number | null;
+        lotes?:
+          | {
+              lote: number | FarLote;
+              numeroLote?: string | null;
+              caducidad?: string | null;
+              unidades: number;
+              id?: string | null;
+            }[]
+          | null;
+        receta?: (number | null) | FarReceta;
+        folioCuantificado?: string | null;
+        autorizacionMascota?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  subtotal: number;
+  descuento?: number | null;
+  total: number;
+  costoTotal?: number | null;
+  pagos?:
+    | {
+        metodo: string;
+        etiqueta?: string | null;
+        tipo?: string | null;
+        monto: number;
+        recibido?: number | null;
+        cambio?: number | null;
+        cuenta?: (number | null) | FinCuenta;
+        referencia?: string | null;
+        estado: 'confirmado' | 'por_confirmar';
+        confirmadoPor?: (number | null) | User;
+        confirmadoEn?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  vendedor?: (number | null) | User;
+  autorizoDescuento?: (number | null) | User;
+  autorizo?: (number | null) | User;
+  ingresoFinanzas?: (number | null) | FinOperacion;
+  correoTicket?: string | null;
+  notas?: string | null;
+  anuladaPor?: (number | null) | User;
+  anuladaEn?: string | null;
+  motivoAnulacion?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Asiento automático e inmutable por cada salida de Grupo I (NOM-064-ZOO-2000). Una venta anulada agrega un asiento de cancelación; nunca se edita.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-libro-control".
+ */
+export interface FarLibroControl {
+  id: number;
+  tipo: 'salida' | 'cancelacion';
+  venta?: (number | null) | FarVenta;
+  laboratorio?: string | null;
+  producto: string;
+  productoRef?: (number | null) | FarProducto;
+  registroSenasica?: string | null;
+  lote?: (number | null) | FarLote;
+  numeroLote?: string | null;
+  fechaCompra?: string | null;
+  folioReceta: string;
+  receta?: (number | null) | FarReceta;
+  mvz?: string | null;
+  fechaUso: string;
+  cantidad: number;
+  unidad?: string | null;
+  animal?: string | null;
+  mascota?: (number | null) | Mascota;
+  usuario?: (number | null) | User;
+  motivo?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-cierres-dia".
+ */
+export interface FarCierreDia {
+  id: number;
+  /**
+   * fecha-cuenta: un cierre por caja y día.
+   */
+  clave: string;
+  fecha: string;
+  cuenta: number | FinCuenta;
+  esperado: number;
+  contado: number;
+  diferencia: number;
+  ventasEfectivo?: number | null;
+  ventas?: number | null;
+  nota?: string | null;
+  usuario?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-movimientos".
  */
@@ -1178,6 +1371,22 @@ export interface PayloadLockedDocument {
         value: number | FarCompra;
       } | null)
     | ({
+        relationTo: 'far-recetas';
+        value: number | FarReceta;
+      } | null)
+    | ({
+        relationTo: 'far-ventas';
+        value: number | FarVenta;
+      } | null)
+    | ({
+        relationTo: 'far-libro-control';
+        value: number | FarLibroControl;
+      } | null)
+    | ({
+        relationTo: 'far-cierres-dia';
+        value: number | FarCierreDia;
+      } | null)
+    | ({
         relationTo: 'fin-cuentas';
         value: number | FinCuenta;
       } | null)
@@ -1263,6 +1472,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  cedulaProfesional?: T;
   rolDeAcceso?: T;
   esSuperadmin?: T;
   updatedAt?: T;
@@ -1793,6 +2003,171 @@ export interface FarComprasSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-recetas_select".
+ */
+export interface FarRecetasSelect<T extends boolean = true> {
+  folio?: T;
+  origen?: T;
+  estado?: T;
+  mascota?: T;
+  cliente?: T;
+  pacienteTexto?: T;
+  nota?: T;
+  mvzNombre?: T;
+  mvzCedula?: T;
+  emitidaPor?: T;
+  fechaEmision?: T;
+  vigenteHasta?: T;
+  folioCuantificado?: T;
+  pesoKg?: T;
+  indicaciones?: T;
+  renglones?:
+    | T
+    | {
+        producto?: T;
+        principio?: T;
+        dosis?: T;
+        frecuencia?: T;
+        duracion?: T;
+        surtidosPermitidos?: T;
+        surtidosUsados?: T;
+        id?: T;
+      };
+  archivo?: T;
+  archivoNombre?: T;
+  firmadaPor?: T;
+  firmadaEn?: T;
+  validadaPor?: T;
+  validadaEn?: T;
+  motivoRechazo?: T;
+  originalRecibido?: T;
+  originalRecibidoPor?: T;
+  originalRecibidoEn?: T;
+  capturadaPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-ventas_select".
+ */
+export interface FarVentasSelect<T extends boolean = true> {
+  folio?: T;
+  canal?: T;
+  estado?: T;
+  claveIdempotencia?: T;
+  dia?: T;
+  almacen?: T;
+  cliente?: T;
+  mascota?: T;
+  pesoUsadoKg?: T;
+  renglones?:
+    | T
+    | {
+        presentacion?: T;
+        producto?: T;
+        descripcion?: T;
+        grupo?: T;
+        cantidad?: T;
+        factor?: T;
+        unidades?: T;
+        precioUnitario?: T;
+        descuentoPorciento?: T;
+        importe?: T;
+        costo?: T;
+        lotes?:
+          | T
+          | {
+              lote?: T;
+              numeroLote?: T;
+              caducidad?: T;
+              unidades?: T;
+              id?: T;
+            };
+        receta?: T;
+        folioCuantificado?: T;
+        autorizacionMascota?: T;
+        id?: T;
+      };
+  subtotal?: T;
+  descuento?: T;
+  total?: T;
+  costoTotal?: T;
+  pagos?:
+    | T
+    | {
+        metodo?: T;
+        etiqueta?: T;
+        tipo?: T;
+        monto?: T;
+        recibido?: T;
+        cambio?: T;
+        cuenta?: T;
+        referencia?: T;
+        estado?: T;
+        confirmadoPor?: T;
+        confirmadoEn?: T;
+        id?: T;
+      };
+  vendedor?: T;
+  autorizoDescuento?: T;
+  autorizo?: T;
+  ingresoFinanzas?: T;
+  correoTicket?: T;
+  notas?: T;
+  anuladaPor?: T;
+  anuladaEn?: T;
+  motivoAnulacion?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-libro-control_select".
+ */
+export interface FarLibroControlSelect<T extends boolean = true> {
+  tipo?: T;
+  venta?: T;
+  laboratorio?: T;
+  producto?: T;
+  productoRef?: T;
+  registroSenasica?: T;
+  lote?: T;
+  numeroLote?: T;
+  fechaCompra?: T;
+  folioReceta?: T;
+  receta?: T;
+  mvz?: T;
+  fechaUso?: T;
+  cantidad?: T;
+  unidad?: T;
+  animal?: T;
+  mascota?: T;
+  usuario?: T;
+  motivo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-cierres-dia_select".
+ */
+export interface FarCierresDiaSelect<T extends boolean = true> {
+  clave?: T;
+  fecha?: T;
+  cuenta?: T;
+  esperado?: T;
+  contado?: T;
+  diferencia?: T;
+  ventasEfectivo?: T;
+  ventas?: T;
+  nota?: T;
+  usuario?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-cuentas_select".
  */
 export interface FinCuentasSelect<T extends boolean = true> {
@@ -2065,6 +2440,27 @@ export interface FarmaciaConfiguracion {
    * Por confirmar con el Dr. Joni. Apagado por omisión.
    */
   recetaGrupoIIDomicilio?: boolean | null;
+  /**
+   * Apagado: la receta externa validada surte y el original queda «pendiente». Encendido: no surte hasta marcar el original recibido. Por confirmar con el Dr. Joni.
+   */
+  exigirOriginalGrupoII?: boolean | null;
+  /**
+   * Cada método deposita en una cuenta o caja de Finanzas. La transferencia queda «por confirmar» hasta verla en el banco.
+   */
+  metodosPago?:
+    | {
+        /**
+         * Sin espacios: efectivo, terminal, transferencia, clip…
+         */
+        clave: string;
+        nombre: string;
+        tipo: 'efectivo' | 'terminal' | 'transferencia' | 'otro';
+        cuenta?: (number | null) | FinCuenta;
+        porConfirmar?: boolean | null;
+        activo?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
   aprendizaje?: {
     semanasHistorial?: number | null;
     diasCobertura?: number | null;
@@ -2206,6 +2602,18 @@ export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
   horasApartado?: T;
   cierreDiaActivo?: T;
   recetaGrupoIIDomicilio?: T;
+  exigirOriginalGrupoII?: T;
+  metodosPago?:
+    | T
+    | {
+        clave?: T;
+        nombre?: T;
+        tipo?: T;
+        cuenta?: T;
+        porConfirmar?: T;
+        activo?: T;
+        id?: T;
+      };
   aprendizaje?:
     | T
     | {

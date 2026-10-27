@@ -20,6 +20,7 @@ import { InstalacionConfiguracion } from './collections/Instalacion'
 import { FarAlmacenes, FarPresentaciones, FarProductos, FarProveedores } from './collections/farmacia/catalogo'
 import { FarLotes, FarMovimientos } from './collections/farmacia/inventario'
 import { FarCompras, FarProveedorClaves } from './collections/farmacia/compras'
+import { FarCierresDia, FarLibroControl, FarRecetas, FarVentas } from './collections/farmacia/ventas'
 import { FarmaciaConfiguracion } from './collections/farmacia/configuracion'
 import { protegerColeccion, protegerGlobal } from './lib/permisos'
 import { conModuloColeccion, conModuloGlobal } from './lib/modulosAcceso'
@@ -102,6 +103,10 @@ export default buildConfig({
     FarMovimientos,
     FarProveedorClaves,
     FarCompras,
+    FarRecetas,
+    FarVentas,
+    FarLibroControl,
+    FarCierresDia,
     FinCuentas,
     FinCategorias,
     FinActividades,

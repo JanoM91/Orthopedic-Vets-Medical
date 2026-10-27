@@ -506,6 +506,291 @@ async function main() {
   const movsC = r.data.movimientos ?? r.data
   ok(Array.isArray(movsC) && movsC.some((m) => m.tipo === 'ajuste' && m.cantidad === -3 && /Conteo mensual/.test(m.motivo || '')), 'Kardex: ajuste de −3 con el motivo del conteo', movsC?.[0])
 
+  /* ── fase 3: venta de mostrador, recetas, libro de control, cierre ── */
+  console.log('\nVenta de mostrador (fase 3)')
+  const clave = () => `t-${sufijo}-${Math.random().toString(36).slice(2, 10)}`
+  const nacio = (meses) => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - meses)
+    return d.toISOString().slice(0, 10)
+  }
+  /* cuentas: caja propia del mostrador y banco */
+  const cuentaDe = async (nombre, tipo) => {
+    let x = (await admin.get(`/api/fin-cuentas?where[nombre][equals]=${encodeURIComponent(nombre)}&depth=0`)).data?.docs?.[0]
+    if (!x) x = (await admin.post('/api/fin-cuentas', { nombre, tipo, activa: true, saldoInicial: 0, fechaInicio: '2026-01-01' })).data?.doc
+    return x
+  }
+  const cajaMostrador = await cuentaDe(`Caja mostrador ${sufijo}`, 'efectivo')
+  const banco = await cuentaDe(`Banco farmacia ${sufijo}`, 'banco')
+  ok(cajaMostrador?.id && banco?.id, 'Cuentas de prueba para el mostrador', { cajaMostrador, banco })
+  r = await vendedor.post('/api/farmacia/configuracion', { metodosPago: [] })
+  ok(r.status === 403, 'Vendedor no configura métodos de pago', r.status)
+  /* productos de prueba */
+  const crearProd = async (datos, presentacion, lotes) => {
+    const pr = (await encargado.post('/api/farmacia/productos', datos)).data
+    const pres = (await encargado.post(`/api/farmacia/productos/${pr.id}/presentaciones`, presentacion)).data
+    const ls = []
+    for (const l of lotes) ls.push((await encargado.post('/api/farmacia/ajustes', { productoId: pr.id, lote: { numeroLote: l.numero, caducidad: l.caducidad, costoUnidad: l.costo }, cantidad: l.cantidad, motivo: 'Inventario de prueba' })).data?.lote)
+    return { prod: pr, pres, lotes: ls }
+  }
+  const despa = await crearProd(
+    { nombre: `Desparasitante prueba ${sufijo}`, principioActivo: 'Milbemicina', linea: 'antiparasitario', grupo: 'III', unidadBase: 'tableta', especies: ['perro'], pesoMinKg: 10, pesoMaxKg: 25, edadMinMeses: 6, alergenos: 'ivermectina' },
+    { nombre: 'Tableta 10–25 kg', factor: 1, precio: 100, codigoBarras: `78${sufijo}0001` },
+    [
+      { numero: `D-${sufijo}-A`, caducidad: '2028-01-31', costo: 40, cantidad: 15 },
+      { numero: `D-${sufijo}-B`, caducidad: '2027-03-31', costo: 45, cantidad: 3 },
+      { numero: `D-${sufijo}-V`, caducidad: '2025-01-31', costo: 40, cantidad: 10 },
+    ],
+  )
+  ok(despa.prod?.id && despa.lotes.length === 3 && despa.lotes[2].estado === 'vencido', 'Producto Grupo III con dos lotes vigentes y uno vencido', despa.lotes.map((l) => l?.estado))
+  const soloVencido = await crearProd({ nombre: `Solo vencido ${sufijo}`, linea: 'higiene', grupo: 'desregulado', unidadBase: 'pieza' }, { nombre: 'Pieza', factor: 1, precio: 50 }, [{ numero: `SV-${sufijo}`, caducidad: '2024-06-30', costo: 10, cantidad: 4 }])
+  const keta = await crearProd(
+    { nombre: `Controlado prueba ${sufijo}`, principioActivo: 'Ketamina', laboratorio: 'Lab Prueba', linea: 'medicamento', grupo: 'I', registroSenasica: `Q-${sufijo}-I`, unidadBase: 'ml' },
+    { nombre: 'Frasco 10 ml', factor: 10, precio: 500 },
+    [{ numero: `K-${sufijo}`, caducidad: '2028-05-31', costo: 20, cantidad: 50 }],
+  )
+
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 400 && /no tiene cuenta/.test(r.data.error), 'Sin cuenta en el método de pago, la venta se rechaza con aviso claro', r.data)
+  r = await admin.post('/api/farmacia/configuracion', {
+    metodosPago: [
+      { clave: 'efectivo', nombre: 'Efectivo', tipo: 'efectivo', cuentaId: cajaMostrador.id },
+      { clave: 'terminal', nombre: 'Terminal', tipo: 'terminal', cuentaId: banco.id },
+      { clave: 'transferencia', nombre: 'Transferencia', tipo: 'transferencia', cuentaId: banco.id },
+    ],
+  })
+  ok(r.status === 200 && r.data.metodosPago.length === 3 && r.data.metodosPago[2].porConfirmar === true, 'Métodos de pago con cuenta; la transferencia queda por confirmar', r.data.metodosPago)
+
+  r = await vendedor.get(`/api/farmacia/codigo?c=78${sufijo}0001`)
+  ok(r.status === 200 && r.data?.presentacionId === despa.pres.id, 'Escaneo: el código de barras encuentra la presentación', r.data)
+
+  /* pacientes (clínica) */
+  r = await admin.post('/api/clinica/clientes', { nombre: 'Tutor', apellidos: `Farmacia ${sufijo}`, telefono: `229${sufijo}9`, email: `tutor${sufijo}@ejemplo.mx` })
+  const tutor = r.data?.cliente ?? r.data
+  ok(r.status === 201, 'Cliente de prueba', r.data)
+  const mascota = async (datos) => (await admin.post('/api/clinica/mascotas', { tutores: [{ clienteId: tutor.id, principal: true }], ...datos })).data
+  const rocky = await mascota({ nombre: `Rocky ${sufijo}`, especie: 'perro', fechaNacimiento: nacio(30), pesoKg: 15, alergias: 'Penicilina' })
+  const max = await mascota({ nombre: `Max ${sufijo}`, especie: 'perro', fechaNacimiento: nacio(40), pesoKg: 12 })
+  const mishi = await mascota({ nombre: `Mishi ${sufijo}`, especie: 'gato', fechaNacimiento: nacio(24), pesoKg: 4 })
+  const cachorro = await mascota({ nombre: `Cachorro ${sufijo}`, especie: 'perro', fechaNacimiento: nacio(3), pesoKg: 11 })
+  const viejo = await mascota({ nombre: `Peso viejo ${sufijo}`, especie: 'perro', fechaNacimiento: nacio(50) })
+  await admin.post(`/api/clinica/mascotas/${viejo.id}/pesos`, { kg: 14, fecha: '2026-01-05' })
+  ok(rocky?.id && max?.id && mishi?.id && cachorro?.id && viejo?.id, 'Mascotas de prueba (perros, gato, cachorro, peso viejo)')
+  r = await vendedor.get(`/api/farmacia/pacientes?q=${encodeURIComponent(`Rocky ${sufijo}`)}`)
+  ok(r.status === 200 && r.data[0]?.mascotaId === rocky.id && r.data[0].pesoKg === 15 && r.data[0].alergias === 'Penicilina' && r.data[0].edadMeses >= 29, 'Mostrador encuentra la mascota con peso, edad y alergias', r.data?.[0])
+
+  /* FEFO + efectivo con cambio + idempotencia */
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 4 }], pagos: [] })
+  ok(r.status === 400 && /Faltan \$400\.00/.test(r.data.error), 'Sin pagos: «faltan $400.00»', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 4 }], pagos: [{ metodo: 'efectivo', monto: 500 }] })
+  ok(r.status === 400 && /suman más/.test(r.data.error), 'Pagos de más sin «recibido» se rechazan', r.data)
+  const claveA = clave()
+  r = await vendedor.post('/api/farmacia/ventas', { clave: claveA, mascotaId: max.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 4 }], pagos: [{ metodo: 'efectivo', monto: 400, recibido: 500 }] })
+  ok(r.status === 201 && /^VTA-\d{5}$/.test(r.data.folio) && r.data.total === 400 && r.data.cambio === 100 && r.data.estado === 'pagada', 'Venta en efectivo: total $400, cambio $100, folio VTA-', { status: r.status, folio: r.data?.folio, total: r.data?.total, cambio: r.data?.cambio, error: r.data?.error })
+  const ventaA = r.data
+  ok(ventaA.renglones?.[0]?.lotes?.length === 2 && ventaA.renglones[0].lotes[0].numeroLote === `D-${sufijo}-B` && ventaA.renglones[0].lotes[0].unidades === 3 && ventaA.renglones[0].lotes[1].unidades === 1, 'FEFO: primero el lote que caduca antes (3 del B), luego 1 del A', ventaA.renglones?.[0]?.lotes)
+  ok(ventaA.finanzas === 'registrado' && ventaA.ingresoFinanzasId, 'La venta creó su entrada en Finanzas', { finanzas: ventaA.finanzas, error: r.data?.error })
+  r = await admin.get(`/api/finanzas/operaciones/${ventaA.ingresoFinanzasId}`)
+  ok(r.status === 200 && r.data.operacion?.tipo === 'entrada' && r.data.operacion?.totalCentavos === 40000 && r.data.operacion?.estadoPago === 'liquidado', 'Finanzas: entrada de $400 liquidada', r.data?.operacion && { tipo: r.data.operacion.tipo, total: r.data.operacion.totalCentavos, e: r.data.operacion.estadoPago })
+  r = await vendedor.post('/api/farmacia/ventas', { clave: claveA, mascotaId: max.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 4 }], pagos: [{ metodo: 'efectivo', monto: 400, recibido: 500 }] })
+  ok(r.status === 200 && r.data.duplicado === true && r.data.id === ventaA.id, 'Reintento con la misma clave: devuelve la misma venta, no cobra dos veces', { status: r.status, id: r.data?.id })
+  r = await encargado.get(`/api/farmacia/productos/${despa.prod.id}`)
+  const lotesDespa = Object.fromEntries((r.data.lotes ?? []).map((l) => [l.numeroLote, l.existencia]))
+  ok(lotesDespa[`D-${sufijo}-B`] === 0 && lotesDespa[`D-${sufijo}-A`] === 14 && lotesDespa[`D-${sufijo}-V`] === 10, 'Existencias: B=0, A=14, el vencido intacto (10)', lotesDespa)
+  r = await encargado.get(`/api/farmacia/kardex?lote=${despa.lotes[1].id}&limite=3`)
+  ok((r.data.movimientos ?? []).some((m) => m.tipo === 'venta' && m.cantidad === -3 && m.referencia === ventaA.folio), 'Kardex: salida tipo venta con referencia VTA-', r.data?.movimientos?.[0])
+
+  /* lote vencido no se vende */
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: soloVencido.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 50 }] })
+  ok(r.status === 400 && /vencidos o bloqueados no se venden/.test(r.data.error), 'Un lote vencido no se vende', r.data)
+
+  /* pago mixto efectivo + terminal */
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 2 }], pagos: [{ metodo: 'efectivo', monto: 50, recibido: 100 }, { metodo: 'terminal', monto: 150, referencia: 'AUT-123' }] })
+  ok(r.status === 201 && r.data.pagos.length === 2 && r.data.cambio === 50 && r.data.finanzas === 'registrado', 'Pago mixto: $50 efectivo (cambio $50) + $150 terminal', { status: r.status, pagos: r.data?.pagos?.length, cambio: r.data?.cambio, error: r.data?.error })
+  const ventaMixta = r.data
+  r = await admin.get(`/api/finanzas/operaciones/${ventaMixta.ingresoFinanzasId}`)
+  const movsMixta = r.data.movimientos ?? []
+  ok(r.data.operacion?.estadoPago === 'liquidado' && movsMixta.length === 2, 'Finanzas: dos cobros (caja y banco) y entrada liquidada', { e: r.data.operacion?.estadoPago, movs: movsMixta.length })
+
+  /* descuento: el vendedor necesita la contraseña de un encargado */
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 1, descuentoPorciento: 10 }], pagos: [{ metodo: 'efectivo', monto: 90 }] })
+  ok(r.status === 403 && r.data.codigo === 'autorizacion', 'Vendedor sin contraseña de encargado no aplica descuento', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 1, descuentoPorciento: 10 }], pagos: [{ metodo: 'efectivo', monto: 90 }], autorizacion: { correo: 'encargado@ejemplo.mx', contrasena: 'equivocada' } })
+  ok(r.status === 403 && /incorrectos/.test(r.data.error), 'Contraseña equivocada del encargado se rechaza', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 1, descuentoPorciento: 10 }], pagos: [{ metodo: 'efectivo', monto: 90 }], autorizacion: { correo: 'vendedor@ejemplo.mx', contrasena: PASS } })
+  ok(r.status === 403 && /no tiene permiso/.test(r.data.error), 'Otro vendedor no puede autorizar descuentos', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 1, descuentoPorciento: 10 }], pagos: [{ metodo: 'efectivo', monto: 90 }], autorizacion: { correo: 'encargado@ejemplo.mx', contrasena: PASS } })
+  ok(r.status === 201 && r.data.total === 90 && r.data.descuento === 10 && r.data.autorizoDescuento?.nombre === 'Luis Encargado', 'Con la contraseña del encargado: 10 % de descuento y queda quién autorizó', { status: r.status, total: r.data?.total, aut: r.data?.autorizoDescuento, error: r.data?.error })
+  ok(!trazasDeCosto(r.data).length, 'La venta que ve el vendedor no trae costos ni margen', trazasDeCosto(r.data))
+  r = await encargado.get(`/api/farmacia/ventas/${ventaA.id}`)
+  ok(r.data.costoTotal === 175 && r.data.margen === 225, 'El encargado ve costo ($175 = 3×45 + 1×40) y margen ($225)', { costo: r.data.costoTotal, margen: r.data.margen })
+
+  /* validación contra la mascota */
+  console.log('\nValidación por mascota')
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: mishi.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 400 && r.data.codigo === 'mascota' && r.data.detalle?.[0]?.problemas?.some((x) => x.tipo === 'especie'), 'Especie no incluida (gato) se bloquea', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: cachorro.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 400 && r.data.detalle?.[0]?.problemas?.some((x) => x.tipo === 'edad'), 'Edad menor a la mínima (3 meses < 6) se bloquea', r.data)
+  r = await admin.post(`/api/clinica/mascotas/${max.id}/pesos`, { kg: 30, fecha: hoyTxt })
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 400 && r.data.detalle?.[0]?.problemas?.some((x) => x.tipo === 'peso'), 'Peso fuera de rango (30 kg > 25) se bloquea', r.data)
+  await admin.post(`/api/clinica/mascotas/${max.id}/pesos`, { kg: 12, fecha: hoyTxt })
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: rocky.id, renglones: [{ presentacionId: tableta.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 28 }] })
+  ok(r.status === 400 && r.data.detalle?.[0]?.problemas?.some((x) => x.tipo === 'alergia'), 'Alergia coincidente (penicilina) se bloquea', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: viejo.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 409 && r.data.codigo === 'confirmar_peso', 'Peso de más de 90 días: pide confirmarlo', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: viejo.id, pesoConfirmadoKg: 14.5, renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 201 && r.data.pesoUsadoKg === 14.5, 'Con el peso confirmado, la venta pasa y guarda el peso usado', { status: r.status, peso: r.data?.pesoUsadoKg, error: r.data?.error })
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: mishi.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 1, autorizarMascota: 'Indicación del MVZ por teléfono' }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 403 && r.data.codigo === 'autorizacion', 'El vendedor no se autoriza a sí mismo un choque con la mascota', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: mishi.id, renglones: [{ presentacionId: despa.pres.id, cantidad: 1, autorizarMascota: 'Indicación del MVZ por teléfono' }], pagos: [{ metodo: 'efectivo', monto: 100 }], autorizacion: { correo: 'encargado@ejemplo.mx', contrasena: PASS } })
+  ok(r.status === 201 && /Indicación del MVZ/.test(r.data.renglones?.[0]?.autorizacionMascota || '') && r.data.autorizo?.nombre === 'Luis Encargado', 'El encargado autoriza con motivo y queda registrado', { status: r.status, a: r.data?.renglones?.[0]?.autorizacionMascota, error: r.data?.error })
+
+  /* recetas: Grupo II */
+  console.log('\nRecetas y Grupo II')
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 2 }], pagos: [{ metodo: 'efectivo', monto: 56 }] })
+  ok(r.status === 400 && /liga una receta/.test(r.data.error), 'Grupo II sin receta se rechaza', r.data)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 2 }], pagos: [{ metodo: 'efectivo', monto: 56 }] })
+  ok(r.status === 403 && r.data.codigo === 'autorizacion', 'Grupo II por un vendedor pide al encargado', r.data)
+  r = await vendedor.post('/api/farmacia/recetas/externa', { mascotaId: max.id, mvzNombre: 'MVZ Externo Prueba', mvzCedula: '1234567', fechaEmision: hoyTxt, vigenciaDias: 10, renglones: [{ productoId: prod.id, dosis: '1 tableta', frecuencia: 'cada 12 h', duracion: '7 días', surtidosPermitidos: 1 }] })
+  ok(r.status === 201 && /^REC-\d{5}$/.test(r.data.folio) && r.data.estado === 'por_validar' && r.data.origen === 'externa', 'El mostrador captura la receta externa: queda por validar', r.data)
+  const recExt = r.data
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 2, recetaId: recExt.id }], pagos: [{ metodo: 'efectivo', monto: 56 }] })
+  ok(r.status === 400 && /no está válida/.test(r.data.error), 'Receta por validar no surte', r.data)
+  r = await vendedor.post(`/api/farmacia/recetas/${recExt.id}/validar`, { decision: 'valida' })
+  ok(r.status === 403, 'El vendedor no valida recetas', r.status)
+  r = await encargado.post(`/api/farmacia/recetas/${recExt.id}/validar`, { decision: 'rechazada', motivo: '' })
+  ok(r.status === 400 && /motivo/.test(r.data.error), 'Rechazar exige motivo', r.data)
+  r = await encargado.post(`/api/farmacia/recetas/${recExt.id}/validar`, { decision: 'valida' })
+  ok(r.status === 200 && r.data.estado === 'valida' && r.data.vigente && r.data.validadaPor?.nombre === 'Luis Encargado' && !r.data.originalRecibido, 'El encargado valida: vigente, original pendiente', r.data)
+  r = await encargado.get(`/api/farmacia/recetas/para?mascota=${max.id}&producto=${prod.id}`)
+  ok(r.status === 200 && r.data.some((x) => x.id === recExt.id), 'El mostrador ve las recetas vigentes de la mascota para ese producto', r.data?.length)
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: rocky.id, renglones: [{ presentacionId: tableta.id, cantidad: 2, recetaId: recExt.id, autorizarMascota: 'Prueba de otra mascota' }], pagos: [{ metodo: 'efectivo', monto: 56 }] })
+  ok(r.status === 400 && /otra mascota/.test(r.data.error), 'La receta de otra mascota no surte', r.data)
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 2, recetaId: recExt.id }], pagos: [{ metodo: 'efectivo', monto: 56 }] })
+  ok(r.status === 201 && r.data.renglones[0].recetaFolio === recExt.folio && (r.data.avisos ?? []).some((a) => /original/.test(a)), 'Grupo II con receta válida: vende y avisa que el original sigue pendiente', { status: r.status, aviso: r.data?.avisos, error: r.data?.error })
+  r = await encargado.get(`/api/farmacia/recetas/${recExt.id}`)
+  ok(r.data.renglones[0].surtidosUsados === 1, 'La venta consumió un surtido (1 de 1)', r.data.renglones)
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 1, recetaId: recExt.id }], pagos: [{ metodo: 'efectivo', monto: 28 }] })
+  ok(r.status === 400 && /surtidos/.test(r.data.error), 'Receta sin surtidos ya no surte', r.data)
+  r = await admin.post('/api/farmacia/configuracion', { exigirOriginalGrupoII: true })
+  r = await vendedor.post('/api/farmacia/recetas/externa', { mascotaId: max.id, mvzNombre: 'MVZ Externo Dos', fechaEmision: hoyTxt, vigenciaDias: 5, renglones: [{ productoId: prod.id, surtidosPermitidos: 2 }] })
+  const recExt2 = r.data
+  await encargado.post(`/api/farmacia/recetas/${recExt2.id}/validar`, { decision: 'valida' })
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 1, recetaId: recExt2.id }], pagos: [{ metodo: 'efectivo', monto: 28 }] })
+  ok(r.status === 400 && /original físico/.test(r.data.error), 'Con «exigir original» encendido, la externa no surte sin el original', r.data)
+  r = await encargado.post(`/api/farmacia/recetas/${recExt2.id}/original`)
+  ok(r.status === 200 && r.data.originalRecibido && r.data.originalRecibidoPor?.nombre === 'Luis Encargado', 'Marca de original recibido con firma', r.data)
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 1, recetaId: recExt2.id }], pagos: [{ metodo: 'efectivo', monto: 28 }] })
+  ok(r.status === 201, 'Con el original recibido, surte', { status: r.status, error: r.data?.error })
+  await admin.post('/api/farmacia/configuracion', { exigirOriginalGrupoII: false })
+
+  /* receta interna: firmada = inmutable */
+  console.log('\nReceta interna y Grupo I')
+  const yo = (await admin.get('/api/users/me')).data.user
+  r = await vendedor.post('/api/farmacia/recetas', { mascotaId: max.id, vigenciaDias: 30, renglones: [{ productoId: prod.id, dosis: '1/2 tableta', frecuencia: 'cada 24 h', duracion: '10 días', surtidosPermitidos: 2 }] })
+  ok(r.status === 403, 'El vendedor no emite recetas internas', r.status)
+  await admin.patch(`/api/users/${yo.id}`, { cedulaProfesional: '' })
+  r = await admin.post('/api/farmacia/recetas', { mascotaId: max.id, vigenciaDias: 30, firmar: true, renglones: [{ productoId: prod.id, dosis: '1/2 tableta', frecuencia: 'cada 24 h', duracion: '10 días', surtidosPermitidos: 2 }] })
+  ok(r.status === 400 && /cédula/.test(r.data.error), 'Firmar sin cédula profesional se rechaza', r.data)
+  r = await admin.patch(`/api/users/${yo.id}`, { cedulaProfesional: '7654321' })
+  ok(r.status === 200, 'Cédula profesional guardada en el usuario', r.status)
+  r = await admin.get(`/api/farmacia/recetas?mascota=${max.id}&estado=borrador`)
+  const borrador = r.data.recetas?.[0]
+  ok(borrador && borrador.origen === 'interna' && borrador.pesoKg === 12, 'Quedó el borrador con el peso vigente precargado (12 kg)', borrador)
+  r = await admin.post(`/api/farmacia/recetas/${borrador.id}/firmar`)
+  ok(r.status === 200 && r.data.estado === 'valida' && r.data.firmadaEn && r.data.mvzCedula === '7654321', 'Firmada: válida, con cédula y hora de firma', r.data)
+  const recInt = r.data
+  r = await admin.post(`/api/farmacia/recetas/${recInt.id}`, { indicaciones: 'cambio después de firmar' })
+  ok(r.status === 400 && /firmada/.test(r.data.error), 'Una receta firmada no se edita', r.data)
+  r = await admin.patch(`/api/far-recetas/${recInt.id}`, { mvzNombre: 'Otro' })
+  ok(r.status === 403, 'Ni el superadmin edita recetas por la API genérica', r.status)
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: tableta.id, cantidad: 1, recetaId: recInt.id }], pagos: [{ metodo: 'efectivo', monto: 28 }] })
+  ok(r.status === 201, 'La receta interna firmada surte Grupo II', { status: r.status, error: r.data?.error })
+
+  /* Grupo I */
+  r = await admin.post('/api/farmacia/recetas', { mascotaId: max.id, vigenciaDias: 15, firmar: true, renglones: [{ productoId: keta.prod.id, dosis: 'según protocolo', surtidosPermitidos: 1 }] })
+  ok(r.status === 400 && /folio/.test(r.data.error), 'Receta de Grupo I sin folio cuantificado no se firma', r.data)
+  const borradorG1 = (await admin.get(`/api/farmacia/recetas?mascota=${max.id}&estado=borrador`)).data.recetas?.[0]
+  r = await admin.post(`/api/farmacia/recetas/${borradorG1.id}`, { folioCuantificado: `SEN-${sufijo}`, firmar: true })
+  ok(r.status === 200 && r.data.estado === 'valida' && r.data.folioCuantificado === `SEN-${sufijo}`, 'Con folio cuantificado se firma', r.data)
+  const recG1 = r.data
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: keta.pres.id, cantidad: 1, recetaId: recG1.id }], pagos: [{ metodo: 'efectivo', monto: 500 }] })
+  ok(r.status === 400 && /original recibido/.test(r.data.error), 'Grupo I sin «original recibido» se rechaza', r.data)
+  r = await encargado.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: keta.pres.id, cantidad: 1, recetaId: recG1.id, originalRecibido: true }], pagos: [{ metodo: 'efectivo', monto: 500 }] })
+  ok(r.status === 201 && r.data.renglones[0].folioCuantificado === `SEN-${sufijo}`, 'Grupo I con folio y original: vende', { status: r.status, error: r.data?.error })
+  const ventaG1 = r.data
+  r = await encargado.get(`/api/farmacia/recetas/${recG1.id}`)
+  ok(r.data.originalRecibido && r.data.renglones[0].surtidosUsados === 1, 'La receta quedó con el original recibido y el surtido usado', r.data)
+  r = await encargado.get(`/api/farmacia/libro?desde=${hoyTxt}`)
+  const asiento = (r.data ?? []).find((a) => a.ventaFolio === ventaG1.folio)
+  ok(asiento && asiento.tipo === 'salida' && asiento.folioReceta === `SEN-${sufijo}` && asiento.cantidad === 10 && asiento.unidad === 'ml' && asiento.registroSenasica === `Q-${sufijo}-I` && asiento.laboratorio === 'Lab Prueba' && asiento.numeroLote === `K-${sufijo}` && /Max/.test(asiento.animal || '') && asiento.fechaCompra, 'Libro de control: asiento con laboratorio, registro, lote, fecha de compra, folio, cantidad y animal', asiento)
+  r = await vendedor.get('/api/farmacia/libro')
+  ok(r.status === 403, 'El vendedor no ve el libro de control', r.status)
+  r = await encargado.get('/api/farmacia/libro/csv')
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes(`SEN-${sufijo}`) && r.data.includes('Animal de destino'), 'Libro de control exportable en CSV', r.status)
+  r = await admin.patch(`/api/far-libro-control/${asiento.id}`, { cantidad: 1 })
+  ok(r.status === 403, 'El libro de control no se edita por API (ni el superadmin)', r.status)
+
+  /* transferencia por confirmar */
+  console.log('\nTransferencia, anulación, ticket y cierre')
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'transferencia', monto: 100, referencia: 'SPEI 998' }] })
+  ok(r.status === 201 && r.data.estado === 'por_confirmar' && r.data.pagos[0].estado === 'por_confirmar', 'Transferencia: la venta queda «por confirmar»', { status: r.status, e: r.data?.estado, error: r.data?.error })
+  const ventaT = r.data
+  r = await admin.get(`/api/finanzas/operaciones/${ventaT.ingresoFinanzasId}`)
+  ok(r.data.operacion?.estadoPago === 'pendiente' && (r.data.movimientos ?? []).length === 0, 'Finanzas: la entrada queda pendiente hasta confirmar', r.data.operacion?.estadoPago)
+  r = await vendedor.post(`/api/farmacia/ventas/${ventaT.id}/pagos/0/confirmar`, {})
+  ok(r.status === 403, 'El vendedor no confirma transferencias', r.status)
+  r = await encargado.post(`/api/farmacia/ventas/${ventaT.id}/pagos/0/confirmar`, {})
+  ok(r.status === 200 && r.data.estado === 'pagada' && r.data.pagos[0].confirmadoPor?.nombre === 'Luis Encargado', 'El encargado confirma: venta pagada', r.data?.estado)
+  r = await admin.get(`/api/finanzas/operaciones/${ventaT.ingresoFinanzasId}`)
+  ok(r.data.operacion?.estadoPago === 'liquidado', 'Finanzas: al confirmar entra el cobro al banco', r.data.operacion?.estadoPago)
+
+  /* ticket */
+  r = await vendedor.get(`/api/farmacia/ventas/${ventaA.id}/ticket`)
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes(ventaA.folio) && r.data.includes('Cambio') && !/costo/i.test(r.data), 'Ticket imprimible con folio y cambio, sin costos', r.status)
+  r = await vendedor.post(`/api/farmacia/ventas/${ventaA.id}/ticket`, { correo: 'no-es-correo' })
+  ok(r.status === 400, 'Enviar el ticket valida el correo', r.data)
+  r = await vendedor.post(`/api/farmacia/ventas/${ventaA.id}/ticket`, { correo: `tutor${sufijo}@ejemplo.mx` })
+  ok(r.status === 200 && r.data.correoTicket === `tutor${sufijo}@ejemplo.mx`, 'Envío del ticket por correo (sin llave de Resend no falla)', r.data?.correoTicket)
+
+  /* anular */
+  r = await vendedor.post(`/api/farmacia/ventas/${ventaA.id}/anular`, { motivo: 'Error de captura' })
+  ok(r.status === 403, 'El vendedor no anula ventas', r.status)
+  r = await encargado.post(`/api/farmacia/ventas/${ventaA.id}/anular`, { motivo: 'no' })
+  ok(r.status === 400, 'Anular exige motivo', r.data)
+  r = await encargado.post(`/api/farmacia/ventas/${ventaA.id}/anular`, { motivo: 'Error de captura en mostrador' })
+  ok(r.status === 200 && r.data.estado === 'anulada' && r.data.anuladaPor?.nombre === 'Luis Encargado', 'Venta del día anulada con motivo', r.data?.estado)
+  r = await encargado.get(`/api/farmacia/productos/${despa.prod.id}`)
+  const lotesTrasAnular = Object.fromEntries((r.data.lotes ?? []).map((l) => [l.numeroLote, l.existencia]))
+  ok(lotesTrasAnular[`D-${sufijo}-B`] === 3, 'La anulación regresó las 3 tabletas a su lote', lotesTrasAnular)
+  r = await admin.get(`/api/finanzas/operaciones/${ventaA.ingresoFinanzasId}`)
+  ok(r.data.operacion?.anulada === true, 'La entrada en Finanzas quedó anulada', r.data.operacion?.anulada)
+  r = await encargado.post(`/api/farmacia/ventas/${ventaG1.id}/anular`, { motivo: 'Prueba de cancelación Grupo I' })
+  ok(r.status === 200, 'Anula la venta de Grupo I', r.data?.error)
+  r = await encargado.get(`/api/farmacia/libro?desde=${hoyTxt}`)
+  ok((r.data ?? []).some((a) => a.tipo === 'cancelacion' && a.ventaFolio === ventaG1.folio && a.cantidad === -10), 'El libro recibe un asiento de cancelación (no se edita el original)', (r.data ?? []).filter((a) => a.ventaFolio === ventaG1.folio))
+  r = await encargado.get(`/api/farmacia/recetas/${recG1.id}`)
+  ok(r.data.renglones[0].surtidosUsados === 0, 'El surtido de la receta se devolvió', r.data.renglones)
+
+  /* cierre del día */
+  r = await vendedor.get('/api/farmacia/cierre')
+  const esperado = r.data.esperado
+  ok(r.status === 200 && r.data.cuenta.id === cajaMostrador.id && r.data.id === null && r.data.ventasEfectivo > 0, 'Cierre del día: esperado según Finanzas y ventas en efectivo del día', r.data)
+  r = await vendedor.post('/api/farmacia/cierre', { contado: esperado - 20 })
+  ok(r.status === 400 && /nota/.test(r.data.error), 'Con diferencia, el cierre exige una nota', r.data)
+  r = await vendedor.post('/api/farmacia/cierre', { contado: esperado - 20, nota: 'Faltante por cambio mal dado' })
+  ok(r.status === 201 && r.data.diferencia === -20 && r.data.contado === esperado - 20 && r.data.usuario?.nombre === 'Ana Vendedora', 'Cierre registrado con diferencia de −$20, nota y usuario', r.data)
+  r = await vendedor.post('/api/farmacia/cierre', { contado: esperado })
+  ok(r.status === 400 && /Ya se registró/.test(r.data.error), 'Un solo cierre por caja y día', r.data)
+
+  r = await encargado.get('/api/farmacia/catalogo')
+  ok(r.data.hoy.ventasHoy >= 8 && r.data.hoy.totalHoy > 0 && r.data.hoy.cierrePendiente === false, 'Inicio: ventas de hoy y cierre hecho', r.data.hoy)
+  r = await encargado.get('/api/farmacia/ventas?dia=' + hoyTxt)
+  ok(r.status === 200 && r.data.ventas.length >= 8 && r.data.ventas.some((v) => v.estado === 'anulada'), 'Historial de ventas del día', r.data?.total)
+  r = await admin.patch(`/api/far-ventas/${ventaMixta.id}`, { total: 1 })
+  ok(r.status === 403, 'Las ventas no se editan por la API genérica (ni el superadmin)', r.status)
+
   /* ── panel ── */
   console.log('\nPanel')
   for (const [ruta, texto] of [
@@ -516,6 +801,10 @@ async function main() {
     ['/admin/farmacia/compras/nueva', 'Nueva compra'],
     [`/admin/farmacia/compras/${compra1.id}`, 'fa-app'],
     ['/admin/farmacia/conteo', 'Conteo físico'],
+    ['/admin/farmacia/vender', 'fa-app'],
+    ['/admin/farmacia/ventas', 'fa-app'],
+    ['/admin/farmacia/recetas', 'fa-app'],
+    ['/admin/farmacia/cierre', 'fa-app'],
     ['/admin/farmacia/importar', 'Importar catálogo'],
     ['/admin/farmacia/configuracion', 'Configuración'],
     [`/admin/farmacia/productos/${prod.id}`, 'fa-app'],

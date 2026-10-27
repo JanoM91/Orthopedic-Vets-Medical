@@ -17,6 +17,7 @@
  *   ventas · ventas/:id     historial del día · detalle con ticket y transferencias
  *   recetas · recetas/nueva · recetas/:id   bandeja, receta externa, ficha (libro de control en ?ver=libro)
  *   cierre                  cierre del día
+ *   alertas · reabasto · promociones   fase 4
  *   importar                importación con plantilla
  *   configuracion           parámetros, proveedores, almacenes
  *
@@ -30,6 +31,7 @@ import { Compras, FichaCompra, NuevaCompra } from './Compras'
 import Configuracion from './Configuracion'
 import Conteo from './Conteo'
 import Cierre from './Cierre'
+import { Alertas, Promociones, Reabasto } from './Alertas'
 import { FichaReceta, NuevaRecetaExterna, Recetas } from './Recetas'
 import Vender from './Vender'
 import { FichaVenta, Ventas } from './Ventas'
@@ -74,6 +76,9 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   else if (seccion === 'recetas' && id === 'nueva') pantalla = <NuevaRecetaExterna mascotaInicial={numero(query.mascota)} />
   else if (seccion === 'recetas' && numero(id)) pantalla = <FichaReceta key={id} id={numero(id)!} />
   else if (seccion === 'cierre') pantalla = <Cierre />
+  else if (seccion === 'alertas') pantalla = <Alertas tipo={query.tipo ?? null} />
+  else if (seccion === 'reabasto') pantalla = p.recibirCompras || p.aprobar || p.reportes ? <Reabasto /> : <Aviso>La lista de reabasto es del encargado o el dueño.</Aviso>
+  else if (seccion === 'promociones') pantalla = p.vender || p.aprobar ? <Promociones /> : <Aviso>Tu rol no incluye promociones.</Aviso>
   else if (seccion === 'importar') pantalla = p.catalogo ? <Importar /> : <Aviso>Tu rol no incluye importar el catálogo.</Aviso>
   else if (seccion === 'configuracion') pantalla = p.configurar ? <Configuracion /> : <Aviso>La configuración de la farmacia la cambian el dueño o el superadministrador.</Aviso>
   else
@@ -109,6 +114,9 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
                 Recetas
               </Link>
             )}
+            <Link href={`${base}/alertas`} className={seccion === 'alertas' ? 'is-on' : ''}>
+              Alertas{catalogo.hoy.alertasAbiertas ? <span className={`fa-contador${catalogo.hoy.alertasCriticas ? ' fa-contador--malo' : ''}`}>{catalogo.hoy.alertasAbiertas}</span> : null}
+            </Link>
             <Link href={`${base}/productos`} className={esProductos ? 'is-on' : ''}>
               Productos
             </Link>
@@ -118,6 +126,16 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
             {p.recibirCompras && (
               <Link href={`${base}/compras`} className={seccion === 'compras' ? 'is-on' : ''}>
                 Compras
+              </Link>
+            )}
+            {(p.recibirCompras || p.aprobar || p.reportes) && (
+              <Link href={`${base}/reabasto`} className={seccion === 'reabasto' ? 'is-on' : ''}>
+                Reabasto
+              </Link>
+            )}
+            {(p.vender || p.aprobar) && (
+              <Link href={`${base}/promociones`} className={seccion === 'promociones' ? 'is-on' : ''}>
+                Promociones{catalogo.hoy.promocionesPropuestas && p.aprobar ? <span className="fa-contador">{catalogo.hoy.promocionesPropuestas}</span> : null}
               </Link>
             )}
             {p.ajustes && (
@@ -168,6 +186,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
                 [p.vender, `${base}/vender`, seccion === 'vender', 'cartera', 'Vender'],
                 [p.vender, `${base}/ventas`, seccion === 'ventas', 'lista', 'Ventas'],
                 [p.vender || p.recetas, `${base}/recetas`, seccion === 'recetas', 'archivo', 'Recetas'],
+                [true, `${base}/alertas`, seccion === 'alertas', 'alerta', catalogo.hoy.alertasAbiertas ? `Alertas (${catalogo.hoy.alertasAbiertas})` : 'Alertas'],
                 [true, `${base}/productos`, esProductos, 'buscar', 'Productos'],
                 [true, `${base}/inventario`, seccion === 'inventario', 'bandeja', 'Inventario'],
                 [p.recibirCompras, `${base}/compras`, seccion === 'compras', 'archivo', 'Compras'],

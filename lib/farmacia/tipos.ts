@@ -124,7 +124,9 @@ export type ConfiguracionVista = {
   horasApartado: number
   cierreDiaActivo: boolean
   recetaGrupoIIDomicilio: boolean
-  aprendizaje: { semanasHistorial: number; diasCobertura: number; diasEntregaPorOmision: number }
+  aprendizaje: { semanasHistorial: number; diasCobertura: number; diasEntregaPorOmision: number; diasSinRotacion: number }
+  /** Correos extra para el resumen diario de alertas (además de quien tiene «Reportes»). */
+  correosAlertas: string | null
   promociones: { diasAntes: number; descuentoPorciento: number }[]
   politicaDevoluciones: string | null
   almacenPorOmisionId: number | null
@@ -490,4 +492,9 @@ export type ResumenHoy = {
   recetasPorValidar: number
   originalesPendientes: number
   cierrePendiente: boolean
+  /** Fase 4 */
+  alertasAbiertas: number
+  alertasCriticas: number
+  promocionesPropuestas: number
+  reordenPropuestos: number
 }

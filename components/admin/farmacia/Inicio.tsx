@@ -164,7 +164,23 @@ export default function Inicio() {
               <b>{catalogo.hoy.cierrePendiente ? 'Pendiente' : catalogo.hoy.ventasHoy ? 'Hecho' : '—'}</b>
             </Link>
           )}
-          <p className="fz-chico fz-tenue">Pedidos de la tienda y alertas llegan en las fases 4 y 5.</p>
+          <Link href={`${base}/alertas`} className={`fa-hoy${catalogo.hoy.alertasCriticas ? ' fa-hoy--malo' : catalogo.hoy.alertasAbiertas ? ' fa-hoy--aviso' : ''}`}>
+            <span>Alertas abiertas{catalogo.hoy.alertasCriticas ? ` · ${catalogo.hoy.alertasCriticas} críticas` : ''}</span>
+            <b className="fz-num">{catalogo.hoy.alertasAbiertas}</b>
+          </Link>
+          {p.aprobar && catalogo.hoy.reordenPropuestos > 0 && (
+            <Link href={`${base}/alertas?tipo=reorden_sugerido`} className="fa-hoy fa-hoy--aviso">
+              <span>Puntos de reorden por revisar</span>
+              <b className="fz-num">{catalogo.hoy.reordenPropuestos}</b>
+            </Link>
+          )}
+          {p.aprobar && catalogo.hoy.promocionesPropuestas > 0 && (
+            <Link href={`${base}/promociones`} className="fa-hoy fa-hoy--aviso">
+              <span>Promociones por aprobar</span>
+              <b className="fz-num">{catalogo.hoy.promocionesPropuestas}</b>
+            </Link>
+          )}
+          <p className="fz-chico fz-tenue">Los pedidos de la tienda llegan en la fase 5.</p>
         </div>
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
           <h2 className="fz-h2">Accesos</h2>
@@ -173,6 +189,7 @@ export default function Inicio() {
             <Link href={`${base}/inventario`} className="fz-btn fz-btn--claro">Existencias y lotes</Link>
             {p.recibirCompras && <Link href={`${base}/compras`} className="fz-btn fz-btn--claro">Compras y recepción</Link>}
             {p.ajustes && <Link href={`${base}/conteo`} className="fz-btn fz-btn--claro">Conteo físico</Link>}
+            {(p.recibirCompras || p.aprobar || p.reportes) && <Link href={`${base}/reabasto`} className="fz-btn fz-btn--claro">Reabasto sugerido</Link>}
             {p.ajustes && <Link href={`${base}/inventario?solo=todos`} className="fz-btn fz-btn--claro">Ajustes y mermas</Link>}
             {p.configurar && <Link href={`${base}/configuracion`} className="fz-btn fz-btn--claro">Proveedores y almacenes</Link>}
             {p.panel && <a href={`${rutaAdmin}/globals/farmacia-configuracion`} className="fz-btn fz-btn--claro">Parámetros (panel)</a>}

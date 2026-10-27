@@ -72,6 +72,7 @@ import {
   ventas,
 } from '@/lib/farmacia/ventas'
 import { ErrorConCodigo } from '@/lib/farmacia/util'
+import { aceptarReorden, alertas, cerrarAlerta, decidirPromocion, promociones, reabasto, reabastoCsv, recalcularAhora } from '@/lib/farmacia/alertas'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -129,6 +130,15 @@ import { ErrorConCodigo } from '@/lib/farmacia/util'
  *   POST recetas/:id/firmar | validar | original | cancelar
  *   GET  libro?desde=&hasta= · libro/csv        libro de control del Grupo I
  *   GET  cierre?fecha=&cuenta= · POST cierre · GET cierres
+ *
+ * Fase 4 · alertas, reabasto y promociones (el cron vive en cron/diario/route.ts):
+ *   GET  alertas?estado=&tipo=                  bandeja (una abierta por objeto y tipo)
+ *   POST alertas/recalcular                     recalcular ahora
+ *   POST alertas/:id/atender | descartar        { nota }
+ *   POST reorden/:productoId/aceptar            { valor? } (vacío = el propuesto)
+ *   GET  reabasto · reabasto/csv                lista sugerida por proveedor
+ *   GET  promociones?estado=                    propuestas, aprobadas…
+ *   POST promociones/:id/decidir                { decision: aprobada|rechazada, descuentoPorciento?, motivo? }
  */
 
 export const dynamic = 'force-dynamic'
@@ -231,6 +241,10 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'libro' && !b) return json(await libroControl(ctx, { desde: q.get('desde'), hasta: q.get('hasta') }))
     if (a === 'cierre' && !b) return json(await cierreDia(ctx, { fecha: q.get('fecha'), cuentaId: q.get('cuenta') ? idDeRuta(q.get('cuenta')!) : null }))
     if (a === 'cierres' && !b) return json(await cierres(ctx))
+    if (a === 'alertas' && !b) return json(await alertas(ctx, { estado: q.get('estado'), tipo: q.get('tipo') }))
+    if (a === 'reabasto' && b === 'csv') return new Response(await reabastoCsv(ctx), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="reabasto-sugerido.csv"', 'Cache-Control': 'private, no-store' } })
+    if (a === 'reabasto' && !b) return json(await reabasto(ctx))
+    if (a === 'promociones' && !b) return json(await promociones(ctx, { estado: q.get('estado') }))
     if (a === 'kardex' && !b) {
       return json(await kardex(ctx, { productoId: q.get('producto') ? idDeRuta(q.get('producto')!) : undefined, loteId: q.get('lote') ? idDeRuta(q.get('lote')!) : undefined, limite: q.get('limite') ? Number(q.get('limite')) : undefined }))
     }
@@ -295,6 +309,10 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       if (c === 'cancelar') return json(await cancelarReceta(ctx, id, await leerJson(req)))
     }
     if (a === 'cierre' && !b) return json(await registrarCierre(ctx, await leerJson(req)), 201)
+    if (a === 'alertas' && b === 'recalcular') return json(await recalcularAhora(ctx))
+    if (a === 'alertas' && b && (c === 'atender' || c === 'descartar')) return json(await cerrarAlerta(ctx, idDeRuta(b), c === 'atender' ? 'atendida' : 'descartada', await leerJson(req).catch(() => ({}))))
+    if (a === 'reorden' && b && c === 'aceptar') return json(await aceptarReorden(ctx, idDeRuta(b), await leerJson(req).catch(() => ({}))))
+    if (a === 'promociones' && b && c === 'decidir') return json(await decidirPromocion(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'lotes' && b && c === 'bloqueo') return json(await bloquearLote(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'proveedores' && !b) return json(await crearProveedor(ctx, await leerJson(req)), 201)
     if (a === 'proveedores' && b && !c) return json(await actualizarProveedor(ctx, idDeRuta(b), await leerJson(req)))

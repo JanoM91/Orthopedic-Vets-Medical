@@ -89,3 +89,15 @@ a.fa-hoy:hover { background: var(--mx-sand-dark); }
   .fa-linea__campos { grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr); }
   .fa-linea__importe { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; padding-bottom: 0; }
 }
+
+/* ───────── fase 4 · alertas, reabasto, promociones ───────── */
+.fa-alerta { align-items: flex-start; flex-wrap: wrap; }
+.fa-alerta .fz-fila__main { flex: 1 1 260px; }
+.fa-alerta__msg { font-size: 14.5px; overflow-wrap: anywhere; }
+.fa-alerta__acciones { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: flex-end; }
+.fa-alerta--critica { box-shadow: inset 3px 0 0 #b42330; }
+.fa-alerta--urgente { box-shadow: inset 3px 0 0 var(--mx-amber); }
+.fa-contador { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--mx-amber-soft); color: #7a4b00; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fa-contador--malo { background: #fdecee; color: #b42330; }
+.fa-hoy--malo { background: #fdecee; }
+.fa-promo-pct { width: 64px; text-align: center; }

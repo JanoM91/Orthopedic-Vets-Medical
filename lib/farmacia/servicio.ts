@@ -172,7 +172,8 @@ const CONFIG_POR_OMISION: ConfiguracionVista = {
   horasApartado: 24,
   cierreDiaActivo: true,
   recetaGrupoIIDomicilio: false,
-  aprendizaje: { semanasHistorial: 8, diasCobertura: 30, diasEntregaPorOmision: 3 },
+  aprendizaje: { semanasHistorial: 8, diasCobertura: 30, diasEntregaPorOmision: 3, diasSinRotacion: 90 },
+  correosAlertas: null,
   promociones: [
     { diasAntes: 90, descuentoPorciento: 15 },
     { diasAntes: 45, descuentoPorciento: 30 },
@@ -208,7 +209,9 @@ function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista
       semanasHistorial: num(g.aprendizaje?.semanasHistorial, d.aprendizaje.semanasHistorial),
       diasCobertura: num(g.aprendizaje?.diasCobertura, d.aprendizaje.diasCobertura),
       diasEntregaPorOmision: num(g.aprendizaje?.diasEntregaPorOmision, d.aprendizaje.diasEntregaPorOmision),
+      diasSinRotacion: num(g.aprendizaje?.diasSinRotacion, d.aprendizaje.diasSinRotacion),
     },
+    correosAlertas: t(g.correosAlertas),
     promociones: (g.promociones?.length ? g.promociones : d.promociones).map((p) => ({ diasAntes: p.diasAntes, descuentoPorciento: p.descuentoPorciento })),
     politicaDevoluciones: t(g.politicaDevoluciones),
     almacenPorOmisionId: idDe(g.almacenPorOmision),
@@ -243,7 +246,8 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     horasApartado: z.coerce.number().int().min(1).optional(),
     cierreDiaActivo: z.boolean().optional(),
     recetaGrupoIIDomicilio: z.boolean().optional(),
-    aprendizaje: z.object({ semanasHistorial: z.coerce.number().int().min(1), diasCobertura: z.coerce.number().int().min(1), diasEntregaPorOmision: z.coerce.number().int().min(0) }).partial().optional(),
+    aprendizaje: z.object({ semanasHistorial: z.coerce.number().int().min(1), diasCobertura: z.coerce.number().int().min(1), diasEntregaPorOmision: z.coerce.number().int().min(0), diasSinRotacion: z.coerce.number().int().min(7) }).partial().optional(),
+    correosAlertas: z.string().trim().max(500).nullable().optional(),
     promociones: z.array(z.object({ diasAntes: z.coerce.number().int().min(1), descuentoPorciento: z.coerce.number().int().min(1).max(90) })).max(6).optional(),
     politicaDevoluciones: z.string().max(4000).nullable().optional(),
     almacenPorOmisionId: z.coerce.number().int().positive().nullable().optional(),
@@ -286,6 +290,12 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
   }
   if (v.pasarelaActiva) data.pasarelaActiva = v.pasarelaActiva
   if (v.exigirOriginalGrupoII != null) data.exigirOriginalGrupoII = v.exigirOriginalGrupoII
+  if (v.correosAlertas !== undefined) {
+    const lista = (v.correosAlertas ?? '').split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean)
+    const mal = lista.find((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x))
+    if (mal) throw invalido(`«${mal}» no parece un correo.`)
+    data.correosAlertas = lista.join(', ') || null
+  }
   if (v.metodosPago) {
     const claves = new Set<string>()
     for (const m of v.metodosPago) {
@@ -540,7 +550,11 @@ export async function catalogo(ctx: Ctx): Promise<CatalogoFarmacia> {
 
 /** Cifras de hoy para el inicio (fase 3). Cada cifra solo se calcula si el rol la puede ver. */
 async function resumenHoy(ctx: Ctx, cfg: ConfiguracionVista): Promise<CatalogoFarmacia['hoy']> {
-  const r: CatalogoFarmacia['hoy'] = { ventasHoy: 0, totalHoy: 0, pagosPorConfirmar: 0, recetasPorValidar: 0, originalesPendientes: 0, cierrePendiente: false }
+  const r: CatalogoFarmacia['hoy'] = { ventasHoy: 0, totalHoy: 0, pagosPorConfirmar: 0, recetasPorValidar: 0, originalesPendientes: 0, cierrePendiente: false, alertasAbiertas: 0, alertasCriticas: 0, promocionesPropuestas: 0, reordenPropuestos: 0 }
+  r.alertasAbiertas = (await ctx.payload.count({ collection: 'far-alertas', overrideAccess: true, where: { estado: { equals: 'abierta' } } })).totalDocs
+  r.alertasCriticas = (await ctx.payload.count({ collection: 'far-alertas', overrideAccess: true, where: { and: [{ estado: { equals: 'abierta' } }, { severidad: { equals: 'critica' } }] } })).totalDocs
+  r.reordenPropuestos = (await ctx.payload.count({ collection: 'far-alertas', overrideAccess: true, where: { and: [{ estado: { equals: 'abierta' } }, { tipo: { equals: 'reorden_sugerido' } }] } })).totalDocs
+  if (ctx.p.farmacia.vender) r.promocionesPropuestas = (await ctx.payload.count({ collection: 'far-promociones', overrideAccess: true, where: { estado: { equals: 'propuesta' } } })).totalDocs
   if (ctx.p.farmacia.vender) {
     const ventas = await ctx.payload.find({ collection: 'far-ventas', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ dia: { equals: ctx.hoy } }, { estado: { not_equals: 'anulada' } }] }, select: { total: true, estado: true } })
     r.ventasHoy = ventas.totalDocs

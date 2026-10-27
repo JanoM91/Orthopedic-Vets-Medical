@@ -98,7 +98,7 @@ export default function Configuracion() {
         </div>
 
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-          <h2 className="fz-h2">Punto de reorden que aprende (fase 4)</h2>
+          <h2 className="fz-h2">Alertas y punto de reorden que aprende</h2>
           <div className="cl-grid cl-grid--3">
             <Campo etiqueta="Semanas de ventas para proponer">
               <input className="fz-input" type="number" min={1} value={c.aprendizaje.semanasHistorial} onChange={(e) => setC({ ...c, aprendizaje: { ...c.aprendizaje, semanasHistorial: num(e.target.value, 1) } })} />
@@ -108,6 +108,14 @@ export default function Configuracion() {
             </Campo>
             <Campo etiqueta="Días de entrega si el proveedor no lo dice">
               <input className="fz-input" type="number" min={0} value={c.aprendizaje.diasEntregaPorOmision} onChange={(e) => setC({ ...c, aprendizaje: { ...c.aprendizaje, diasEntregaPorOmision: num(e.target.value) } })} />
+            </Campo>
+          </div>
+          <div className="cl-grid cl-grid--2">
+            <Campo etiqueta="Días sin venta para «sin rotación»">
+              <input className="fz-input" type="number" min={7} value={c.aprendizaje.diasSinRotacion} onChange={(e) => setC({ ...c, aprendizaje: { ...c.aprendizaje, diasSinRotacion: num(e.target.value, 7) } })} />
+            </Campo>
+            <Campo etiqueta="Correos extra para el resumen diario (08:00)" ayuda="Separados por coma. Además lo recibe quien tiene «Reportes» en su rol.">
+              <input className="fz-input" value={c.correosAlertas ?? ''} onChange={(e) => setC({ ...c, correosAlertas: e.target.value || null })} placeholder="dueno@clinica.mx" />
             </Campo>
           </div>
         </div>

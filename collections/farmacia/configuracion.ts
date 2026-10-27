@@ -98,6 +98,7 @@ export const FarmaciaConfiguracion: GlobalConfig = {
             { name: 'semanasHistorial', label: 'Semanas de ventas para proponer', type: 'number', min: 1, defaultValue: 8 },
             { name: 'diasCobertura', label: 'Días de cobertura al reabastecer', type: 'number', min: 1, defaultValue: 30 },
             { name: 'diasEntregaPorOmision', label: 'Días de entrega si el proveedor no lo dice', type: 'number', min: 0, defaultValue: 3 },
+            { name: 'diasSinRotacion', label: 'Días sin venta para «sin rotación»', type: 'number', min: 7, defaultValue: 90 },
           ],
         },
       ],
@@ -139,6 +140,13 @@ export const FarmaciaConfiguracion: GlobalConfig = {
         },
       ],
     },
+    {
+      name: 'correosAlertas',
+      label: 'Correos adicionales para el resumen diario de alertas',
+      type: 'text',
+      admin: { description: 'Separados por coma. Además, lo reciben las personas con «Reportes» en su rol (y el superadministrador).' },
+    },
+    { name: 'ultimoResumen', label: 'Último resumen diario enviado (AAAA-MM-DD)', type: 'text', admin: { readOnly: true, description: 'Lo escribe el cron: un solo resumen por día.' } },
     {
       name: 'pasarelaActiva',
       label: 'Pasarela de pago en línea',

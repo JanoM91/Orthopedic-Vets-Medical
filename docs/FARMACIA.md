@@ -1,6 +1,6 @@
-# Farmacia: catálogo, inventario, compras, venta de mostrador y recetas (fases 1 a 3)
+# Farmacia: catálogo, inventario, compras, venta de mostrador, recetas y alertas (fases 1 a 4)
 
-> 25-oct-2026. Módulo de Farmacia sobre la plataforma (Finanzas + Clínica), según `docs/FARMACIA-PROMPT.md`. Este documento es la referencia técnica del módulo y crece con cada fase. Lo que hay hoy son las **fases 1 y 2 de 7**: base del catálogo e inventario, permisos, módulos activables e importación (fase 1, 25-oct); compras desde el XML CFDI o a mano, recepción con lote y caducidad, gasto en Finanzas, anulación y conteo físico (fase 2, 26-oct; sección 10); venta de mostrador, recetas, libro de control del Grupo I y cierre del día (fase 3, 27-oct; sección 11). Alertas, tienda y planes llegan en las fases 4 a 7.
+> 25-oct-2026. Módulo de Farmacia sobre la plataforma (Finanzas + Clínica), según `docs/FARMACIA-PROMPT.md`. Este documento es la referencia técnica del módulo y crece con cada fase. Lo que hay hoy son las **fases 1 y 2 de 7**: base del catálogo e inventario, permisos, módulos activables e importación (fase 1, 25-oct); compras desde el XML CFDI o a mano, recepción con lote y caducidad, gasto en Finanzas, anulación y conteo físico (fase 2, 26-oct; sección 10); venta de mostrador, recetas, libro de control del Grupo I y cierre del día (fase 3, 27-oct; sección 11); alertas, punto de reorden que aprende, reabasto y promociones por caducidad con cron diario (fase 4, 27-oct; sección 12). Tienda, planes y reportes llegan en las fases 5 a 7.
 
 ## 1. Qué hace (fase 1)
 
@@ -131,7 +131,7 @@ Criterios de aceptación de la fase 1 (`docs/FARMACIA-PROMPT.md`):
 - **Imagen del producto:** por ahora una URL (`imagenUrl`); en la fase 5 se sube al almacén de la instalación.
 - **Portal del tutor con Clínica apagada:** la API del portal responde 404 (es parte de la clínica); el «perfil ligero» de mascota para farmacias sin clínica se diseña en la fase 5.
 - **No incluido en esta fase (por diseño):** `far-proveedor-claves` y conteo físico (hechos en la fase 2, sección 10), alertas por correo y cron (fase 4), zonas de entrega (fase 5).
-- **Nota sobre el repo:** `main` no trae el cron de Vercel (`vercel.json`), los correos de citas ni `docs/ARRANQUE.md` / `docs/MANUAL-*.md` que el prompt maestro da por existentes; están en el parche `0002-0003-correos-manuales-whatsapp.patch` de la etapa de clínica, pendiente de aplicar y mezclar. La fase 4 (resumen diario por correo) los necesita.
+- **Nota sobre el repo:** `main` no trae los correos de citas, el recordatorio diario, WhatsApp ni `docs/ARRANQUE.md` / `docs/MANUAL-*.md` de la etapa de clínica del 22-oct (el parche se perdió). La fase 4 agregó su propio cron y `vercel.json`; esas piezas de la clínica se reconstruyen aparte (sección 12, pendientes).
 
 ## 10. Fase 2 · Compras e inventario operativo (26-oct-2026)
 
@@ -247,3 +247,53 @@ Criterios de aceptación de la fase 3:
 - **Sin clínica:** la venta va sin mascota (el perfil ligero llega con la tienda, fase 5) y las recetas internas no existen; las externas aceptan el nombre del paciente en texto.
 - **Devoluciones** de días anteriores, **CFDI al cliente** y la impresora térmica dedicada quedan fuera (política pendiente / módulo posterior). El ticket se imprime desde el navegador.
 - **Correo:** el ticket y el aviso de receta rechazada salen por Resend; sin `RESEND_API_KEY` no se manda nada y nada falla (aviso en el log).
+
+## 12. Fase 4 · Alertas, reabasto y promociones (27-oct-2026)
+
+### Qué hace
+
+- **Alertas** (`/admin/farmacia/alertas`, todo el equipo las ve; atender o descartar: «Aprobar», «Ajustes» o «Recetas»): caducidad por lote con días de aviso por línea (aviso, **urgente** ≤ 30 días, **crítica** = vencido: retirar), **desabasto** (disponible ≤ punto de reorden aceptado o mínimo; los lotes vencidos o bloqueados no cuentan), **punto de reorden sugerido**, **sin rotación** (sin ventas en 90 días configurables, con existencia), **recetas por validar** y **originales pendientes**. **Una sola alerta abierta por objeto y tipo** (índice único en la base): recalcular dos veces no duplica; si cambia la severidad se actualiza la misma; lo que ya no aplica (llegó mercancía, se retiró el lote) se **cierra solo**. Descartar = «ya lo vi»: no vuelve mientras no cambie la severidad (o el punto propuesto). Un producto que **nunca ha tenido lote** no levanta desabasto (al importar el catálogo no hay ruido), pero sí sale en el reabasto.
+- **Punto de reorden que aprende**: con al menos 8 semanas de ventas del producto, `R = d̄·L + 1.65·σ·√L` (d̄ y σ = media y desviación estándar muestral de la demanda diaria de las últimas 8 semanas, días sin venta en cero, ventas menos devoluciones por anulación; L = días de entrega del proveedor preferente o el valor por omisión), redondeado hacia arriba a unidad entera. Se propone si difiere más de 20 % del vigente. **Aceptarlo** (o corregirlo) cambia el punto de reorden aceptado, que desde ese momento manda en desabasto y reabasto; **ignorarlo** no cambia nada.
+- **Reabasto sugerido** (`/admin/farmacia/reabasto`, «Recibir compras», «Aprobar» o «Reportes»): productos en o bajo su punto de reorden; cantidad = R + d̄ × días de cobertura (30) − disponible, redondeada a la presentación de compra (la de mayor factor, no fraccionada). **Agrupada por proveedor preferente**, con botón «Copiar pedido», **WhatsApp** al teléfono del proveedor y **CSV**.
+- **Promociones por caducidad** (`/admin/farmacia/promociones`): solo **Grupo III y desregulados**, lote con existencia, no vencido ni bloqueado. Escalones configurables (por omisión 90 días → 15 %, 45 días → 30 %); se toma el mayor que alcanza al lote. Nace **propuesta**; el encargado la **aprueba** (puede ajustar el %) o la **rechaza** (no se vuelve a proponer con el mismo descuento). Vence un día antes de caducar o al agotarse el lote. **Grupo I y II nunca** (también bloqueado al aprobar). Se aplicarán en la tienda (fase 5), solo al lote afectado.
+- **Cron diario** `GET /api/farmacia/cron/diario` a las **08:00 de México** (`vercel.json`: `0 14 * * *` UTC): recalcula alertas y promociones y manda **un solo correo resumen** a quien tiene «Reportes» (y superadmin) más los correos extra de Configuración. Una segunda corrida el mismo día recalcula pero no repite el correo (`ultimoResumen`). Sin novedades, no manda nada. Exige `Authorization: Bearer $CRON_SECRET`; sin `CRON_SECRET` responde 503 y no hace nada. Sin `RESEND_API_KEY` no se manda el correo y nada falla.
+- **Inicio y menú**: contador de alertas abiertas (rojo si hay críticas), puntos de reorden por revisar y promociones por aprobar.
+
+### Modelo y código
+
+| Pieza | Archivo |
+|---|---|
+| `far-alertas` (con `claveAbierta` única), `far-promociones` | `collections/farmacia/alertas.ts` |
+| Días sin rotación, correos extra del resumen, último resumen | `collections/farmacia/configuracion.ts` |
+| Migración (+ RLS) | `migrations/20261027_144827_farmacia_alertas.ts` |
+| Recalcular, fórmula, reabasto, promociones, cron y correo | `lib/farmacia/alertas.ts` |
+| Ruta del cron (Bearer `CRON_SECRET`) | `app/api/farmacia/cron/diario/route.ts`, `vercel.json` |
+| Pantallas | `components/admin/farmacia/Alertas.tsx` (Alertas, Reabasto, Promociones) |
+
+`far-alertas` y `far-promociones` solo se leen por la API genérica (crear, editar y borrar: 403 incluso al superadmin). La demanda diaria se agrega en SQL (una consulta por corrida). Sin dependencias nuevas.
+
+### Verificación (27-oct-2026)
+
+| Prueba | Resultado |
+|---|---|
+| `npx tsc --noEmit`, `npm run lint`, `npm run build` | Sin errores (lint: solo avisos) |
+| Arranque en producción contra Postgres local vacío | Aplicó las 9 migraciones solo |
+| `npm run test:clinica` → `npm run test:farmacia` → `npm run test:finanzas` | 121/121 · **299/299** (48 nuevas de la fase 4) · 44/44 |
+| Recorrido en Chromium a 390 px y 1280 px (superadmin con panel y encargado sin panel): inicio, alertas, reorden, reabasto, promociones, configuración, «Recalcular ahora» | Sin errores de JavaScript ni desbordamiento horizontal |
+
+Las 8 semanas de ventas se **siembran en la prueba** insertando movimientos con fechas pasadas directo en la base local (la app no tiene ninguna puerta para eso; el script se niega a correr si `DATABASE_URL` no es local) y el punto esperado se calcula en la prueba con la misma fórmula.
+
+Criterios de aceptación de la fase 4:
+
+- [x] Con datos sembrados, aparecen alertas de caducidad (aviso, urgente, vencido) y desabasto, sin duplicados.
+- [x] Con 8 semanas de ventas simuladas, el sistema propone un punto de reorden que coincide con la fórmula; aceptarlo cambia el mínimo, ignorarlo no.
+- [x] La lista de reabasto agrupa por proveedor y se copia como texto.
+- [x] El cron genera un solo correo resumen; sin llave de Resend no falla.
+- [x] Un lote de Grupo III cerca de caducar genera promoción «propuesta»; Grupo I o II nunca.
+
+### Decisiones y pendientes de la fase 4
+
+- **Propuestas construidas (confirmar):** descartar silencia la alerta hasta que cambie su severidad; productos nunca surtidos no levantan desabasto; el punto se redondea a unidad entera; la presentación de compra es la de mayor factor; el resumen solo sale si hay alertas o promociones pendientes.
+- **Variables en Vercel:** `CRON_SECRET` (nueva, Sensitive) para que corra el cron; `RESEND_API_KEY` y `LEADS_FROM_EMAIL` para que salga el correo.
+- «Avísame cuando llegue» y la aplicación de promociones en la tienda: fase 5. «Plan por renovar»: fase 6.
+- **Clínica (22-oct, por reconstruir):** correos de citas, recordatorio diario (se sumará como segundo cron en `vercel.json`), cartilla imprimible, botones de WhatsApp y manuales.

@@ -94,6 +94,8 @@ export interface Config {
     'far-ventas': FarVenta;
     'far-libro-control': FarLibroControl;
     'far-cierres-dia': FarCierreDia;
+    'far-alertas': FarAlerta;
+    'far-promociones': FarPromocion;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -134,6 +136,8 @@ export interface Config {
     'far-ventas': FarVentasSelect<false> | FarVentasSelect<true>;
     'far-libro-control': FarLibroControlSelect<false> | FarLibroControlSelect<true>;
     'far-cierres-dia': FarCierresDiaSelect<false> | FarCierresDiaSelect<true>;
+    'far-alertas': FarAlertasSelect<false> | FarAlertasSelect<true>;
+    'far-promociones': FarPromocionesSelect<false> | FarPromocionesSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -1205,6 +1209,70 @@ export interface FarCierreDia {
   createdAt: string;
 }
 /**
+ * Caducidad, desabasto, reorden sugerido, sin rotación y recetas. Las genera el sistema (cron diario o «Recalcular»); una sola abierta por objeto y tipo.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-alertas".
+ */
+export interface FarAlerta {
+  id: number;
+  tipo:
+    | 'caducidad'
+    | 'desabasto'
+    | 'reorden_sugerido'
+    | 'sin_rotacion'
+    | 'receta_por_validar'
+    | 'original_pendiente'
+    | 'plan_por_renovar';
+  severidad: 'aviso' | 'urgente' | 'critica';
+  estado: 'abierta' | 'atendida' | 'descartada';
+  /**
+   * lote-12, producto-3, receta-8…
+   */
+  objeto: string;
+  claveAbierta?: string | null;
+  mensaje: string;
+  producto?: (number | null) | FarProducto;
+  lote?: (number | null) | FarLote;
+  receta?: (number | null) | FarReceta;
+  valor?: number | null;
+  abiertaEn: string;
+  actualizadaEn?: string | null;
+  cerradaEn?: string | null;
+  cerradaPor?: (number | null) | User;
+  cierreAutomatico?: boolean | null;
+  nota?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Propuestas por caducidad (solo Grupo III y desregulados) que un humano aprueba. Se aplican en la tienda (fase 5) y solo al lote afectado.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-promociones".
+ */
+export interface FarPromocion {
+  id: number;
+  titulo: string;
+  producto: number | FarProducto;
+  lote?: (number | null) | FarLote;
+  descuentoPorciento: number;
+  diasParaCaducar?: number | null;
+  vigenteDesde: string;
+  vigenteHasta: string;
+  origen: 'caducidad' | 'manual';
+  estado: 'propuesta' | 'aprobada' | 'rechazada' | 'vencida';
+  /**
+   * lote-<id> mientras está propuesta o aprobada.
+   */
+  claveAbierta?: string | null;
+  decididaPor?: (number | null) | User;
+  decididaEn?: string | null;
+  motivo?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-movimientos".
  */
@@ -1385,6 +1453,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'far-cierres-dia';
         value: number | FarCierreDia;
+      } | null)
+    | ({
+        relationTo: 'far-alertas';
+        value: number | FarAlerta;
+      } | null)
+    | ({
+        relationTo: 'far-promociones';
+        value: number | FarPromocion;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -2168,6 +2244,51 @@ export interface FarCierresDiaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-alertas_select".
+ */
+export interface FarAlertasSelect<T extends boolean = true> {
+  tipo?: T;
+  severidad?: T;
+  estado?: T;
+  objeto?: T;
+  claveAbierta?: T;
+  mensaje?: T;
+  producto?: T;
+  lote?: T;
+  receta?: T;
+  valor?: T;
+  abiertaEn?: T;
+  actualizadaEn?: T;
+  cerradaEn?: T;
+  cerradaPor?: T;
+  cierreAutomatico?: T;
+  nota?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-promociones_select".
+ */
+export interface FarPromocionesSelect<T extends boolean = true> {
+  titulo?: T;
+  producto?: T;
+  lote?: T;
+  descuentoPorciento?: T;
+  diasParaCaducar?: T;
+  vigenteDesde?: T;
+  vigenteHasta?: T;
+  origen?: T;
+  estado?: T;
+  claveAbierta?: T;
+  decididaPor?: T;
+  decididaEn?: T;
+  motivo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-cuentas_select".
  */
 export interface FinCuentasSelect<T extends boolean = true> {
@@ -2465,6 +2586,7 @@ export interface FarmaciaConfiguracion {
     semanasHistorial?: number | null;
     diasCobertura?: number | null;
     diasEntregaPorOmision?: number | null;
+    diasSinRotacion?: number | null;
   };
   promociones?:
     | {
@@ -2486,6 +2608,14 @@ export interface FarmaciaConfiguracion {
     categoriaVentas?: (number | null) | FinCategoria;
     categoriaCompras?: (number | null) | FinCategoria;
   };
+  /**
+   * Separados por coma. Además, lo reciben las personas con «Reportes» en su rol (y el superadministrador).
+   */
+  correosAlertas?: string | null;
+  /**
+   * Lo escribe el cron: un solo resumen por día.
+   */
+  ultimoResumen?: string | null;
   pasarelaActiva?: ('ninguna' | 'mercadopago') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -2620,6 +2750,7 @@ export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
         semanasHistorial?: T;
         diasCobertura?: T;
         diasEntregaPorOmision?: T;
+        diasSinRotacion?: T;
       };
   promociones?:
     | T
@@ -2637,6 +2768,8 @@ export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
         categoriaVentas?: T;
         categoriaCompras?: T;
       };
+  correosAlertas?: T;
+  ultimoResumen?: T;
   pasarelaActiva?: T;
   updatedAt?: T;
   createdAt?: T;

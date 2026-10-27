@@ -6,6 +6,7 @@ import * as migration_20261021_184402_sitio_publico from './20261021_184402_siti
 import * as migration_20261025_221652_farmacia_base from './20261025_221652_farmacia_base';
 import * as migration_20261026_152714_farmacia_compras from './20261026_152714_farmacia_compras';
 import * as migration_20261027_053609_farmacia_ventas from './20261027_053609_farmacia_ventas';
+import * as migration_20261027_144827_farmacia_alertas from './20261027_144827_farmacia_alertas';
 
 export const migrations = [
   {
@@ -46,6 +47,11 @@ export const migrations = [
   {
     up: migration_20261027_053609_farmacia_ventas.up,
     down: migration_20261027_053609_farmacia_ventas.down,
-    name: '20261027_053609_farmacia_ventas'
+    name: '20261027_053609_farmacia_ventas',
+  },
+  {
+    up: migration_20261027_144827_farmacia_alertas.up,
+    down: migration_20261027_144827_farmacia_alertas.down,
+    name: '20261027_144827_farmacia_alertas'
   },
 ];

@@ -10,7 +10,21 @@
  * Usa las mismas credenciales de prueba que probarClinica.mjs; si la base ya
  * tiene primer usuario y roles, los reutiliza. Deja el módulo Clínica
  * encendido al terminar.
+ *
+ * Fase 4: para simular 8 semanas de ventas, la prueba inserta movimientos
+ * con fechas pasadas DIRECTO en la base local (DATABASE_URL de .env) — es
+ * siembra de prueba; la app no tiene ninguna puerta para eso. Se niega a
+ * correr si DATABASE_URL no apunta a localhost. El cron usa CRON_SECRET de .env.
  */
+import fs from 'node:fs'
+import pg from 'pg'
+
+const ENV = Object.fromEntries(
+  (fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') : '')
+    .split('\n')
+    .filter((l) => /^[A-Z_]+=/.test(l))
+    .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '')]),
+)
 const BASE = process.argv[2] || 'http://localhost:3000'
 const CORREO = 'prueba-superadmin@ejemplo.mx'
 const PASS = 'Prueba-123456'
@@ -791,6 +805,164 @@ async function main() {
   r = await admin.patch(`/api/far-ventas/${ventaMixta.id}`, { total: 1 })
   ok(r.status === 403, 'Las ventas no se editan por la API genérica (ni el superadmin)', r.status)
 
+  /* ── fase 4: alertas, reorden, reabasto, promociones, cron ── */
+  console.log('\nAlertas, reabasto y promociones (fase 4)')
+  const urlBase = ENV.DATABASE_URL || process.env.DATABASE_URL || ''
+  if (!/@(localhost|127\.0\.0\.1)[:/]/.test(urlBase)) throw new Error('La siembra de la fase 4 solo corre contra una base LOCAL (DATABASE_URL en .env).')
+  const bd = new pg.Client({ connectionString: urlBase })
+  await bd.connect()
+  const dia = (n) => {
+    const [y, m, dd] = hoyTxt.split('-').map(Number)
+    return new Date(Date.UTC(y, m - 1, dd + n)).toISOString().slice(0, 10)
+  }
+  r = await admin.post('/api/farmacia/configuracion', { promociones: [{ diasAntes: 90, descuentoPorciento: 15 }, { diasAntes: 45, descuentoPorciento: 30 }] })
+  ok(r.status === 200 && r.data.promociones.length === 2, 'Escalones de promoción: 90 días → 15 %, 45 días → 30 %', r.data?.promociones)
+  const provR = (await admin.post('/api/farmacia/proveedores', { nombre: `Distribuidora rotación ${sufijo}`, diasEntrega: 4, contacto: { telefono: '2281112233' } })).data
+  ok(provR?.id && provR.diasEntrega === 4, 'Proveedor con 4 días de entrega', provR)
+  /* Producto con 8 semanas de ventas sembradas: demanda 3..7 por día */
+  const sembrar = async (nombre) => {
+    const pr = (await encargado.post('/api/farmacia/productos', { nombre, linea: 'suplemento', grupo: 'desregulado', unidadBase: 'pieza', minimoInventario: 10, proveedorPreferenteId: provR.id })).data
+    await encargado.post(`/api/farmacia/productos/${pr.id}/presentaciones`, { nombre: 'Caja 12', factor: 12, precio: 600 })
+    await encargado.post(`/api/farmacia/productos/${pr.id}/presentaciones`, { nombre: 'Pieza', factor: 1, precio: 55 })
+    const lt = (await encargado.post('/api/farmacia/ajustes', { productoId: pr.id, lote: { numeroLote: `R-${pr.id}`, caducidad: '2029-12-31', costoUnidad: 30 }, cantidad: 500, motivo: 'Inventario de prueba' })).data.lote
+    const serie = []
+    let total = 0
+    for (let i = 56; i >= 1; i--) {
+      const u = 3 + ((i * 7) % 5)
+      serie.push(u)
+      total += u
+      await bd.query(`insert into far_movimientos (tipo, producto_id, lote_id, almacen_id, cantidad, dia, referencia, motivo) values ('venta', $1, $2, $3, $4, $5, 'SEMILLA', 'Venta simulada')`, [pr.id, lt.id, lt.almacen.id, -u, dia(-i)])
+    }
+    /* Mantiene el invariante existencia = suma del kardex: una entrada anterior por lo mismo que se «vendió». */
+    await bd.query(`insert into far_movimientos (tipo, producto_id, lote_id, almacen_id, cantidad, dia, referencia, motivo) values ('ajuste', $1, $2, $3, $4, $5, 'SEMILLA', 'Entrada simulada')`, [pr.id, lt.id, lt.almacen.id, total, dia(-60)])
+    return { prod: pr, lote: lt, serie }
+  }
+  const rotA = await sembrar(`Rotación A ${sufijo}`)
+  const rotB = await sembrar(`Rotación B ${sufijo}`)
+  const media = rotA.serie.reduce((a, x) => a + x, 0) / rotA.serie.length
+  const sigma = Math.sqrt(rotA.serie.reduce((a, x) => a + (x - media) ** 2, 0) / (rotA.serie.length - 1))
+  const Resperado = Math.ceil(media * 4 + 1.65 * sigma * Math.sqrt(4) - 1e-9)
+
+  /* caducidad y desabasto */
+  const cad = await crearProd({ nombre: `Caduca prueba ${sufijo}`, linea: 'higiene', grupo: 'III', unidadBase: 'pieza', minimoInventario: 5 }, { nombre: 'Pieza', factor: 1, precio: 80 }, [
+    { numero: `C20-${sufijo}`, caducidad: dia(20), costo: 30, cantidad: 1 },
+    { numero: `C50-${sufijo}`, caducidad: dia(50), costo: 30, cantidad: 1 },
+    { numero: `C200-${sufijo}`, caducidad: dia(200), costo: 30, cantidad: 1 },
+    { numero: `CV-${sufijo}`, caducidad: dia(-5), costo: 30, cantidad: 3 },
+  ])
+  const g2 = await crearProd({ nombre: `Sin promo G-II ${sufijo}`, linea: 'medicamento', grupo: 'II', registroSenasica: `Q-${sufijo}-P`, unidadBase: 'tableta' }, { nombre: 'Caja', factor: 10, precio: 300 }, [{ numero: `G2-${sufijo}`, caducidad: dia(20), costo: 10, cantidad: 10 }])
+  const lotesCad = Object.fromEntries(cad.lotes.map((l) => [l.numeroLote, l.id]))
+
+  r = await vendedor.post('/api/farmacia/alertas/recalcular')
+  ok(r.status === 403, 'El vendedor no recalcula alertas', r.status)
+  r = await encargado.post('/api/farmacia/alertas/recalcular')
+  ok(r.status === 200 && r.data.nuevas > 0, 'Recalcular crea las alertas del día', r.data)
+  const primera = r.data
+  r = await encargado.post('/api/farmacia/alertas/recalcular')
+  ok(r.status === 200 && r.data.nuevas === 0 && r.data.abiertas === primera.abiertas, 'Recalcular otra vez no duplica nada (una abierta por objeto y tipo)', r.data)
+  r = await vendedor.get('/api/farmacia/alertas')
+  ok(r.status === 200, 'El equipo ve la bandeja de alertas', r.status)
+  const abiertas = r.data.alertas
+  const de = (tipo, objeto) => abiertas.filter((a) => a.tipo === tipo && (objeto == null || a.loteId === objeto || a.productoId === objeto))
+  ok(de('caducidad', lotesCad[`CV-${sufijo}`])[0]?.severidad === 'critica', 'Lote vencido: alerta crítica (retirar)', de('caducidad', lotesCad[`CV-${sufijo}`]))
+  ok(de('caducidad', lotesCad[`C20-${sufijo}`])[0]?.severidad === 'urgente', 'Lote a 20 días: urgente', de('caducidad', lotesCad[`C20-${sufijo}`]))
+  ok(de('caducidad', lotesCad[`C50-${sufijo}`])[0]?.severidad === 'aviso', 'Lote a 50 días (higiene, aviso 60): aviso', de('caducidad', lotesCad[`C50-${sufijo}`]))
+  ok(de('caducidad', lotesCad[`C200-${sufijo}`]).length === 0, 'Lote a 200 días: sin alerta')
+  const desabasto = de('desabasto', cad.prod.id)[0]
+  ok(desabasto && desabasto.severidad === 'urgente' && desabasto.valor === 3, 'Desabasto: 3 vendibles con mínimo 5 (el vencido no cuenta)', desabasto)
+  ok(abiertas.filter((a) => a.tipo === 'desabasto' && a.productoId === cad.prod.id).length === 1, 'Una sola alerta de desabasto por producto')
+  const nuncaLlego = (await encargado.post('/api/farmacia/productos', { nombre: `Nunca llegó ${sufijo}`, linea: 'accesorio', grupo: 'desregulado', unidadBase: 'pieza', minimoInventario: 4 })).data
+  await encargado.post(`/api/farmacia/productos/${nuncaLlego.id}/presentaciones`, { nombre: 'Pieza', factor: 1, precio: 40 })
+  await encargado.post('/api/farmacia/alertas/recalcular')
+  r = await encargado.get('/api/farmacia/alertas?tipo=desabasto')
+  ok(!r.data.alertas.some((a) => a.productoId === nuncaLlego.id), 'Un producto que nunca ha tenido existencia no levanta desabasto (sin ruido al importar el catálogo)')
+  r = await encargado.get('/api/farmacia/reabasto')
+  ok(r.data.grupos.flatMap((g) => g.renglones).some((x) => x.productoId === nuncaLlego.id && x.cantidadUnidades === 4), '…pero sí aparece en el reabasto sugerido (4 piezas)', r.data.grupos.flatMap((g) => g.renglones).find((x) => x.productoId === nuncaLlego.id))
+
+  /* punto de reorden */
+  const reoA = de('reorden_sugerido', rotA.prod.id)[0]
+  ok(reoA && reoA.valor === Resperado, `Reorden propuesto = d̄·L + 1.65·σ·√L = ${Resperado} (d̄ ${media.toFixed(2)}, σ ${sigma.toFixed(2)}, L 4)`, reoA)
+  r = await encargado.get(`/api/farmacia/productos/${rotA.prod.id}`)
+  ok(r.data.puntoReordenPropuesto === Resperado && r.data.puntoReordenAceptado == null && r.data.minimoInventario === 10, 'El producto guarda el propuesto; el mínimo no cambia solo', { prop: r.data.puntoReordenPropuesto, acep: r.data.puntoReordenAceptado, min: r.data.minimoInventario })
+  r = await vendedor.post(`/api/farmacia/reorden/${rotA.prod.id}/aceptar`, {})
+  ok(r.status === 403, 'El vendedor no acepta puntos de reorden', r.status)
+  r = await encargado.post(`/api/farmacia/alertas/${reoA.id}/descartar`, { nota: 'Lo veo el próximo mes' })
+  ok(r.status === 200 && r.data.estado === 'descartada', 'Ignorar la propuesta (descartar)', r.data)
+  r = await encargado.get(`/api/farmacia/productos/${rotA.prod.id}`)
+  ok(r.data.puntoReordenAceptado == null && r.data.minimoInventario === 10, 'Ignorarla no cambia el mínimo', { acep: r.data.puntoReordenAceptado, min: r.data.minimoInventario })
+  await encargado.post('/api/farmacia/alertas/recalcular')
+  r = await encargado.get('/api/farmacia/alertas?tipo=reorden_sugerido')
+  ok(!r.data.alertas.some((a) => a.productoId === rotA.prod.id), 'La propuesta descartada no se repite mientras no cambie', r.data.alertas.map((a) => a.productoId))
+  r = await encargado.post(`/api/farmacia/reorden/${rotB.prod.id}/aceptar`, {})
+  ok(r.status === 200 && r.data.puntoReordenAceptado === Resperado, 'Aceptar la propuesta: el punto aceptado cambia', r.data)
+  r = await encargado.get(`/api/farmacia/alertas?estado=atendida&tipo=reorden_sugerido`)
+  ok(r.data.alertas.some((a) => a.productoId === rotB.prod.id), 'La alerta de reorden queda atendida', r.data.alertas.length)
+  await encargado.post('/api/farmacia/alertas/recalcular')
+  r = await encargado.get('/api/farmacia/alertas?tipo=reorden_sugerido')
+  ok(!r.data.alertas.some((a) => a.productoId === rotB.prod.id), 'Con el punto aceptado igual al calculado, ya no se propone', r.data.alertas.map((a) => a.productoId))
+
+  /* reabasto */
+  r = await vendedor.get('/api/farmacia/reabasto')
+  ok(r.status === 403, 'El vendedor no ve la lista de reabasto', r.status)
+  r = await encargado.get('/api/farmacia/reabasto')
+  const renCad = r.data.grupos?.flatMap((g) => g.renglones).find((x) => x.productoId === cad.prod.id)
+  ok(r.status === 200 && renCad && renCad.disponible === 3 && renCad.puntoReorden === 5 && renCad.cantidadUnidades === 2 && renCad.paquetes === 2, 'Reabasto: 5 de mínimo − 3 disponibles = 2 piezas', renCad)
+  const grupoR = r.data.grupos.find((g) => g.proveedor?.id === provR.id)
+  ok(!grupoR || grupoR.texto.includes(provR.nombre), 'Agrupado por proveedor preferente con texto para WhatsApp', grupoR?.texto)
+  ok(r.data.grupos.some((g) => g.proveedor === null && g.texto.includes(`Caduca prueba ${sufijo}`)), 'Sin proveedor preferente: grupo aparte, copiable', r.data.grupos.map((g) => g.proveedor?.nombre ?? 'sin'))
+  r = await encargado.get('/api/farmacia/reabasto/csv')
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('Presentación de compra') && r.data.includes(`Caduca prueba ${sufijo}`), 'Reabasto descargable en CSV', r.status)
+
+  /* promociones */
+  r = await encargado.get('/api/farmacia/promociones?estado=propuesta')
+  const promo20 = r.data.find((x) => x.loteId === lotesCad[`C20-${sufijo}`])
+  const promo50 = r.data.find((x) => x.loteId === lotesCad[`C50-${sufijo}`])
+  ok(promo20 && promo20.descuentoPorciento === 30 && promo20.vigenteHasta === dia(19), 'Lote G-III a 20 días: promoción propuesta de 30 %, vence un día antes de caducar', promo20)
+  ok(promo50 && promo50.descuentoPorciento === 15, 'Lote a 50 días: propuesta de 15 %', promo50)
+  ok(!r.data.some((x) => x.loteId === lotesCad[`C200-${sufijo}`]) && !r.data.some((x) => x.loteId === lotesCad[`CV-${sufijo}`]), 'Sin promoción para el lote lejano ni para el vencido')
+  ok(!r.data.some((x) => x.productoId === g2.prod.id), 'Grupo II nunca genera promoción', r.data.filter((x) => x.productoId === g2.prod.id))
+  r = await vendedor.post(`/api/farmacia/promociones/${promo20.id}/decidir`, { decision: 'aprobada' })
+  ok(r.status === 403, 'El vendedor no aprueba promociones', r.status)
+  r = await encargado.post(`/api/farmacia/promociones/${promo20.id}/decidir`, { decision: 'aprobada' })
+  ok(r.status === 200 && r.data.estado === 'aprobada' && r.data.decididaPor?.nombre === 'Luis Encargado', 'El encargado aprueba la promoción', r.data)
+  r = await encargado.post(`/api/farmacia/promociones/${promo50.id}/decidir`, { decision: 'rechazada', motivo: 'Rota bien sin descuento' })
+  ok(r.status === 200 && r.data.estado === 'rechazada', 'Rechaza la otra con motivo', r.data)
+  await encargado.post('/api/farmacia/alertas/recalcular')
+  r = await encargado.get('/api/farmacia/promociones?estado=propuesta')
+  ok(!r.data.some((x) => x.loteId === lotesCad[`C50-${sufijo}`] || x.loteId === lotesCad[`C20-${sufijo}`]), 'Recalcular no duplica la aprobada ni revive la rechazada', r.data.map((x) => x.loteId))
+
+  /* cierre automático: llega mercancía y el desabasto se resuelve solo */
+  await encargado.post('/api/farmacia/ajustes', { productoId: cad.prod.id, lote: { numeroLote: `C300-${sufijo}`, caducidad: dia(300), costoUnidad: 30 }, cantidad: 10, motivo: 'Llegó mercancía' })
+  await encargado.post('/api/farmacia/alertas/recalcular')
+  r = await encargado.get('/api/farmacia/alertas?estado=atendida&tipo=desabasto')
+  ok(r.data.alertas.some((a) => a.productoId === cad.prod.id && a.cierreAutomatico), 'El desabasto se cierra solo al llegar mercancía', r.data.alertas.filter((a) => a.productoId === cad.prod.id))
+  /* merma del vencido: la alerta crítica se cierra sola */
+  await encargado.post('/api/farmacia/ajustes', { productoId: cad.prod.id, loteId: lotesCad[`CV-${sufijo}`], tipo: 'merma', cantidad: -3, motivo: 'Retiro de vencido' })
+  await encargado.post('/api/farmacia/alertas/recalcular')
+  r = await encargado.get('/api/farmacia/alertas')
+  ok(!r.data.alertas.some((a) => a.loteId === lotesCad[`CV-${sufijo}`]), 'Al retirar el lote vencido, su alerta se cierra', r.data.alertas.filter((a) => a.loteId === lotesCad[`CV-${sufijo}`]))
+  r = await vendedor.post(`/api/farmacia/alertas/${de('caducidad', lotesCad[`C20-${sufijo}`])[0].id}/atender`, {})
+  ok(r.status === 403, 'El vendedor no atiende alertas', r.status)
+  r = await admin.post('/api/far-alertas', { tipo: 'desabasto', objeto: 'x', mensaje: 'x', abiertaEn: new Date().toISOString() })
+  ok(r.status === 403, 'Las alertas no se crean por la API genérica (ni el superadmin)', r.status)
+  r = await encargado.get('/api/farmacia/catalogo')
+  ok(r.data.hoy.alertasAbiertas > 0 && r.data.hoy.promocionesPropuestas >= 0 && typeof r.data.hoy.alertasCriticas === 'number', 'Inicio: contador de alertas abiertas', r.data.hoy)
+
+  /* cron diario */
+  const cron = (auth) => fetch(`${BASE}/api/farmacia/cron/diario`, { headers: auth ? { authorization: auth } : {} }).then(async (x) => ({ status: x.status, data: await x.json().catch(() => null) }))
+  r = await cron(null)
+  ok(r.status === 401 || r.status === 503, 'El cron sin CRON_SECRET no corre', r)
+  if (ENV.CRON_SECRET) {
+    await bd.query(`update farmacia_configuracion set ultimo_resumen = null`)
+    r = await cron(`Bearer ${ENV.CRON_SECRET}x`)
+    ok(r.status === 401, 'El cron con secreto equivocado no corre', r.status)
+    r = await cron(`Bearer ${ENV.CRON_SECRET}`)
+    ok(r.status === 200 && r.data.correo === 'enviado' && r.data.destinatarios >= 2 && r.data.recalculo, 'El cron recalcula y manda UN correo resumen (sin llave de Resend no falla)', r.data)
+    r = await cron(`Bearer ${ENV.CRON_SECRET}`)
+    ok(r.status === 200 && r.data.correo === 'ya_enviado', 'Segunda corrida del mismo día: no repite el correo', r.data)
+  } else ok(false, 'Falta CRON_SECRET en .env para probar el cron')
+  await bd.end()
+
   /* ── panel ── */
   console.log('\nPanel')
   for (const [ruta, texto] of [
@@ -805,6 +977,9 @@ async function main() {
     ['/admin/farmacia/ventas', 'fa-app'],
     ['/admin/farmacia/recetas', 'fa-app'],
     ['/admin/farmacia/cierre', 'fa-app'],
+    ['/admin/farmacia/alertas', 'fa-app'],
+    ['/admin/farmacia/reabasto', 'fa-app'],
+    ['/admin/farmacia/promociones', 'fa-app'],
     ['/admin/farmacia/importar', 'Importar catálogo'],
     ['/admin/farmacia/configuracion', 'Configuración'],
     [`/admin/farmacia/productos/${prod.id}`, 'fa-app'],

@@ -764,3 +764,28 @@ h3 {
 .fa-totales {
   border-top: 1px solid var(--mx-line);
 }
+
+/* 3.10 Farmacia fase 3: mostrador, cierre y recetas */
+.fa-linea,
+.fa-cobrar {
+  border-radius: 12px;
+  background: #ffffff;
+}
+.fa-linea--pendiente {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+.fa-cobrado {
+  border-color: #1d4ed8;
+  box-shadow: inset 3px 0 0 #1d4ed8;
+}
+.fa-cobrado__cambio {
+  color: #1d4ed8;
+}
+.fa-hoy {
+  background: #f1f5f9;
+}
+.fa-hoy--aviso {
+  background: #fffbeb;
+}

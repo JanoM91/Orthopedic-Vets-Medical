@@ -124,8 +124,47 @@ export default function Inicio() {
 
       <div className="cl-dos">
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-          <h2 className="fz-h2">Hoy</h2>
-          <p className="fz-chico fz-tenue">Ventas del día, pedidos por preparar, recetas por validar y cierre del día aparecen aquí cuando estén construidas esas fases (3 a 5). Hoy la farmacia lleva catálogo e inventario por lote.</p>
+          <div className="fz-entre">
+            <h2 className="fz-h2">Hoy</h2>
+            {p.vender && (
+              <Link href={`${base}/vender`} className="fz-btn fz-btn--navy fz-btn--chico">
+                Vender
+              </Link>
+            )}
+          </div>
+          {p.vender && (
+            <Link href={`${base}/ventas`} className="fa-hoy">
+              <span>Ventas del día</span>
+              <b className="fz-num">
+                {catalogo.hoy.ventasHoy} · {dinero(catalogo.hoy.totalHoy)}
+              </b>
+            </Link>
+          )}
+          {p.vender && catalogo.hoy.pagosPorConfirmar > 0 && (
+            <Link href={`${base}/ventas?estado=por_confirmar`} className="fa-hoy fa-hoy--aviso">
+              <span>Transferencias por confirmar</span>
+              <b className="fz-num">{catalogo.hoy.pagosPorConfirmar}</b>
+            </Link>
+          )}
+          {p.recetas && (
+            <Link href={`${base}/recetas?ver=por_validar`} className={`fa-hoy${catalogo.hoy.recetasPorValidar ? ' fa-hoy--aviso' : ''}`}>
+              <span>Recetas por validar</span>
+              <b className="fz-num">{catalogo.hoy.recetasPorValidar}</b>
+            </Link>
+          )}
+          {p.recetas && (
+            <Link href={`${base}/recetas?ver=originales`} className={`fa-hoy${catalogo.hoy.originalesPendientes ? ' fa-hoy--aviso' : ''}`}>
+              <span>Originales de receta pendientes</span>
+              <b className="fz-num">{catalogo.hoy.originalesPendientes}</b>
+            </Link>
+          )}
+          {p.cierreDia && catalogo.configuracion.cierreDiaActivo && (
+            <Link href={`${base}/cierre`} className={`fa-hoy${catalogo.hoy.cierrePendiente ? ' fa-hoy--aviso' : ''}`}>
+              <span>Cierre del día</span>
+              <b>{catalogo.hoy.cierrePendiente ? 'Pendiente' : catalogo.hoy.ventasHoy ? 'Hecho' : '—'}</b>
+            </Link>
+          )}
+          <p className="fz-chico fz-tenue">Pedidos de la tienda y alertas llegan en las fases 4 y 5.</p>
         </div>
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
           <h2 className="fz-h2">Accesos</h2>

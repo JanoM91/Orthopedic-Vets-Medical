@@ -180,12 +180,19 @@ const CONFIG_POR_OMISION: ConfiguracionVista = {
   politicaDevoluciones: null,
   almacenPorOmisionId: null,
   finanzas: { areaId: null, categoriaVentasId: null, categoriaComprasId: null },
+  exigirOriginalGrupoII: false,
+  /* Sin configurar: los tres métodos usuales, sin cuenta (el mostrador pide elegirla en Configuración). */
+  metodosPago: [
+    { clave: 'efectivo', nombre: 'Efectivo', tipo: 'efectivo', cuentaId: null, porConfirmar: false, activo: true },
+    { clave: 'terminal', nombre: 'Terminal (tarjeta)', tipo: 'terminal', cuentaId: null, porConfirmar: false, activo: true },
+    { clave: 'transferencia', nombre: 'Transferencia', tipo: 'transferencia', cuentaId: null, porConfirmar: true, activo: true },
+  ],
   pasarelaActiva: 'ninguna',
 }
 
 function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista {
   const d = CONFIG_POR_OMISION
-  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas } }
+  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas }, metodosPago: d.metodosPago.map((m) => ({ ...m })) }
   const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : def)
   return {
     caducidad: {
@@ -207,6 +214,10 @@ function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista
     almacenPorOmisionId: idDe(g.almacenPorOmision),
     finanzas: { areaId: idDe(g.finanzas?.area), categoriaVentasId: idDe(g.finanzas?.categoriaVentas), categoriaComprasId: idDe(g.finanzas?.categoriaCompras) },
     pasarelaActiva: g.pasarelaActiva === 'mercadopago' ? 'mercadopago' : 'ninguna',
+    exigirOriginalGrupoII: Boolean(g.exigirOriginalGrupoII),
+    metodosPago: g.metodosPago?.length
+      ? g.metodosPago.map((m) => ({ clave: m.clave, nombre: m.nombre, tipo: m.tipo, cuentaId: idDe(m.cuenta), porConfirmar: Boolean(m.porConfirmar), activo: m.activo !== false }))
+      : d.metodosPago.map((m) => ({ ...m })),
   }
 }
 
@@ -238,6 +249,20 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     almacenPorOmisionId: z.coerce.number().int().positive().nullable().optional(),
     finanzas: z.object({ areaId: z.coerce.number().int().positive().nullable(), categoriaVentasId: z.coerce.number().int().positive().nullable(), categoriaComprasId: z.coerce.number().int().positive().nullable() }).partial().optional(),
     pasarelaActiva: z.enum(['ninguna', 'mercadopago']).optional(),
+    exigirOriginalGrupoII: z.boolean().optional(),
+    metodosPago: z
+      .array(
+        z.object({
+          clave: z.string().trim().toLowerCase().regex(/^[a-z0-9_-]{2,30}$/, 'La clave del método va sin espacios ni acentos (p. ej. «efectivo», «clip»).'),
+          nombre: z.string().trim().min(2, 'Escribe el nombre del método de pago.').max(60),
+          tipo: z.enum(['efectivo', 'terminal', 'transferencia', 'otro']),
+          cuentaId: z.coerce.number().int().positive().nullable(),
+          porConfirmar: z.boolean().optional(),
+          activo: z.boolean().optional(),
+        }),
+      )
+      .max(12)
+      .optional(),
   })
   const d = esquema.safeParse(entrada)
   if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Datos no válidos.')
@@ -260,6 +285,20 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     }
   }
   if (v.pasarelaActiva) data.pasarelaActiva = v.pasarelaActiva
+  if (v.exigirOriginalGrupoII != null) data.exigirOriginalGrupoII = v.exigirOriginalGrupoII
+  if (v.metodosPago) {
+    const claves = new Set<string>()
+    for (const m of v.metodosPago) {
+      if (claves.has(m.clave)) throw invalido(`La clave «${m.clave}» está repetida en los métodos de pago.`)
+      claves.add(m.clave)
+      if (m.cuentaId) {
+        const c = await ctx.payload.findByID({ collection: 'fin-cuentas', id: m.cuentaId, depth: 0, overrideAccess: true }).catch(() => null)
+        if (!c) throw invalido(`La cuenta del método «${m.nombre}» no existe.`)
+      }
+    }
+    if (v.metodosPago.filter((m) => m.tipo === 'efectivo' && m.activo !== false).length > 1) throw invalido('Solo puede haber un método de efectivo activo (es el que da cambio y cuadra la caja).')
+    data.metodosPago = v.metodosPago.map((m) => ({ clave: m.clave, nombre: m.nombre, tipo: m.tipo, cuenta: m.cuentaId, porConfirmar: m.porConfirmar ?? m.tipo === 'transferencia', activo: m.activo !== false }))
+  }
   const g = await ctx.payload.updateGlobal({ slug: 'farmacia-configuracion', overrideAccess: true, data })
   return vistaConfiguracion(g as FarmaciaConfiguracion)
 }
@@ -463,7 +502,7 @@ export async function catalogo(ctx: Ctx): Promise<CatalogoFarmacia> {
     finanzas.areas = areas.docs.map((a) => ({ id: a.id, nombre: a.nombre }))
     finanzas.categorias = cats.docs.map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo }))
   }
-  if (ctx.p.farmacia.recibirCompras) {
+  if (ctx.p.farmacia.recibirCompras || ctx.p.farmacia.configurar) {
     const cuentas = await ctx.payload.find({ collection: 'fin-cuentas', depth: 0, pagination: false, overrideAccess: true, sort: 'nombre', where: { activa: { equals: true } } })
     finanzas.cuentas = cuentas.docs.map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo }))
   }
@@ -494,7 +533,29 @@ export async function catalogo(ctx: Ctx): Promise<CatalogoFarmacia> {
     finanzas,
     totales,
     arranque: { almacenes: almacenes.totalDocs > 0, rolesFarmacia: roles.totalDocs >= ROLES_FARMACIA.length },
+    hoy: await resumenHoy(ctx, cfg),
+    clinica: ctx.modulos.clinica,
   }
+}
+
+/** Cifras de hoy para el inicio (fase 3). Cada cifra solo se calcula si el rol la puede ver. */
+async function resumenHoy(ctx: Ctx, cfg: ConfiguracionVista): Promise<CatalogoFarmacia['hoy']> {
+  const r: CatalogoFarmacia['hoy'] = { ventasHoy: 0, totalHoy: 0, pagosPorConfirmar: 0, recetasPorValidar: 0, originalesPendientes: 0, cierrePendiente: false }
+  if (ctx.p.farmacia.vender) {
+    const ventas = await ctx.payload.find({ collection: 'far-ventas', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ dia: { equals: ctx.hoy } }, { estado: { not_equals: 'anulada' } }] }, select: { total: true, estado: true } })
+    r.ventasHoy = ventas.totalDocs
+    r.totalHoy = aPesos(ventas.docs.reduce((a, v) => a + (aCentavos(n0(v.total)) || 0), 0))
+    r.pagosPorConfirmar = (await ctx.payload.count({ collection: 'far-ventas', overrideAccess: true, where: { estado: { equals: 'por_confirmar' } } })).totalDocs
+  }
+  if (ctx.p.farmacia.recetas) {
+    r.recetasPorValidar = (await ctx.payload.count({ collection: 'far-recetas', overrideAccess: true, where: { estado: { equals: 'por_validar' } } })).totalDocs
+    r.originalesPendientes = (await ctx.payload.count({ collection: 'far-recetas', overrideAccess: true, where: { and: [{ origen: { equals: 'externa' } }, { estado: { equals: 'valida' } }, { originalRecibido: { not_equals: true } }] } })).totalDocs
+  }
+  if (ctx.p.farmacia.cierreDia && cfg.cierreDiaActivo) {
+    const caja = cfg.metodosPago.find((m) => m.tipo === 'efectivo' && m.activo && m.cuentaId)
+    if (caja && r.ventasHoy > 0) r.cierrePendiente = (await ctx.payload.count({ collection: 'far-cierres-dia', overrideAccess: true, where: { clave: { equals: `${ctx.hoy}-${caja.cuentaId}` } } })).totalDocs === 0
+  }
+  return r
 }
 
 /* ───────────────────────────── productos ───────────────────────────── */

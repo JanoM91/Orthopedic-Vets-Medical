@@ -1,6 +1,6 @@
-# Farmacia: catálogo, inventario, kardex, compras y conteo (fases 1 y 2)
+# Farmacia: catálogo, inventario, compras, venta de mostrador y recetas (fases 1 a 3)
 
-> 25-oct-2026. Módulo de Farmacia sobre la plataforma (Finanzas + Clínica), según `docs/FARMACIA-PROMPT.md`. Este documento es la referencia técnica del módulo y crece con cada fase. Lo que hay hoy son las **fases 1 y 2 de 7**: base del catálogo e inventario, permisos, módulos activables e importación (fase 1, 25-oct); compras desde el XML CFDI o a mano, recepción con lote y caducidad, gasto en Finanzas, anulación y conteo físico (fase 2, 26-oct; sección 10). Ventas, recetas, alertas, tienda y planes llegan en las fases 3 a 7.
+> 25-oct-2026. Módulo de Farmacia sobre la plataforma (Finanzas + Clínica), según `docs/FARMACIA-PROMPT.md`. Este documento es la referencia técnica del módulo y crece con cada fase. Lo que hay hoy son las **fases 1 y 2 de 7**: base del catálogo e inventario, permisos, módulos activables e importación (fase 1, 25-oct); compras desde el XML CFDI o a mano, recepción con lote y caducidad, gasto en Finanzas, anulación y conteo físico (fase 2, 26-oct; sección 10); venta de mostrador, recetas, libro de control del Grupo I y cierre del día (fase 3, 27-oct; sección 11). Alertas, tienda y planes llegan en las fases 4 a 7.
 
 ## 1. Qué hace (fase 1)
 
@@ -186,3 +186,64 @@ Criterios de aceptación de la fase 2:
 - **No se valida el CFDI ante el SAT** (estatus vigente/cancelado); queda como mejora futura si Jano lo pide.
 - **Facturas con varios almacenes:** la compra entra al almacén por omisión; el campo existe para elegir otro cuando haya sucursales.
 - **Devolución al proveedor** (parcial, después de vender parte del lote) no está construida: hoy se resuelve con merma o ajuste con motivo. Se puede agregar en una fase posterior.
+
+## 11. Fase 3 · Venta de mostrador y recetas (27-oct-2026)
+
+### Qué hace
+
+- **Vender** (`/admin/farmacia/vender`, permiso «Vender»): escaneo con lector USB (escribe el código + Enter) o con la **cámara** del teléfono (API `BarcodeDetector`; si el navegador no la tiene, el botón no aparece y queda la captura manual), búsqueda por nombre, principio activo o laboratorio con existencia vendible, carrito con cantidad y descuento por renglón, mascota opcional, receta para Grupo I/II, **pagos mixtos** (efectivo con «recibido» y cambio, billetes rápidos, terminal, transferencia) y ticket. Con un solo método el monto sigue al total: escanear → Cobrar.
+- **Inventario por FEFO** dentro de una transacción con candado por lote: sale primero el lote no vencido ni bloqueado que caduca antes. **Un lote vencido nunca se vende.** Venta fraccionada solo si la presentación lo permite (cantidad entera si no).
+- **Idempotencia:** cada intento de cobro lleva una clave; un doble clic o un reintento por mala señal devuelve la misma venta (`duplicado: true`) y no descuenta dos veces.
+- **Finanzas:** entrada pendiente por el total (clave `venta-<id>`, área y categoría de ventas de la configuración) y un cobro por cada pago confirmado en la cuenta de su método (clave `venta-<id>-pago-<n>`). La **transferencia queda «por confirmar»** y entra a Finanzas cuando el encargado la confirma. Si Finanzas falla, la venta ya quedó y se usa «Reintentar Finanzas».
+- **Descuentos:** solo con «Aplicar descuentos». Si vende alguien sin la casilla, el servidor responde `codigo: autorizacion` y la pantalla pide **correo y contraseña de un encargado** en ese momento; se verifican con el mismo algoritmo de Payload (pbkdf2) sin abrir sesión, con límite de 8 intentos por vendedor cada 10 minutos, y la venta guarda quién autorizó. Nada de la contraseña se guarda.
+- **Validación por mascota** (si la venta lleva mascota): especie, rango de peso, edad mínima y alergias (sin acentos ni plurales: «Penicilina» choca con «penicilinas»). Choque → bloqueo con mensaje claro; el encargado puede autorizar con motivo (queda en el renglón). Peso de más de 90 días en productos por rango → pide confirmar el peso de hoy. **El sistema nunca calcula ni sugiere dosis.**
+- **Grupo II:** exige receta válida y vigente que cubra el producto (por producto o por principio activo) con surtidos disponibles; cada venta consume un surtido. Si la receta es de otra mascota, no surte. Despachar Grupo I y II exige «Validar recetas y despachar» (o la contraseña del encargado).
+- **Grupo I:** además, folio de receta cuantificada y «original recibido». Cada salida crea un asiento automático e **inmutable** en el **libro de control** (laboratorio, producto, número de registro, lote, fecha de compra, folio de receta, MVZ, fecha de salida, cantidad y animal de destino), exportable en CSV.
+- **Recetas** (`/admin/farmacia/recetas`): bandeja «por validar», «originales pendientes», historial y libro de control. La **receta externa** la captura el mostrador (datos + foto o PDF al almacén privado) y la valida o rechaza el encargado con motivo (al rechazar se avisa al tutor por correo si hay llave de Resend). La **receta interna** la emite el médico veterinario desde el expediente (pestaña «Recetas»), con el peso vigente precargado y la dosis escrita por él; al firmar queda válida e **inmutable** (solo cambian sus surtidos y la marca del original) y firmar exige su **cédula profesional** (campo nuevo en Usuarios). Grupo I exige el folio cuantificado para firmar.
+- **Ticket** imprimible o PDF desde el navegador (sin costos) y envío por correo.
+- **Anular** una venta del día (permiso «Ajustes»), con motivo: el inventario regresa a sus lotes (`devolucion`), los surtidos de receta se devuelven, el libro de control recibe un asiento de **cancelación** (el original no se edita) y la entrada de Finanzas se anula. Ventas de días anteriores: devolución según la política (pendiente).
+- **Cierre del día** (activado por omisión, permiso «Cierre del día»): efectivo esperado = saldo de la caja del método «Efectivo» en Finanzas al terminar el día, contra lo contado. Con diferencia exige nota; uno por caja y día.
+- **Métodos de pago** en Farmacia → Configuración: nombre, tipo, cuenta de Finanzas, «por confirmar» y activo. Solo un efectivo activo.
+- **Inicio:** ventas del día, transferencias por confirmar, recetas por validar, originales pendientes y estado del cierre.
+
+### Modelo y código
+
+| Pieza | Archivo |
+|---|---|
+| `far-ventas` (VTA-), `far-recetas` (REC-), `far-libro-control`, `far-cierres-dia` | `collections/farmacia/ventas.ts` |
+| Métodos de pago y «exigir original en Grupo II» | `collections/farmacia/configuracion.ts` |
+| Cédula profesional del MVZ | `collections/Users.ts` |
+| Migración (+ RLS) | `migrations/20261027_053609_farmacia_ventas.ts` |
+| Venta, Finanzas, autorización, ticket, anulación, libro, cierre, búsqueda del mostrador | `lib/farmacia/ventas.ts` |
+| Recetas internas y externas, paciente para la venta | `lib/farmacia/recetas.ts` |
+| Validación contra la mascota y utilidades | `lib/farmacia/util.ts` |
+| Pantallas | `components/admin/farmacia/Vender.tsx`, `Ventas.tsx`, `Recetas.tsx`, `Cierre.tsx`, `RecetasMascota.tsx` (expediente) |
+
+Las cuatro colecciones nuevas solo se leen por la API genérica; crear, editar y borrar responden 403 incluso al superadmin. El libro de control además rechaza ediciones y borrados en hooks. Sin dependencias nuevas.
+
+### Verificación (27-oct-2026)
+
+| Prueba | Resultado |
+|---|---|
+| `npx tsc --noEmit`, `npm run lint`, `npm run build` | Sin errores (lint: solo avisos) |
+| Arranque en producción contra Postgres local vacío | Aplicó las 8 migraciones solo |
+| `npm run test:clinica` → `npm run test:farmacia` → `npm run test:finanzas` | 121/121 · **251/251** (94 nuevas de la fase 3) · 44/44 |
+| Recorrido en Chromium a 390 px y 1280 px: venta real por la interfaz (escaneo → cobro con cambio), ventas, ficha, recetas, receta externa, ficha de receta, libro, cierre, configuración, expediente con «Emitir receta» | Sin errores de JavaScript ni desbordamiento horizontal |
+
+Criterios de aceptación de la fase 3:
+
+- [x] Venta con escaneo, pago mixto (efectivo + terminal) y cambio; crea entrada en Finanzas y descuenta por FEFO.
+- [x] Un lote vencido no se puede vender.
+- [x] Un vendedor no puede aplicar descuento sin la contraseña de un encargado.
+- [x] Grupo II sin receta válida se rechaza; Grupo I sin folio ni «original recibido» se rechaza y, con ellos, crea asiento en el libro de control.
+- [x] Receta interna emitida desde el expediente queda inmutable al firmar; receta externa pasa por validación con motivo de rechazo.
+- [x] Validación por mascota bloquea especie, peso, edad o alergia incompatibles.
+- [x] Cierre del día registra la diferencia entre esperado y contado.
+
+### Decisiones y pendientes de la fase 3
+
+- **Propuestas construidas con valor por omisión (confirmar con Jano o el Dr. Joni):** confirmar transferencias con la casilla «Aprobar»; anular ventas solo del mismo día con «Ajustes»; el original físico de una receta externa de Grupo II **no** se exige por omisión (casilla en Configuración); el vendedor puede capturar recetas externas pero no validarlas ni despachar Grupo I/II sin el encargado.
+- **Esperado del cierre:** es el saldo de la caja en Finanzas, no solo las ventas del día. Si se saca efectivo para un gasto, hay que registrarlo en Finanzas antes de cerrar.
+- **Sin clínica:** la venta va sin mascota (el perfil ligero llega con la tienda, fase 5) y las recetas internas no existen; las externas aceptan el nombre del paciente en texto.
+- **Devoluciones** de días anteriores, **CFDI al cliente** y la impresora térmica dedicada quedan fuera (política pendiente / módulo posterior). El ticket se imprime desde el navegador.
+- **Correo:** el ticket y el aviso de receta rechazada salen por Resend; sin `RESEND_API_KEY` no se manda nada y nada falla (aviso en el log).

@@ -5,6 +5,7 @@ import * as migration_20261021_155111_agenda_citas from './20261021_155111_agend
 import * as migration_20261021_184402_sitio_publico from './20261021_184402_sitio_publico';
 import * as migration_20261025_221652_farmacia_base from './20261025_221652_farmacia_base';
 import * as migration_20261026_152714_farmacia_compras from './20261026_152714_farmacia_compras';
+import * as migration_20261027_053609_farmacia_ventas from './20261027_053609_farmacia_ventas';
 
 export const migrations = [
   {
@@ -40,6 +41,11 @@ export const migrations = [
   {
     up: migration_20261026_152714_farmacia_compras.up,
     down: migration_20261026_152714_farmacia_compras.down,
-    name: '20261026_152714_farmacia_compras'
+    name: '20261026_152714_farmacia_compras',
+  },
+  {
+    up: migration_20261027_053609_farmacia_ventas.up,
+    down: migration_20261027_053609_farmacia_ventas.down,
+    name: '20261027_053609_farmacia_ventas'
   },
 ];

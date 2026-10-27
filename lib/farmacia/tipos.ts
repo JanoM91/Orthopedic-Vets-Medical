@@ -130,6 +130,8 @@ export type ConfiguracionVista = {
   almacenPorOmisionId: number | null
   finanzas: { areaId: number | null; categoriaVentasId: number | null; categoriaComprasId: number | null }
   pasarelaActiva: 'ninguna' | 'mercadopago'
+  exigirOriginalGrupoII: boolean
+  metodosPago: MetodoPagoVista[]
 }
 
 export type CatalogoFarmacia = {
@@ -157,6 +159,10 @@ export type CatalogoFarmacia = {
     valorInventario?: number
   }
   arranque: { almacenes: boolean; rolesFarmacia: boolean }
+  /** Cifras de hoy (fase 3): ventas, recetas, cierre. */
+  hoy: ResumenHoy
+  /** ¿Está encendida la clínica? (expediente, recetas internas, mascotas). */
+  clinica: boolean
 }
 
 export type ResultadoProductos = { productos: ProductoBreve[]; total: number }
@@ -305,4 +311,183 @@ export type RenglonConteo = {
 export type ResultadoConteo = {
   ajustes: { loteId: number; productoNombre: string; numeroLote: string; antes: number; contado: number; diferencia: number }[]
   sinCambio: number
+}
+
+/* ───────── venta de mostrador y recetas (fase 3) ───────── */
+
+export type MetodoPagoVista = { clave: string; nombre: string; tipo: 'efectivo' | 'terminal' | 'transferencia' | 'otro'; cuentaId: number | null; porConfirmar: boolean; activo: boolean }
+
+export type RenglonRecetaVista = {
+  id: string | null
+  productoId: number | null
+  productoNombre: string | null
+  principio: string | null
+  dosis: string | null
+  frecuencia: string | null
+  duracion: string | null
+  surtidosPermitidos: number
+  surtidosUsados: number
+}
+
+export type EstadoReceta = 'borrador' | 'por_validar' | 'valida' | 'rechazada' | 'cancelada'
+
+export type RecetaVista = {
+  id: number
+  folio: string
+  origen: 'interna' | 'externa'
+  estado: EstadoReceta
+  /** Válida y dentro de su vigencia. */
+  vigente: boolean
+  mascota: { id: number; folio: string; nombre: string; especie: string } | null
+  cliente: { id: number; nombre: string; email: string | null } | null
+  pacienteTexto: string | null
+  notaId: number | null
+  mvzNombre: string
+  mvzCedula: string | null
+  fechaEmision: string
+  vigenteHasta: string
+  folioCuantificado: string | null
+  pesoKg: number | null
+  indicaciones: string | null
+  renglones: RenglonRecetaVista[]
+  tieneArchivo: boolean
+  firmadaPor: PersonaBreve | null
+  firmadaEn: string | null
+  validadaPor: PersonaBreve | null
+  validadaEn: string | null
+  motivoRechazo: string | null
+  originalRecibido: boolean
+  originalRecibidoPor: PersonaBreve | null
+  originalRecibidoEn: string | null
+  capturadaPor: PersonaBreve | null
+  creadoEn: string
+}
+
+export type PacienteVenta = {
+  mascotaId: number
+  folio: string
+  nombre: string
+  especie: string
+  raza: string | null
+  edadMeses: number | null
+  pesoKg: number | null
+  pesoFecha: string | null
+  /** Días desde el último peso (null sin peso). */
+  pesoDias: number | null
+  alergias: string | null
+  cliente: { id: number; nombre: string; email: string | null; telefono: string | null } | null
+}
+
+/** Resultado de revisar un producto contra la mascota. */
+export type ProblemaMascota = { tipo: 'especie' | 'peso' | 'edad' | 'alergia' | 'peso_viejo' | 'sin_peso'; mensaje: string }
+
+export type RenglonVentaVista = {
+  id: string | null
+  presentacionId: number
+  productoId: number
+  descripcion: string
+  grupo: string | null
+  cantidad: number
+  factor: number
+  unidades: number
+  precioUnitario: number
+  descuentoPorciento: number
+  importe: number
+  /** Solo con «Ver costos». */
+  costo?: number | null
+  lotes: { loteId: number; numeroLote: string | null; caducidad: string | null; unidades: number }[]
+  recetaId: number | null
+  recetaFolio: string | null
+  folioCuantificado: string | null
+  autorizacionMascota: string | null
+}
+
+export type PagoVentaVista = {
+  indice: number
+  metodo: string
+  etiqueta: string
+  tipo: string
+  monto: number
+  recibido: number | null
+  cambio: number | null
+  cuentaId: number | null
+  referencia: string | null
+  estado: 'confirmado' | 'por_confirmar'
+  confirmadoPor: PersonaBreve | null
+  confirmadoEn: string | null
+}
+
+export type VentaVista = {
+  id: number
+  folio: string
+  canal: 'mostrador' | 'tienda'
+  estado: 'pagada' | 'por_confirmar' | 'anulada'
+  dia: string
+  cliente: { id: number; nombre: string; email: string | null } | null
+  mascota: { id: number; nombre: string; folio: string } | null
+  pesoUsadoKg: number | null
+  renglones: RenglonVentaVista[]
+  subtotal: number
+  descuento: number
+  total: number
+  /** Solo con «Ver costos». */
+  costoTotal?: number | null
+  margen?: number | null
+  pagos: PagoVentaVista[]
+  cambio: number
+  vendedor: PersonaBreve | null
+  autorizoDescuento: PersonaBreve | null
+  autorizo: PersonaBreve | null
+  ingresoFinanzasId: number | null
+  ingresoFolio: string | null
+  correoTicket: string | null
+  notas: string | null
+  anuladaPor: PersonaBreve | null
+  anuladaEn: string | null
+  motivoAnulacion: string | null
+  creadoEn: string
+}
+
+export type VentaBreve = Pick<VentaVista, 'id' | 'folio' | 'estado' | 'dia' | 'total' | 'cliente' | 'mascota' | 'vendedor' | 'ingresoFolio' | 'creadoEn'> & { renglones: number; metodos: string[] }
+
+export type AsientoLibroVista = {
+  id: number
+  tipo: 'salida' | 'cancelacion'
+  ventaFolio: string | null
+  laboratorio: string | null
+  producto: string
+  registroSenasica: string | null
+  numeroLote: string | null
+  fechaCompra: string | null
+  folioReceta: string
+  mvz: string | null
+  fechaUso: string
+  cantidad: number
+  unidad: string | null
+  animal: string | null
+  usuario: PersonaBreve | null
+  motivo: string | null
+}
+
+export type CierreVista = {
+  id: number | null
+  fecha: string
+  cuenta: { id: number; nombre: string }
+  esperado: number
+  contado: number | null
+  diferencia: number | null
+  ventasEfectivo: number
+  ventas: number
+  nota: string | null
+  usuario: PersonaBreve | null
+  creadoEn: string | null
+}
+
+export type ResumenHoy = {
+  ventasHoy: number
+  totalHoy: number
+  pagosPorConfirmar: number
+  recetasPorValidar: number
+  originalesPendientes: number
+  cierrePendiente: boolean
 }

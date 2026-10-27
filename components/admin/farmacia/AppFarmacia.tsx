@@ -13,6 +13,10 @@
  *   compras/nueva           desde XML CFDI o a mano
  *   compras/:id             recepción: presentación, lote y caducidad por renglón
  *   conteo                  conteo físico → ajustes (fase 2)
+ *   vender                  venta de mostrador (fase 3)
+ *   ventas · ventas/:id     historial del día · detalle con ticket y transferencias
+ *   recetas · recetas/nueva · recetas/:id   bandeja, receta externa, ficha (libro de control en ?ver=libro)
+ *   cierre                  cierre del día
  *   importar                importación con plantilla
  *   configuracion           parámetros, proveedores, almacenes
  *
@@ -25,6 +29,10 @@ import { api, Aviso, FarmaciaCtx, Icono, iniciales } from './comun'
 import { Compras, FichaCompra, NuevaCompra } from './Compras'
 import Configuracion from './Configuracion'
 import Conteo from './Conteo'
+import Cierre from './Cierre'
+import { FichaReceta, NuevaRecetaExterna, Recetas } from './Recetas'
+import Vender from './Vender'
+import { FichaVenta, Ventas } from './Ventas'
 import Importar from './Importar'
 import Inicio from './Inicio'
 import Inventario from './Inventario'
@@ -59,6 +67,13 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   else if (seccion === 'compras' && id === 'nueva') pantalla = <NuevaCompra />
   else if (seccion === 'compras' && numero(id)) pantalla = <FichaCompra key={id} id={numero(id)!} />
   else if (seccion === 'conteo') pantalla = <Conteo />
+  else if (seccion === 'vender') pantalla = <Vender />
+  else if (seccion === 'ventas' && !id) pantalla = p.vender ? <Ventas dia={query.dia ?? null} estado={query.estado ?? null} /> : <Aviso>Tu rol no incluye la venta de mostrador.</Aviso>
+  else if (seccion === 'ventas' && numero(id)) pantalla = <FichaVenta key={id} id={numero(id)!} />
+  else if (seccion === 'recetas' && !id) pantalla = <Recetas ver={query.ver ?? null} />
+  else if (seccion === 'recetas' && id === 'nueva') pantalla = <NuevaRecetaExterna mascotaInicial={numero(query.mascota)} />
+  else if (seccion === 'recetas' && numero(id)) pantalla = <FichaReceta key={id} id={numero(id)!} />
+  else if (seccion === 'cierre') pantalla = <Cierre />
   else if (seccion === 'importar') pantalla = p.catalogo ? <Importar /> : <Aviso>Tu rol no incluye importar el catálogo.</Aviso>
   else if (seccion === 'configuracion') pantalla = p.configurar ? <Configuracion /> : <Aviso>La configuración de la farmacia la cambian el dueño o el superadministrador.</Aviso>
   else
@@ -79,6 +94,21 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
             <Link href={base} className={!seccion ? 'is-on' : ''}>
               Inicio
             </Link>
+            {p.vender && (
+              <Link href={`${base}/vender`} className={seccion === 'vender' ? 'is-on' : ''}>
+                Vender
+              </Link>
+            )}
+            {p.vender && (
+              <Link href={`${base}/ventas`} className={seccion === 'ventas' ? 'is-on' : ''}>
+                Ventas
+              </Link>
+            )}
+            {(p.vender || p.recetas) && (
+              <Link href={`${base}/recetas`} className={seccion === 'recetas' ? 'is-on' : ''}>
+                Recetas
+              </Link>
+            )}
             <Link href={`${base}/productos`} className={esProductos ? 'is-on' : ''}>
               Productos
             </Link>
@@ -93,6 +123,11 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
             {p.ajustes && (
               <Link href={`${base}/conteo`} className={seccion === 'conteo' ? 'is-on' : ''}>
                 Conteo
+              </Link>
+            )}
+            {p.cierreDia && catalogo.configuracion.cierreDiaActivo && (
+              <Link href={`${base}/cierre`} className={seccion === 'cierre' ? 'is-on' : ''}>
+                Cierre del día
               </Link>
             )}
             {p.catalogo && (
@@ -127,34 +162,26 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
         <main className="fz-contenido">{pantalla}</main>
         {!p.panel && (
           <nav className="fz-barra" aria-label="Secciones">
-            <Link href={base} className={!seccion ? 'is-on' : ''}>
-              <Icono n="inicio" />
-              <span>Inicio</span>
-            </Link>
-            <Link href={`${base}/productos`} className={esProductos ? 'is-on' : ''}>
-              <Icono n="buscar" />
-              <span>Productos</span>
-            </Link>
-            <Link href={`${base}/inventario`} className={seccion === 'inventario' ? 'is-on' : ''}>
-              <Icono n="bandeja" />
-              <span>Inventario</span>
-            </Link>
-            {p.recibirCompras && (
-              <Link href={`${base}/compras`} className={seccion === 'compras' ? 'is-on' : ''}>
-                <Icono n="archivo" />
-                <span>Compras</span>
-              </Link>
-            )}
-            {p.configurar && (
-              <Link href={`${base}/configuracion`} className={seccion === 'configuracion' ? 'is-on' : ''}>
-                <Icono n="ajustes" />
-                <span>Ajustes</span>
-              </Link>
-            )}
-            <a href={`${rutaAdmin}/finanzas`}>
-              <Icono n="cartera" />
-              <span>Finanzas</span>
-            </a>
+            {(
+              [
+                [true, base, !seccion, 'inicio', 'Inicio'],
+                [p.vender, `${base}/vender`, seccion === 'vender', 'cartera', 'Vender'],
+                [p.vender, `${base}/ventas`, seccion === 'ventas', 'lista', 'Ventas'],
+                [p.vender || p.recetas, `${base}/recetas`, seccion === 'recetas', 'archivo', 'Recetas'],
+                [true, `${base}/productos`, esProductos, 'buscar', 'Productos'],
+                [true, `${base}/inventario`, seccion === 'inventario', 'bandeja', 'Inventario'],
+                [p.recibirCompras, `${base}/compras`, seccion === 'compras', 'archivo', 'Compras'],
+                [p.configurar, `${base}/configuracion`, seccion === 'configuracion', 'ajustes', 'Ajustes'],
+              ] as [boolean, string, boolean, Parameters<typeof Icono>[0]['n'], string][]
+            )
+              .filter(([v]) => v)
+              .slice(0, 5)
+              .map(([, href, on, icono, texto]) => (
+                <Link key={href} href={href} className={on ? 'is-on' : ''}>
+                  <Icono n={icono} />
+                  <span>{texto}</span>
+                </Link>
+              ))}
           </nav>
         )}
       </div>

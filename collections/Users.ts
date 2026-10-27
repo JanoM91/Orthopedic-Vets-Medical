@@ -195,6 +195,12 @@ export const Users: CollectionConfig = {
       required: true,
     },
     {
+      name: 'cedulaProfesional',
+      label: 'Cédula profesional (MVZ)',
+      type: 'text',
+      admin: { description: 'Solo para médicos veterinarios: aparece en las recetas que emiten desde el expediente.' },
+    },
+    {
       name: 'rolDeAcceso',
       label: 'Rol de acceso',
       type: 'relationship',

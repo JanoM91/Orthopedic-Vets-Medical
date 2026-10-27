@@ -5,7 +5,8 @@ import { proximasPorMascota } from '../../../lib/clinica/agenda'
 import { portalResumen } from '../../../lib/clinica/servicio'
 import { sesionTutor } from '../../../lib/portal/sesion'
 import { site } from '../../../lib/site'
-import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, Icono, Pill } from '../../../components/portal/comun'
+import { contactoClinica } from '../../../lib/sitio/contacto'
+import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, Icono, Pill, TarjetaContacto } from '../../../components/portal/comun'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,7 @@ export default async function PortalInicio() {
   const c = await sesionTutor()
   if (!c) redirect('/portal/entrar')
   const r = await portalResumen(c)
-  const proximas = await proximasPorMascota(c, r.mascotas.map((m) => m.id))
+  const [proximas, contacto] = await Promise.all([proximasPorMascota(c, r.mascotas.map((m) => m.id)), contactoClinica(c.payload)])
   return (
     <>
       <Cabecera nombre={r.tutor.nombre} />
@@ -92,8 +93,9 @@ export default async function PortalInicio() {
                 <dt>Correo</dt>
                 <dd>{r.cliente.email ?? '—'}</dd>
               </dl>
-              <p className="pt-chico pt-tenue">Si algo está mal, avísanos en la clínica{site.brand.phone ? ` (${site.brand.phone})` : ''}.</p>
+              <p className="pt-chico pt-tenue">Si algo está mal, avísanos en la clínica{contacto.telefono ? ` (${contacto.telefono})` : ''}.</p>
             </div>
+            <TarjetaContacto contacto={contacto} />
           </>
         )}
       </main>

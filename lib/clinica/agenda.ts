@@ -10,6 +10,8 @@ import { registrar as registrarEnFinanzas } from '../finanzas/servicio'
 import { instanteDesdeLocal, minutosDesdeTexto, partesLocales, textoDesdeMinutos } from '../localTime'
 import { calcularPermisos } from '../permisosBase'
 import { site } from '../site'
+import { fechaLarga, horaLegible } from '../whatsapp'
+import { avisarCita } from './avisos'
 import { type Ctx, type CtxTutor, ErrorClinica, idDe, vistaMascota } from './servicio'
 import type { CitaVista, ConfiguracionAgenda, DisponibilidadDia, RecursoVista, ServicioVista } from './tipos'
 
@@ -302,6 +304,7 @@ async function crear(payload: Payload, actor: Actor, entrada: unknown, hoy: stri
       },
     })
   })
+  await avisarCita(payload, creada.id, estado === 'confirmada' ? 'confirmada' : 'solicitada', { porTutor: actor.tipo === 'tutor' })
   return vistaCita(creada, hoy)
 }
 
@@ -347,9 +350,12 @@ async function mover(payload: Payload, actor: Actor, id: number, entrada: unknow
         /* Si la reprograma el tutor, vuelve a «solicitada» para que recepción la confirme. */
         estado: actor.tipo === 'tutor' ? 'solicitada' : cita.estado,
         historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: actor.tipo === 'tutor' ? 'solicitada' : cita.estado, fecha: new Date().toISOString(), por: actor.nombre, detalle: `Reprogramada de ${cita.dia} ${cita.horaInicio} a ${d.data.dia} ${textoDesdeMinutos(minutos)}` }],
+        /* Nueva fecha: le toca su propio recordatorio. */
+        recordatorioEnviadoEn: null,
       },
     })
   })
+  await avisarCita(payload, nueva.id, 'reprogramada', { porTutor: actor.tipo === 'tutor', antes: `${fechaLarga(cita.dia)}, ${horaLegible(cita.horaInicio)}` })
   return vistaCita(nueva, hoy)
 }
 
@@ -386,6 +392,7 @@ export async function cambiarEstado(ctx: Ctx, id: number, entrada: unknown): Pro
       historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: d.data.estado, fecha: new Date().toISOString(), por: nombre, detalle: d.data.motivo || (cargoId ? `Cargo registrado en Finanzas` : null) }],
     },
   })
+  if (d.data.estado === 'confirmada' || d.data.estado === 'cancelada') await avisarCita(ctx.payload, nueva.id, d.data.estado, { motivo: d.data.motivo || null })
   return vistaCita(nueva, ctx.hoy)
 }
 
@@ -512,6 +519,7 @@ export async function portalCancelar(c: CtxTutor, id: number, entrada: unknown):
     depth: 1,
     data: { estado: 'cancelada', motivoCancelacion: d.success && d.data.motivo ? d.data.motivo : 'Cancelada por el tutor desde el portal', historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: 'cancelada', fecha: new Date().toISOString(), por: actor.nombre, detalle: d.success ? d.data.motivo || null : null }] },
   })
+  await avisarCita(c.payload, n.id, 'cancelada', { porTutor: true, motivo: d.success ? d.data.motivo || null : null })
   return vistaCita(n, c.hoy)
 }
 

@@ -163,6 +163,7 @@ export const Citas: CollectionConfig = {
       ],
     },
     { name: 'cargoFinanzas', label: 'Cargo en Finanzas', type: 'relationship', relationTo: 'fin-operaciones', access: { read: soloEquipoLee } },
+    { name: 'recordatorioEnviadoEn', label: 'Recordatorio enviado', type: 'date', admin: { readOnly: true, description: 'Lo escribe el recordatorio diario (un solo correo por cita).' }, access: { read: soloEquipoLee } },
     { name: 'creadoPor', type: 'relationship', relationTo: 'users' },
     { name: 'creadoPorTutor', type: 'relationship', relationTo: 'tutores' },
   ],
@@ -199,5 +200,18 @@ export const AgendaConfiguracion: GlobalConfig = {
     { name: 'anticipacionHoras', label: 'Portal: horas mínimas de anticipación para pedir cita', type: 'number', defaultValue: 2, min: 0 },
     { name: 'diasAdelante', label: 'Portal: hasta cuántos días adelante se puede pedir', type: 'number', defaultValue: 60, min: 1, max: 365 },
     { name: 'cancelacionHoras', label: 'Portal: horas mínimas para cancelar o reprogramar', type: 'number', defaultValue: 12, min: 0 },
+    {
+      name: 'correoAvisos',
+      label: 'Correos de la clínica para avisos de citas del portal',
+      type: 'text',
+      admin: { description: 'Separados por coma. Reciben un aviso cuando un tutor pide, reprograma o cancela desde el portal. Vacío: no se avisa por correo.' },
+    },
+    {
+      name: 'recordatoriosActivos',
+      label: 'Mandar recordatorio por correo la víspera de cada cita (18:00)',
+      type: 'checkbox',
+      defaultValue: true,
+      admin: { description: 'Solo a tutores con correo que aceptan avisos. Requiere CRON_SECRET y RESEND_API_KEY en Vercel.' },
+    },
   ],
 }

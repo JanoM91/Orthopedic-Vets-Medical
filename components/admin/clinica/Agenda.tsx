@@ -3,7 +3,9 @@
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import { ACCION_ESTADO_LABEL, type CitaVista, type DisponibilidadDia, ESTADO_CITA_LABEL, type EstadoCitaVista, type RecursoVista, type ResultadoBusqueda, type ServicioVista, type ConfiguracionAgenda } from '../../../lib/clinica/tipos'
-import { api, Avatar, Aviso, Boton, Campo, ErrorForm, ESPECIE_LABEL, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
+import { api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
+import { site } from '../../../lib/site'
+import { mensajes } from '../../../lib/whatsapp'
 
 /**
  * Agenda del panel: un día, una columna por recurso, las citas como bloques
@@ -271,7 +273,8 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
       {cita.cliente && (
         <p className="fz-chico">
           Tutor: <Link href={`${base}/clientes/${cita.cliente.id}`}>{cita.cliente.nombre}</Link>
-          {cita.cliente.telefono ? ` · ${cita.cliente.telefono}` : ''}
+          {cita.cliente.telefono ? ` · ${cita.cliente.telefono}` : ''}{' '}
+          {['solicitada', 'confirmada'].includes(cita.estado) && <BotonWhatsApp telefono={cita.cliente.telefono} mensaje={mensajes.cita(cita.cliente.nombre.split(' ')[0], cita.mascota.nombre, cita.dia, cita.horaInicio, cita.servicio.nombre, site.brand.name)} etiqueta="Recordar por WhatsApp" />}
         </p>
       )}
       {cita.mascota.alertas.length > 0 && <div className="cl-alerta" style={{ fontSize: 13 }}>{cita.mascota.alertas.join(' · ')}</div>}

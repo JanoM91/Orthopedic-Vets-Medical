@@ -2,9 +2,10 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import React from 'react'
 import { FormAportar } from '../../../../../components/portal/Formularios'
-import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, GraficaPeso, hoyISO, Icono, Pill, TIPO_CARTILLA_LABEL } from '../../../../../components/portal/comun'
+import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, GraficaPeso, hoyISO, Icono, Pill, TarjetaContacto, TIPO_CARTILLA_LABEL } from '../../../../../components/portal/comun'
 import { ErrorClinica, portalMascota } from '../../../../../lib/clinica/servicio'
 import { sesionTutor } from '../../../../../lib/portal/sesion'
+import { contactoClinica } from '../../../../../lib/sitio/contacto'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,7 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
   const { ver } = await searchParams
   const tab: Tab = (TABS as readonly string[]).includes(ver ?? '') ? (ver as Tab) : 'resumen'
   const m = d.mascota
+  const contacto = await contactoClinica(c.payload)
   const hoy = hoyISO()
   const proxima = d.cartilla.filter((x) => x.proximaFecha && x.proximaFecha >= hoy).sort((a, b) => a.proximaFecha!.localeCompare(b.proximaFecha!))[0]
   const vencidas = d.cartilla.filter((x) => x.proximaFecha && x.proximaFecha < hoy)
@@ -117,9 +119,15 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
                 <dd>{m.tutores.map((t) => t.nombre).join(', ')}</dd>
               </dl>
             </div>
+            <TarjetaContacto mascota={m.nombre} contacto={contacto} />
           </>
         )}
 
+        {tab === 'cartilla' && d.cartilla.length > 0 && (
+          <a href={`/api/clinica/portal/mascotas/${m.id}/cartilla`} target="_blank" rel="noreferrer" className="pt-btn">
+            Imprimir o guardar la cartilla (PDF)
+          </a>
+        )}
         {tab === 'cartilla' && (
           <div className="pt-card pt-lista">
             {d.cartilla.length === 0 && <p className="pt-tenue" style={{ padding: 16 }}>La cartilla está vacía.</p>}

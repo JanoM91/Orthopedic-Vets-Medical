@@ -3,10 +3,10 @@
 Plataforma de **Orthopedic Vet's Medical** (clínica veterinaria de ortopedia, Xalapa), pensada para replicarse a otras clínicas por configuración. Hoy tiene tres módulos:
 
 - **Finanzas** (octubre de 2026): réplica de **MacAuto Finanzas** (repo `Exkalibur-labs/macauto-xalapa`, docs/60–62) sin sitio público ni autos: cada entrada o gasto se asigna a un **área** (`fin-actividades`), a «general» o queda pendiente.
-- **Clínica** (20/21-oct-2026): clientes-tutores, mascotas, cartilla, pesos, notas clínicas firmables, documentos, importación desde CSV/Excel, **agenda y citas** (con cargo automático en Finanzas), **portal del tutor** (`/portal`, incluye pedir citas) y **sitio público** en la raíz (`app/(sitio)`, contenido en el global `sitio-configuracion`). Todo en `docs/CLINICA.md`.
+- **Clínica** (20/21-oct-2026): clientes-tutores, mascotas, cartilla, pesos, notas clínicas firmables, documentos, importación desde CSV/Excel, **agenda y citas** (con cargo automático en Finanzas), **portal del tutor** (`/portal`, incluye pedir citas), **sitio público** en la raíz (`app/(sitio)`, contenido en el global `sitio-configuracion`) y (27-oct) **correos de citas**, **recordatorio de la víspera** por cron, **WhatsApp con mensaje prellenado**, **cartilla imprimible** y manuales (`docs/ARRANQUE.md`, `docs/MANUAL-EQUIPO.md`, `docs/MANUAL-TUTOR.md`). Todo en `docs/CLINICA.md`.
 - **Farmacia** (fases 1 a 4 de 7, 25–27-oct-2026): catálogo con grupo NOM-064, presentaciones por unidad base, inventario por lote con caducidad, kardex inmutable, importación con plantilla propia, roles de farmacia, **módulos activables** por instalación (Clínica, Farmacia, Tienda), **compras desde XML CFDI** o a mano con recepción por lote, gasto en Finanzas y anulación, **conteo físico**, **venta de mostrador** (FEFO, pagos mixtos, autorización del encargado, validación por mascota), **recetas** internas y externas, libro de control del Grupo I, cierre del día, **alertas** (una abierta por objeto y tipo), **punto de reorden que aprende**, **reabasto** por proveedor y **promociones por caducidad**, con **cron diario** 08:00 (`vercel.json`, `CRON_SECRET`). Plan completo en `docs/FARMACIA-PROMPT.md` (una fase por sesión); lo construido en `docs/FARMACIA.md`.
 
-Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
+Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de una clínica nueva: `docs/ARRANQUE.md`.
 
 ## Stack (no cambiar sin consultar)
 
@@ -36,7 +36,8 @@ Proyecto de Exkalibur Consulting. Operación y arranque: `docs/OPERACION.md`.
 - Toda regla de acceso del equipo usa `esPersonal(req)`: una sesión de tutor no cuenta como «con sesión» en `users`, `roles` ni Finanzas.
 - Marca blanca: nombre, colores, logotipo y teléfono salen de `lib/site.ts` (variables `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_BRAND_*`). No escribir datos de una clínica en el código.
 - Las citas solo se crean y cambian por `lib/clinica/agenda.ts` (candado por recurso en la transacción; transiciones en `TRANSICIONES`); por la API genérica solo se leen. Al finalizar una cita con servicio con precio, el cargo entra a Finanzas por `registrar()` con clave `cita-<id>`.
-- Pruebas con base local: `npm run test:clinica` (121 comprobaciones) con la app corriendo contra Postgres local vacío.
+- **Avisos** (`lib/clinica/avisos.ts`): todo aviso de cita es best-effort y nunca hace fallar la operación. Los crons (`app/api/*/cron/*`) se autorizan con `revisarCron()` de `lib/cron.ts` (`Bearer $CRON_SECRET`; sin variable, 503). Enlaces de WhatsApp solo con `lib/whatsapp.ts`.
+- Pruebas con base local: `npm run test:clinica` (136 comprobaciones; el recordatorio usa `CRON_SECRET` de `.env`) con la app corriendo contra Postgres local vacío.
 
 ## Reglas de la Farmacia (docs/FARMACIA.md y docs/FARMACIA-PROMPT.md)
 

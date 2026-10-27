@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
+import { htmlCartilla } from '@/lib/clinica/cartilla'
+import { contactoClinica } from '@/lib/sitio/contacto'
+
 import {
   abrirDocumento,
   actualizarCartilla,
@@ -71,6 +74,7 @@ import {
  *   POST clientes/:id/codigo                   código de vinculación (72 h, un uso)
  *   POST mascotas                              crear (opcionalmente con peso de hoy)
  *   GET  mascotas/:id                          expediente completo (notas solo con «ver expediente»)
+ *   GET  mascotas/:id/cartilla                 cartilla imprimible (HTML)
  *   POST mascotas/:id                          actualizar
  *   POST mascotas/:id/pesos | cartilla | notas | documentos (multipart: archivo + titulo, tipo, fecha, publicado)
  *   POST cartilla/:id                          corregir un registro de cartilla
@@ -98,6 +102,7 @@ import {
  * PORTAL (sesión de tutor, colección «tutores»):
  *   GET  portal/resumen                        tutor, ficha vinculada y mascotas
  *   GET  portal/mascotas/:id                   ficha, cartilla, pesos y documentos publicados
+ *   GET  portal/mascotas/:id/cartilla          cartilla imprimible (HTML)
  *   GET  portal/documentos/:id/archivo
  *   POST portal/vincular                       { codigo }
  *   POST portal/mascotas/:id/documentos        aportar un archivo (queda pendiente de revisión)
@@ -113,6 +118,7 @@ export const maxDuration = 60
 type Contexto = { params: Promise<{ ruta?: string[] }> }
 
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } })
+const html = (cuerpo: string) => new Response(cuerpo, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' } })
 
 function mismoOrigen(req: NextRequest): boolean {
   const origen = req.headers.get('origin')
@@ -163,6 +169,10 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
   if (metodo === 'GET') {
     if (a === 'resumen' && !b) return json(await portalResumen(c))
     if (a === 'mascotas' && b && !d) return json(await portalMascota(c, idDeRuta(b)))
+    if (a === 'mascotas' && b && d === 'cartilla') {
+      const x = await portalMascota(c, idDeRuta(b))
+      return html(htmlCartilla(x.mascota, x.cartilla, x.pesos, c.hoy, (await contactoClinica(c.payload)).telefono))
+    }
     if (a === 'documentos' && b && d === 'archivo') return portalAbrirDocumento(c, idDeRuta(b))
     if (a === 'citas' && !b) return json(await portalCitas(c))
     if (a === 'citas' && b === 'disponibilidad') {
@@ -200,6 +210,10 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'buscar' && !b) return json(await buscar(ctx, q.get('q') ?? ''))
     if (a === 'clientes' && b && !c) return json(await fichaCliente(ctx, idDeRuta(b)))
     if (a === 'mascotas' && b && !c) return json(await expediente(ctx, idDeRuta(b)))
+    if (a === 'mascotas' && b && c === 'cartilla') {
+      const x = await expediente(ctx, idDeRuta(b))
+      return html(htmlCartilla(x.mascota, x.cartilla, x.pesos, ctx.hoy, (await contactoClinica(ctx.payload)).telefono))
+    }
     if (a === 'documentos' && b && c === 'archivo') return abrirDocumento(ctx, idDeRuta(b))
     if (a === 'importaciones' && b === 'plantilla') {
       if (!ctx.p.clinica.importar) return json({ error: 'Tu rol no incluye importar.' }, 403)

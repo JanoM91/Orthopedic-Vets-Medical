@@ -694,7 +694,7 @@ ${v.cliente ? `<p><small>Cliente: ${escapar(v.cliente.nombre)}${v.mascota ? ` ·
 <table>${filas}${v.descuento ? `<tr><td>Descuento</td><td class="d">−${m(v.descuento)}</td></tr>` : ''}<tr class="tot"><td>Total</td><td class="d">${m(v.total)}</td></tr></table>
 <table style="margin-top:8px">${pagos}${v.cambio ? `<tr class="tot"><td>Cambio</td><td class="d">${m(v.cambio)}</td></tr>` : ''}</table>
 <p><small>Precios con IVA incluido. Este ticket no es un comprobante fiscal.${v.estado === 'anulada' ? ' <b>VENTA ANULADA.</b>' : ''}</small></p>
-${conImprimir ? '<div class="no-print"><button onclick="window.print()" style="font:inherit;padding:10px 18px;border-radius:8px;border:1px solid #cbd5e1;background:#1d4ed8;color:#fff">Imprimir o guardar PDF</button></div>' : ''}</div></body></html>`
+${conImprimir ? `<div class="no-print"><button onclick="window.print()" style="font:inherit;padding:10px 18px;border-radius:8px;border:1px solid #cbd5e1;background:${site.brand.accent};color:#fff">Imprimir o guardar PDF</button></div>` : ''}</div></body></html>`
 }
 
 async function mandarTicket(ctx: Ctx, v: FarVenta): Promise<void> {

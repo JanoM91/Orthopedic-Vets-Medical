@@ -76,8 +76,8 @@ export const site = {
      * tutor salen de aquí; si faltan, se usan los de la instalación actual.
      * El panel toma los suyos de app/(payload)/custom.css (--mx-*).
      */
-    primary: esColor(env.brandPrimary) ? env.brandPrimary!.trim() : '#243a63',
-    accent: esColor(env.brandAccent) ? env.brandAccent!.trim() : '#3a9db0',
+    primary: esColor(env.brandPrimary) ? env.brandPrimary!.trim() : '#0f2f2a',
+    accent: esColor(env.brandAccent) ? env.brandAccent!.trim() : '#0b6b59',
     /** Logotipo para fondos oscuros (ruta en public/ o URL). */
     logo: env.brandLogo?.trim() || '/logo-mark-white.png',
     /** Teléfono de la clínica que se muestra en el portal (texto libre). */

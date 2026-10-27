@@ -53,7 +53,7 @@ small{color:#64748b}.venc{color:#b42330;font-weight:600}
 .alerta{border:1px solid #fecaca;background:#fef2f2;color:#991b1b;padding:8px 10px;border-radius:8px;margin-top:10px}
 .pie{margin-top:18px;color:#64748b;font-size:12px}
 .no-print{margin:18px 0;text-align:center}
-.no-print button{font:inherit;padding:10px 18px;border-radius:8px;border:0;background:#1d4ed8;color:#fff;cursor:pointer}
+.no-print button{font:inherit;padding:10px 18px;border-radius:8px;border:0;background:${site.brand.accent};color:#fff;cursor:pointer}
 @media print{.no-print{display:none}body{padding:0}@page{margin:14mm}}
 @media (max-width:520px){body{padding:12px}header{flex-direction:column}.marca{text-align:left}table{font-size:12px}th:nth-child(5),td:nth-child(5){display:none}}
 </style></head><body><div class="hoja">

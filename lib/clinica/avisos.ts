@@ -92,7 +92,7 @@ ${extra.antes ? `<p style="color:#475569">Antes: ${esc(extra.antes)}</p>` : ''}
 <table style="border-collapse:collapse;margin:8px 0 14px">${filas.map(([k, v]) => `<tr><td style="padding:4px 14px 4px 0;color:#475569">${k}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>`).join('')}</table>
 ${evento === 'cancelada' && extra.motivo ? `<p>Motivo: ${esc(extra.motivo)}</p>` : ''}
 ${evento !== 'cancelada' && d.servicio?.indicaciones ? `<p><b>Indicaciones:</b> ${esc(d.servicio.indicaciones)}</p>` : ''}
-<p><a href="${portal}" style="background:#1d4ed8;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">${evento === 'cancelada' ? 'Pedir otra cita' : 'Ver o cambiar mi cita'}</a></p>
+<p><a href="${portal}" style="background:${site.brand.accent};color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">${evento === 'cancelada' ? 'Pedir otra cita' : 'Ver o cambiar mi cita'}</a></p>
 ${wa || contacto.telefono ? `<p>¿Dudas? ${wa ? `<a href="${wa}">Escríbenos por WhatsApp</a>` : ''}${wa && contacto.telefono ? ' o ' : ''}${contacto.telefono ? `llámanos al ${esc(contacto.telefono)}` : ''}.</p>` : ''}
 <p style="color:#64748b;font-size:12px">${esc(site.brand.name)}. Recibes este correo porque aceptaste avisos de citas; para dejar de recibirlos, pídelo en la clínica.</p></div>`
 }

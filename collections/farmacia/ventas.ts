@@ -57,7 +57,7 @@ export const FarRecetas: CollectionConfig = {
     useAsTitle: 'mvzNombre',
     group: 'Farmacia',
     defaultColumns: ['folio', 'origen', 'mascota', 'mvzNombre', 'estado', 'vigenteHasta'],
-    description: 'Recetas internas (emitidas desde el expediente; firmadas = inmutables) y externas (foto validada por el encargado).',
+    description: 'Recetas internas y externas.',
   },
   access: { read: leeRecetas, create: nadie, update: nadie, delete: nadie },
   hooks: {
@@ -135,7 +135,7 @@ export const FarVentas: CollectionConfig = {
     useAsTitle: 'claveIdempotencia',
     group: 'Farmacia',
     defaultColumns: ['folio', 'dia', 'total', 'estado', 'vendedor'],
-    description: 'Ventas de mostrador (y de la tienda, fase 5). Cada una descuenta por FEFO y crea su entrada en Finanzas.',
+    description: 'Ventas de mostrador. Cada una descuenta inventario y entra a Finanzas.',
   },
   access: { read: farmaciaCon('vender'), create: nadie, update: nadie, delete: nadie },
   fields: [
@@ -215,7 +215,7 @@ export const FarLibroControl: CollectionConfig = {
     useAsTitle: 'producto',
     group: 'Farmacia',
     defaultColumns: ['fechaUso', 'producto', 'numeroLote', 'cantidad', 'folioReceta', 'animal'],
-    description: 'Asiento automático e inmutable por cada salida de Grupo I (NOM-064-ZOO-2000). Una venta anulada agrega un asiento de cancelación; nunca se edita.',
+    description: 'Asientos automáticos de Grupo I (NOM-064). No se editan.',
   },
   access: { read: farmaciaCon('reportes'), create: nadie, update: nadie, delete: nadie },
   hooks: {

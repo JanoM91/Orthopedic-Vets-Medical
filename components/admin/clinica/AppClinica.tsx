@@ -15,6 +15,7 @@
  * Quien no entra al panel completo la ve sola, con encabezado y barra
  * inferior; además tiene acceso a Finanzas desde la barra si su rol lo usa.
  */
+import { Carriles } from '../../Carriles'
 import Link from 'next/link'
 import React, { useCallback, useState } from 'react'
 import type { CatalogoClinica } from '../../../lib/clinica/tipos'
@@ -62,6 +63,7 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
   return (
     <ClinicaCtx.Provider value={{ catalogo, base, rutaAdmin, recargarCatalogo }}>
       <div className={`fz-app cl-app${p.panel ? '' : ' fz-app--solo'}`}>
+        <Carriles />
         {p.panel ? (
           <nav className="fz-subnav" aria-label="Secciones de la clínica">
             <span className="fz-subnav__titulo">Pacientes</span>

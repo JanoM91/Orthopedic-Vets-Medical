@@ -14,7 +14,7 @@ export const InstalacionConfiguracion: GlobalConfig = {
   label: 'Instalación: módulos',
   admin: {
     group: 'Sistema',
-    description: 'Qué módulos están encendidos en esta instalación. Finanzas siempre lo está. Apagar un módulo oculta sus pantallas, menús y API sin borrar datos.',
+    description: 'Enciende o apaga módulos. Apagar no borra datos.',
   },
   access: {
     read: ({ req }) => esPersonal(req),

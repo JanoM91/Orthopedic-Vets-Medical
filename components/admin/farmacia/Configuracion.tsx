@@ -39,9 +39,6 @@ export default function Configuracion() {
       <div>
         <p className="fz-eyebrow">Farmacia</p>
         <h1 className="fz-h1">Configuración</h1>
-        <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-          Todo tiene un valor por omisión seguro. Lo que falte por decidir con el Dr. Joni está marcado.
-        </p>
       </div>
       {msg && <Aviso tono="ok">{msg}</Aviso>}
 

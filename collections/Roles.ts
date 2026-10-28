@@ -28,7 +28,7 @@ export const Roles: CollectionConfig = {
     group: 'Sistema',
     defaultColumns: ['nombre', 'descripcion', 'updatedAt'],
     description:
-      'Qué puede hacer cada tipo de persona. Lo editan los dueños y el superadministrador. Para asignarlo, entra a Usuarios.',
+      'Qué puede hacer cada tipo de persona.',
   },
   access: {
     read: ({ req }) => esPersonal(req),

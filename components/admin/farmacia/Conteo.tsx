@@ -69,7 +69,7 @@ export default function Conteo() {
           <p className="fz-eyebrow">Farmacia</p>
           <h1 className="fz-h1">Conteo físico</h1>
           <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-            Escribe lo que hay en el anaquel por lote, en unidades base. Cada diferencia queda como ajuste en el kardex con tu nombre y el motivo.
+            Escribe lo que hay por lote. Cada diferencia queda como ajuste.
           </p>
         </div>
       </div>

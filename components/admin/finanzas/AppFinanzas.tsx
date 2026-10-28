@@ -18,6 +18,7 @@
  * 480 px) y, mientras se abra desde el navegador, aparece la invitación a
  * agregarla a la pantalla de inicio (AvisoInstalar).
  */
+import { Carriles } from '../../Carriles'
 import Link from 'next/link'
 import React from 'react'
 import type { Catalogo } from '../../../lib/finanzas/tipos'
@@ -75,6 +76,7 @@ export default function AppFinanzas({ catalogo, ruta, query, rutaAdmin, soloCapt
   return (
     <FinanzasCtx.Provider value={{ catalogo, base, rutaAdmin, soloCaptura }}>
       <div className={`fz-app${soloCaptura ? ' fz-app--solo' : ''}`}>
+        <Carriles />
         {soloCaptura ? (
           <header className="fz-cabecera">
             <Link href={base} className="fz-marca" aria-label={`${marca.nombre} Finanzas: ir al inicio`}>

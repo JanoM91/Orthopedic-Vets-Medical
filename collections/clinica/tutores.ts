@@ -47,7 +47,7 @@ export const Tutores: CollectionConfig = {
     useAsTitle: 'email',
     group: 'Clínica',
     defaultColumns: ['email', 'nombre', 'cliente', 'updatedAt'],
-    description: 'Cuentas con las que los tutores entran al portal. Se vinculan a su ficha de cliente con un código.',
+    description: 'Cuentas de tutores en el portal.',
   },
   auth: {
     maxLoginAttempts: 5,

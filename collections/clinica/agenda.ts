@@ -70,7 +70,7 @@ export const Recursos: CollectionConfig = {
   slug: 'recursos',
   typescript: { interface: 'Recurso' },
   labels: { singular: 'Recurso (consultorio)', plural: 'Recursos (consultorios)' },
-  admin: { group: 'Clínica', useAsTitle: 'nombre', defaultColumns: ['nombre', 'tipo', 'activo', 'orden'], description: 'Consultorios, quirófano y espacios que se ocupan en la agenda. Desactivar no borra las citas pasadas.' },
+  admin: { group: 'Clínica', useAsTitle: 'nombre', defaultColumns: ['nombre', 'tipo', 'activo', 'orden'], description: 'Consultorios y espacios de la agenda.' },
   access: { read: equipoCon('verPacientes'), create: equipoCon('configurarAgenda'), update: equipoCon('configurarAgenda'), delete: nadie },
   fields: [
     { name: 'nombre', label: 'Nombre', type: 'text', required: true, unique: true },
@@ -84,7 +84,7 @@ export const Servicios: CollectionConfig = {
   slug: 'servicios',
   typescript: { interface: 'Servicio' },
   labels: { singular: 'Servicio', plural: 'Servicios' },
-  admin: { group: 'Clínica', useAsTitle: 'nombre', defaultColumns: ['nombre', 'duracionMin', 'precio', 'reservaEnLinea', 'activo'], description: 'Lo que se agenda. La duración y el recurso por defecto arman la agenda; el precio (opcional) genera el cargo en Finanzas al finalizar la cita.' },
+  admin: { group: 'Clínica', useAsTitle: 'nombre', defaultColumns: ['nombre', 'duracionMin', 'precio', 'reservaEnLinea', 'activo'], description: 'Lo que se agenda. Con precio, la cita genera su cargo en Finanzas.' },
   access: {
     read: leerServicios,
     create: equipoCon('configurarAgenda'),

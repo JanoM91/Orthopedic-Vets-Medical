@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import type { CierreVista } from '../../../lib/farmacia/tipos'
-import { api, Aviso, Boton, Campo, dinero, ErrorForm, fecha, hoyISO, InputFecha, momento, useFarmacia } from './comun'
+import { api, Aviso, Ayuda, Boton, Campo, dinero, ErrorForm, fecha, hoyISO, InputFecha, momento, useFarmacia } from './comun'
 
 /**
  * Cierre del día (fase 3, activado por omisión): efectivo esperado según
@@ -53,7 +53,7 @@ export default function Cierre() {
         <p className="fz-eyebrow">Farmacia</p>
         <h1 className="fz-h1">Cierre del día</h1>
         <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-          Cuenta el efectivo de la caja y escríbelo. Se compara contra lo que dice Finanzas.
+          Cuenta el efectivo y compáralo con Finanzas.
         </p>
       </div>
       <div className="fa-filtros">
@@ -110,7 +110,7 @@ export default function Cierre() {
               </div>
             </>
           )}
-          <p className="fz-chico fz-tenue">El esperado es el saldo de la caja en Finanzas al terminar el día: saldo inicial, ventas, gastos y traspasos registrados ahí. Si sacaste efectivo para un gasto, regístralo en Finanzas antes de cerrar.</p>
+          <Ayuda titulo="¿De dónde sale el esperado?">Es el saldo de la caja en Finanzas al terminar el día: saldo inicial, ventas, gastos y traspasos registrados ahí. Si sacaste efectivo para un gasto, regístralo en Finanzas antes de cerrar.</Ayuda>
         </section>
       )}
       {historial.length > 0 && (

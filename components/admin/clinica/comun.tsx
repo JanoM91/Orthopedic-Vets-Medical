@@ -10,7 +10,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { CatalogoClinica } from '../../../lib/clinica/tipos'
 import { enlaceWhatsApp } from '../../../lib/whatsapp'
 
-export { Aviso, Icono, Pastilla, Volver } from '../finanzas/comun'
+export { Aviso, Ayuda, Icono, Pastilla, Volver } from '../finanzas/comun'
 
 export type ContextoClinica = { catalogo: CatalogoClinica; base: string; rutaAdmin: string; recargarCatalogo: () => void }
 export const ClinicaCtx = createContext<ContextoClinica | null>(null)

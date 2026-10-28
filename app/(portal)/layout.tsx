@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import React from 'react'
 import { site } from '../../lib/site'
+import { Carriles } from '../../components/Carriles'
 import './portal.css'
 
 /**
@@ -24,7 +25,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <head>
         <style dangerouslySetInnerHTML={{ __html: estilo }} />
       </head>
-      <body className="pt-body">{children}</body>
+      <body className="pt-body">
+        {children}
+        <Carriles />
+      </body>
     </html>
   )
 }

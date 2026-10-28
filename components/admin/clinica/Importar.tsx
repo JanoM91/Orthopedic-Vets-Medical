@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { CAMPOS_IMPORTACION, type ArchivoCargado, type MapeoImportacion, type PlanImportacion, type ResumenImportacion } from '../../../lib/clinica/tipos'
-import { api, Aviso, Boton, Campo, ErrorForm, momento, Pastilla, useCarga, useClinica } from './comun'
+import { api, Aviso, Ayuda, Boton, Campo, ErrorForm, momento, Pastilla, useCarga, useClinica } from './comun'
 
 /**
  * Importación en tres pasos: (1) cargar el archivo, (2) decir qué columna es
@@ -90,7 +90,8 @@ export default function Importar() {
             }}
           >
             <h2 className="fz-h2">1 · Archivo</h2>
-            <p className="fz-chico">Acepta <b>.xlsx</b> (Excel) o <b>.csv</b>. Una fila por mascota con su tutor; si una mascota tiene varias vacunas, se repite la fila cambiando solo las columnas de cartilla. Puedes usar tus propios encabezados: en el siguiente paso se indica qué columna es qué.</p>
+            <p className="fz-chico">Excel (.xlsx) o .csv, una fila por mascota con su tutor.</p>
+            <Ayuda>Si una mascota tiene varias vacunas, repite la fila cambiando solo las columnas de cartilla. Puedes usar tus propios encabezados: en el siguiente paso indicas qué columna es qué.</Ayuda>
             <Campo etiqueta="Archivo *">
               <input className="fz-input" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} required />
             </Campo>

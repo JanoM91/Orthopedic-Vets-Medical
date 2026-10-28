@@ -135,9 +135,9 @@ export default function Mover({ tipoInicial, deInicial, aInicial }: { tipoInicia
         </div>
         <Segmentos<TipoMovimientoInterno> etiqueta="Tipo de movimiento" valor={tipo} alCambiar={cambiarTipo} opciones={[['traspaso', 'Traspaso'], ['aportacion', 'Aportación'], ['retiro', 'Retiro']]} />
         <p className="fz-ayuda">
-          {tipo === 'traspaso' && 'De una cuenta o caja a otra. También para entregar dinero a un fondo a cargo de alguien, o recibir lo que devuelve.'}
-          {tipo === 'aportacion' && 'Un socio mete dinero al negocio. No es una venta: no cuenta en el resultado, pero sí en el saldo.'}
-          {tipo === 'retiro' && 'Un socio saca dinero del negocio. No es un gasto: no cuenta en el resultado, pero sí en el saldo.'}
+          {tipo === 'traspaso' && 'De una cuenta o caja a otra (también a un fondo del equipo).'}
+          {tipo === 'aportacion' && 'Un socio mete dinero. No cuenta como venta.'}
+          {tipo === 'retiro' && 'Un socio saca dinero. No cuenta como gasto.'}
         </p>
 
         <label className="fz-campo">

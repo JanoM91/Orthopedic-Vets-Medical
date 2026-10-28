@@ -33,7 +33,7 @@ export const FarAlertas: CollectionConfig = {
     useAsTitle: 'mensaje',
     group: 'Farmacia',
     defaultColumns: ['tipo', 'severidad', 'mensaje', 'estado', 'abiertaEn'],
-    description: 'Caducidad, desabasto, reorden sugerido, sin rotación y recetas. Las genera el sistema (cron diario o «Recalcular»); una sola abierta por objeto y tipo.',
+    description: 'Las genera el sistema cada día.',
   },
   access: { read: equipoFarmacia, create: nadie, update: nadie, delete: nadie },
   fields: [
@@ -71,7 +71,7 @@ export const FarPromociones: CollectionConfig = {
     useAsTitle: 'titulo',
     group: 'Farmacia',
     defaultColumns: ['titulo', 'descuentoPorciento', 'estado', 'vigenteHasta'],
-    description: 'Propuestas por caducidad (solo Grupo III y desregulados) que un humano aprueba. Se aplican en la tienda (fase 5) y solo al lote afectado.',
+    description: 'Descuentos por caducidad que aprueba un encargado.',
   },
   access: { read: farmaciaCon('vender'), create: nadie, update: nadie, delete: nadie },
   fields: [

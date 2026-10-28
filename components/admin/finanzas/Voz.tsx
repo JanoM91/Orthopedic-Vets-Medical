@@ -21,7 +21,7 @@ import { useRouter } from 'next/navigation'
 import React, { useEffect, useRef, useState } from 'react'
 import type { ResultadoVoz } from '../../../lib/finanzas/tipos'
 import { type Borrador, claveBorrador, escribirBorrador } from './borrador'
-import { api, Aviso, ErrorApi, fecha, fmt, Icono, useFinanzas, Volver } from './comun'
+import { api, Aviso, Ayuda, ErrorApi, fecha, fmt, Icono, useFinanzas, Volver } from './comun'
 
 const MAX_SEGUNDOS = 60
 const EJEMPLOS = ['Pagué 3,200 de una placa de titanio para cirugía, de la caja chica', 'Compré 450 de material de curación con mi dinero', 'Cobramos 18 mil de una cirugía de rodilla por transferencia al banco']
@@ -201,7 +201,7 @@ export default function Voz() {
 
       {fase !== 'resultado' && (
         <>
-          <p className="fz-ayuda">Di <b>qué pasó, cuánto fue, de dónde salió el dinero y de qué área</b> (consulta, cirugía, rehabilitación…). El sistema arma el borrador; tú lo revisas y lo guardas.</p>
+          <p className="fz-ayuda">Di <b>qué pasó, cuánto fue y de dónde salió el dinero</b>. Tú revisas el borrador antes de guardarlo.</p>
           {soporte === false && !modoTexto && <Aviso tono="info">Este navegador no tiene dictado. Escríbelo abajo (puedes usar el micrófono del teclado): funciona igual.</Aviso>}
           {error && <Aviso tono="malo">{error}</Aviso>}
 
@@ -229,10 +229,9 @@ export default function Voz() {
           )}
 
           {fase === 'listo' && (
-            <div className="fz-tarjeta fz-pad fz-stack fz-stack--chico">
-              <h3>Ejemplos</h3>
+            <Ayuda titulo="Ver ejemplos">
               {EJEMPLOS.map((e) => <p key={e} className="fz-ayuda">«{e}»</p>)}
-            </div>
+            </Ayuda>
           )}
 
           {fase === 'listo' && (modoTexto || soporte === false ? (

@@ -84,7 +84,7 @@ export const FinActividades: CollectionConfig = {
     useAsTitle: 'nombre',
     group: 'Finanzas',
     defaultColumns: ['nombre', 'activa'],
-    description: 'A qué área de la clínica corresponde una entrada o un gasto (consulta, cirugía, rehabilitación, administración…).',
+    description: 'Áreas de la clínica para clasificar entradas y gastos.',
   },
   access: accesoCatalogo,
   fields: [
@@ -101,7 +101,7 @@ export const FinCategorias: CollectionConfig = {
     useAsTitle: 'nombre',
     group: 'Finanzas',
     defaultColumns: ['nombre', 'tipo', 'restringida', 'activa'],
-    description: 'En qué se ingresó o en qué se gastó. Las restringidas (como nómina) solo las ve quien tenga esa casilla en su rol.',
+    description: 'En qué se ingresó o se gastó.',
   },
   access: accesoCatalogo,
   fields: [

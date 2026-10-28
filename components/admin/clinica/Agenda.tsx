@@ -113,7 +113,7 @@ export default function Agenda({ diaInicial, mascotaInicial }: { diaInicial: str
         </div>
       </div>
       {agenda.error && <Aviso tono="malo">{agenda.error}</Aviso>}
-      {!c.configuracion.configurada && cat.permisos.configurarAgenda && <Aviso>Horario de atención por omisión (lunes a viernes 9–19, sábado 9–14). Ajústalo en el panel: Clínica → «Agenda: horario y reglas».</Aviso>}
+      {!c.configuracion.configurada && cat.permisos.configurarAgenda && <Aviso>Horario por omisión: L–V 9–19, sáb 9–14. Ajústalo en «Agenda: horario y reglas».</Aviso>}
 
       <div className="cl-agenda-wrap">
         <div className={`cl-agenda${agenda.cargando ? ' cl-cargando' : ''}`} style={{ gridTemplateColumns: `56px repeat(${recursos.length}, minmax(150px, 1fr))` }}>

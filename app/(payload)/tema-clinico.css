@@ -1099,3 +1099,18 @@ input[type='time']::-webkit-date-and-time-value {
     overflow-x: clip;
   }
 }
+
+/* 4.12 Acceso al portal en la ficha del cliente: correo y acciones se apilan en el teléfono. */
+.cl-cuenta-portal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--mx-sand-dark);
+}
+.cl-cuenta-portal__dato {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

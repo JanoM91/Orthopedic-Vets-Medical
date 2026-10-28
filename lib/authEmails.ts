@@ -83,6 +83,8 @@ export function asuntoDeRecuperacion(): string {
 export function htmlDeRecuperacion(args: {
   liga: string
   nombre?: string
+  /** «del panel administrativo» (equipo) o «del portal» (tutores). */
+  lugar?: string
 }): string {
   const e = escapeHtml
   const saludo = args.nombre?.trim() ? `Hola ${e(args.nombre.trim())},` : 'Hola,'
@@ -91,8 +93,8 @@ export function htmlDeRecuperacion(args: {
     <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1A1A2E;max-width:560px">
       <p>${saludo}</p>
       <p>
-        Recibimos una solicitud para restablecer la contraseña de tu cuenta del
-        panel administrativo de <b>${e(site.brand.name)}</b>.
+        Recibimos una solicitud para restablecer la contraseña de tu cuenta
+        ${e(args.lugar ?? 'del panel administrativo')} de <b>${e(site.brand.name)}</b>.
       </p>
       <p style="margin:24px 0">
         <a href="${e(args.liga)}" style="background:${site.brand.primary};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">
@@ -112,6 +114,43 @@ export function htmlDeRecuperacion(args: {
         nadie puede cambiarla sin esta liga. Si te llega varias veces, avísale
         al responsable del sitio.
       </p>
+      <p style="margin-top:24px">— ${e(site.brand.name)}</p>
+    </div>
+  `
+}
+
+/** Vigencia de la liga de invitación al portal: siete días (el tutor la abre cuando puede). */
+export const VIGENCIA_INVITACION_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * Invitación al portal del tutor: la clínica le crea la cuenta y el tutor
+ * solo elige su contraseña. Mismo diseño que la recuperación; sin publicidad.
+ */
+export function htmlDeInvitacion(args: { liga: string; nombre?: string; mascotas?: string[] }): string {
+  const e = escapeHtml
+  const saludo = args.nombre?.trim() ? `Hola ${e(args.nombre.trim())},` : 'Hola,'
+  const mascotas = args.mascotas?.length ? ` de ${e(args.mascotas.join(', '))}` : ' de tus mascotas'
+  return `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1A1A2E;max-width:560px">
+      <p>${saludo}</p>
+      <p>
+        <b>${e(site.brand.name)}</b> te dio acceso a su portal: ahí ves la cartilla, el peso y los
+        documentos${mascotas}, y pides citas en línea.
+      </p>
+      <p style="margin:24px 0">
+        <a href="${e(args.liga)}" style="background:${site.brand.primary};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">
+          Crear mi contraseña
+        </a>
+      </p>
+      <p style="color:#6B7280;font-size:14px">
+        Si el botón no funciona, copia y pega esta dirección en tu navegador:<br>
+        <span style="word-break:break-all">${e(args.liga)}</span>
+      </p>
+      <p style="color:#6B7280;font-size:14px">
+        La liga sirve <b>una sola vez</b> y vence en <b>7 días</b>. Después entras en
+        <span style="word-break:break-all">${e(site.url)}/portal</span> con este correo y tu contraseña.
+      </p>
+      <p style="color:#6B7280;font-size:14px">Si no esperabas este correo, ignóralo o avísale a la clínica.</p>
       <p style="margin-top:24px">— ${e(site.brand.name)}</p>
     </div>
   `

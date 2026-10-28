@@ -10,12 +10,14 @@ import { folioParaId } from '../../collections/clinica/acceso'
 import { diaEnZona } from '../finanzas/reglas'
 import { permisosDe, type Permisos } from '../permisos'
 import { site } from '../site'
+import { htmlDeInvitacion, VIGENCIA_INVITACION_MS } from '../authEmails'
 import type {
   CartillaVista,
   CatalogoClinica,
   ClienteVista,
   CodigoVista,
   CuentaPortalVista,
+  InvitacionVista,
   DocumentoVista,
   Expediente,
   FichaCliente,
@@ -817,6 +819,78 @@ export async function generarCodigo(ctx: Ctx, clienteId: number): Promise<Codigo
     }
   }
   throw new ErrorClinica(500, 'No se pudo generar un código. Intenta de nuevo.')
+}
+
+/**
+ * Invitar al portal desde la ficha del cliente: la clínica crea (o liga) la
+ * cuenta del tutor con el correo de la ficha y le manda una liga de 7 días
+ * para elegir su contraseña. Nadie del equipo conoce ni escribe la
+ * contraseña. Si la cuenta ya está en esta ficha, solo reenvía la liga.
+ * La liga nunca sale en la respuesta: solo por correo.
+ */
+export async function invitarAlPortal(ctx: Ctx, clienteId: number, entrada: unknown): Promise<InvitacionVista> {
+  exigir(ctx, 'editarPacientes', 'Las invitaciones al portal las manda quien edita pacientes.')
+  const cliente = await cargarCliente(ctx, clienteId)
+  const d = z.object({ email: z.string().trim().max(200).optional() }).safeParse(entrada ?? {})
+  const email = (d.success && d.data.email ? d.data.email : cliente.email ?? '').trim().toLowerCase()
+  if (!email) throw invalido('Captura el correo del tutor en la ficha para invitarlo.')
+  if (!z.string().email().safeParse(email).success) throw invalido('Ese correo no parece válido.')
+
+  const existentes = await ctx.payload.find({ collection: 'tutores', depth: 0, limit: 1, overrideAccess: true, where: { email: { equals: email } } })
+  let tutor = existentes.docs[0] as Tutor | undefined
+  let accion: InvitacionVista['accion']
+  if (tutor) {
+    const ligada = idDe(tutor.cliente)
+    if (ligada && ligada !== clienteId) throw new ErrorClinica(409, 'Ese correo ya tiene una cuenta del portal ligada a otro cliente.')
+    if (ligada === clienteId) accion = 'reenviada'
+    else {
+      tutor = (await ctx.payload.update({ collection: 'tutores', id: tutor.id, overrideAccess: true, data: { cliente: clienteId, vinculadoEn: new Date().toISOString() } })) as Tutor
+      accion = 'vinculada'
+    }
+  } else {
+    const bytes = new Uint8Array(24)
+    crypto.getRandomValues(bytes)
+    const password = Buffer.from(bytes).toString('base64url') // nadie la conoce: el tutor elige la suya con la liga
+    tutor = (await ctx.payload.create({
+      collection: 'tutores',
+      overrideAccess: true,
+      data: {
+        email,
+        password,
+        nombre: [cliente.nombre, cliente.apellidos].filter(Boolean).join(' ').trim() || email,
+        telefono: cliente.telefono ?? undefined,
+        cliente: clienteId,
+        vinculadoEn: new Date().toISOString(),
+      },
+    })) as Tutor
+    accion = 'creada'
+  }
+
+  const token = await ctx.payload.forgotPassword({ collection: 'tutores', data: { email }, disableEmail: true })
+  if (!token) throw new ErrorClinica(500, 'No se pudo preparar la liga. Intenta de nuevo.')
+  await ctx.payload.db.updateOne({
+    collection: 'tutores',
+    where: { id: { equals: tutor.id } },
+    data: { resetPasswordExpiration: new Date(Date.now() + VIGENCIA_INVITACION_MS).toISOString() },
+  })
+  const mascotas = await mascotasDelCliente(ctx, clienteId)
+  const correoEnviado = Boolean(process.env.RESEND_API_KEY?.trim() && process.env.LEADS_FROM_EMAIL?.trim())
+  try {
+    await ctx.payload.sendEmail({
+      to: email,
+      subject: `Tu acceso al portal de ${site.brand.name}`,
+      html: htmlDeInvitacion({ liga: `${site.url.replace(/\/$/, '')}/portal/restablecer/${token}?bienvenida=1`, nombre: cliente.nombre, mascotas }),
+    })
+  } catch (e) {
+    ctx.payload.logger.error(`[portal] invitación a ${email}: ${String((e as Error)?.message ?? e)}`)
+    return { accion, email, correoEnviado: false }
+  }
+  return { accion, email, correoEnviado }
+}
+
+async function mascotasDelCliente(ctx: Ctx, clienteId: number): Promise<string[]> {
+  const r = await ctx.payload.find({ collection: 'mascotas', depth: 0, limit: 6, overrideAccess: true, where: { 'tutores.cliente': { equals: clienteId } } }).catch(() => null)
+  return (r?.docs ?? []).map((m) => m.nombre).filter(Boolean)
 }
 
 export async function desvincularCuenta(ctx: Ctx, tutorId: number): Promise<void> {

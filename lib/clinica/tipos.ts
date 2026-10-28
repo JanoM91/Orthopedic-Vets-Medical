@@ -103,6 +103,7 @@ export type DocumentoVista = {
 
 export type CuentaPortalVista = { id: number; email: string; nombre: string; vinculadoEn: string | null }
 export type CodigoVista = { codigo: string; expira: string }
+export type InvitacionVista = { accion: 'creada' | 'vinculada' | 'reenviada'; email: string; correoEnviado: boolean }
 
 export type FichaCliente = {
   cliente: ClienteVista

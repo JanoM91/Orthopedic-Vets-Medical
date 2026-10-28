@@ -25,6 +25,7 @@ import {
   crearNota,
   type Ctx,
   desvincularCuenta,
+  invitarAlPortal,
   ErrorClinica,
   expediente,
   fichaCliente,
@@ -72,6 +73,7 @@ import {
  *   GET  clientes/:id                          ficha: cliente, mascotas, cuentas del portal, códigos vigentes
  *   POST clientes/:id                          actualizar
  *   POST clientes/:id/codigo                   código de vinculación (72 h, un uso)
+ *   POST clientes/:id/invitar                  { email? } crea o liga la cuenta del portal y manda la liga (7 días)
  *   POST mascotas                              crear (opcionalmente con peso de hoy)
  *   GET  mascotas/:id                          expediente completo (notas solo con «ver expediente»)
  *   GET  mascotas/:id/cartilla                 cartilla imprimible (HTML)
@@ -249,6 +251,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     }
     if (a === 'clientes' && b && !c) return json(await actualizarCliente(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'clientes' && b && c === 'codigo') return json(await generarCodigo(ctx, idDeRuta(b)), 201)
+    if (a === 'clientes' && b && c === 'invitar') return json(await invitarAlPortal(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'mascotas' && !b) return json(await crearMascota(ctx, await leerJson(req)), 201)
     if (a === 'mascotas' && b) {
       const id = idDeRuta(b)

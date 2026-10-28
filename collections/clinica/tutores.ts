@@ -61,6 +61,7 @@ export const Tutores: CollectionConfig = {
         htmlDeRecuperacion({
           liga: `${site.url}/portal/restablecer/${args?.token ?? ''}`,
           nombre: typeof args?.user?.nombre === 'string' ? args.user.nombre : undefined,
+          lugar: 'del portal',
         }),
     },
   },

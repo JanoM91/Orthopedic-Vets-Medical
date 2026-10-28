@@ -11,6 +11,8 @@
 
 ## Crear tu cuenta (una sola vez)
 
+Si la clínica te mandó un correo de invitación, toca **«Crear mi contraseña»** y listo. Si no:
+
 1. Pide en la clínica tu **código de vinculación** (te lo damos en recepción o por WhatsApp).
 2. Entra a la página de la clínica y toca **«Portal»** (o ve directo a `/portal`).
 3. **«Crear cuenta»** (abajo de «Entrar»): tu nombre, correo y una contraseña.

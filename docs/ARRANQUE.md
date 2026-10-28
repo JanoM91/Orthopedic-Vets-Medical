@@ -72,7 +72,9 @@ Después de cambiar variables: **Deployments → … → Redeploy** de la últim
 
 ## 7. Portal del tutor
 
-En la ficha del cliente → **«Generar código»** y entrégaselo al tutor (WhatsApp o impreso) junto con `docs/MANUAL-TUTOR.md`. El tutor crea su cuenta en `/portal`, escribe el código y ve a sus mascotas.
+En la ficha del cliente → **Acceso al portal** → **«Invitar por correo»** (con el correo capturado en la ficha): al tutor le llega una liga para crear su contraseña y entra directo a ver a sus mascotas. Sin correo, **«Generar código»** y entrégaselo (WhatsApp o impreso) junto con `docs/MANUAL-TUTOR.md`: el tutor crea su cuenta en `/portal` y escribe el código.
+
+El **equipo** (recepción, médicos, farmacia) no usa el portal: se da de alta en **Sistema → Usuarios → Crear** con su **Rol de acceso** y entra por `/admin`.
 
 ## Si algo no funciona
 

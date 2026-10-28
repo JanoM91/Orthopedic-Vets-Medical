@@ -37,7 +37,7 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 - Marca blanca: nombre, colores, logotipo y teléfono salen de `lib/site.ts` (variables `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_BRAND_*`). No escribir datos de una clínica en el código.
 - Las citas solo se crean y cambian por `lib/clinica/agenda.ts` (candado por recurso en la transacción; transiciones en `TRANSICIONES`); por la API genérica solo se leen. Al finalizar una cita con servicio con precio, el cargo entra a Finanzas por `registrar()` con clave `cita-<id>`.
 - **Avisos** (`lib/clinica/avisos.ts`): todo aviso de cita es best-effort y nunca hace fallar la operación. Los crons (`app/api/*/cron/*`) se autorizan con `revisarCron()` de `lib/cron.ts` (`Bearer $CRON_SECRET`; sin variable, 503). Enlaces de WhatsApp solo con `lib/whatsapp.ts`.
-- Pruebas con base local: `npm run test:clinica` (136 comprobaciones; el recordatorio usa `CRON_SECRET` de `.env`) con la app corriendo contra Postgres local vacío.
+- Pruebas con base local: `npm run test:clinica` (149 comprobaciones; el recordatorio usa `CRON_SECRET` de `.env`) con la app corriendo contra Postgres local vacío.
 
 ## Reglas de la Farmacia (docs/FARMACIA.md y docs/FARMACIA-PROMPT.md)
 

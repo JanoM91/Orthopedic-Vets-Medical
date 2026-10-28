@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
-import type { ClienteVista, CodigoVista, FichaCliente as Ficha } from '../../../lib/clinica/tipos'
-import { api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, fecha, Icono, momento, Pastilla, telefonoBonito, useCarga, useClinica } from './comun'
+import type { ClienteVista, CodigoVista, FichaCliente as Ficha, InvitacionVista } from '../../../lib/clinica/tipos'
+import { api, Avatar, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, fecha, Icono, momento, Pastilla, telefonoBonito, useCarga, useClinica } from './comun'
 import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
 
@@ -183,6 +183,8 @@ export function FichaCliente({ id }: { id: number }) {
   const [editando, setEditando] = useState(false)
   const [codigo, setCodigo] = useState<CodigoVista | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [invitando, setInvitando] = useState(false)
 
   if (error) return <Aviso tono="malo">{error}</Aviso>
   if (cargando || !datos) return <p className="fz-tenue">Cargando…</p>
@@ -196,6 +198,21 @@ export function FichaCliente({ id }: { id: number }) {
       recargar()
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'No se pudo generar.')
+    }
+  }
+  const invitar = async (email?: string) => {
+    setMsg(null)
+    setOk(null)
+    setInvitando(true)
+    try {
+      const r = await api.post<InvitacionVista>(`clientes/${id}/invitar`, email ? { email } : {})
+      const que = r.accion === 'creada' ? 'Cuenta creada' : r.accion === 'vinculada' ? 'Cuenta ligada a esta ficha' : 'Acceso reenviado'
+      setOk(r.correoEnviado ? `${que}. Enviamos a ${r.email} la liga para elegir su contraseña (vence en 7 días).` : `${que}, pero el correo no está configurado: usa «Generar código» o pide a ${r.email} que entre a «Olvidé mi contraseña» en el portal.`)
+      recargar()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'No se pudo invitar.')
+    } finally {
+      setInvitando(false)
     }
   }
   const desvincular = async (cuentaId: number) => {
@@ -282,24 +299,29 @@ export function FichaCliente({ id }: { id: number }) {
           </div>
 
           <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-            <h2 className="fz-h2">Portal del tutor</h2>
-            <p className="fz-chico fz-tenue">El tutor crea su cuenta en el portal y la vincula a esta ficha con un código. Nadie ve un expediente por coincidir en nombre o teléfono.</p>
+            <h2 className="fz-h2">Acceso al portal</h2>
             {datos.cuentasPortal.length > 0 ? (
               datos.cuentasPortal.map((u) => (
-                <div key={u.id} className="fz-entre">
-                  <span>
-                    <Pastilla tono="ok">vinculada</Pastilla> {u.email} <span className="fz-tenue fz-chico">· {u.nombre} · desde {fecha(u.vinculadoEn)}</span>
+                <div key={u.id} className="cl-cuenta-portal">
+                  <span className="cl-cuenta-portal__dato">
+                    <Pastilla tono="ok">con acceso</Pastilla> <b>{u.email}</b>
+                    <span className="fz-tenue fz-chico"> · desde {fecha(u.vinculadoEn)}</span>
                   </span>
                   {p.editarPacientes && (
-                    <Boton chico tono="peligro" onClick={() => void desvincular(u.id)}>
-                      Desvincular
-                    </Boton>
+                    <span className="fz-acciones-fin">
+                      <Boton chico disabled={invitando} onClick={() => void invitar(u.email)}>
+                        Reenviar acceso
+                      </Boton>
+                      <Boton chico tono="peligro" onClick={() => void desvincular(u.id)}>
+                        Quitar acceso
+                      </Boton>
+                    </span>
                   )}
                 </div>
               ))
             ) : (
               <p className="fz-chico">
-                <Pastilla tono="gris">sin cuenta vinculada</Pastilla>
+                <Pastilla tono="gris">sin acceso</Pastilla>
               </p>
             )}
             {(codigo || datos.codigosVigentes.length > 0) && (
@@ -310,12 +332,24 @@ export function FichaCliente({ id }: { id: number }) {
               </div>
             )}
             {p.editarPacientes && (
-              <div>
+              <div className="fz-acciones-fin">
+                {datos.cuentasPortal.length === 0 &&
+                  (c.email ? (
+                    <Boton tono="navy" chico disabled={invitando} onClick={() => void invitar()}>
+                      {invitando ? 'Enviando…' : 'Invitar por correo'}
+                    </Boton>
+                  ) : (
+                    <span className="fz-chico fz-tenue">Captura su correo para invitarlo.</span>
+                  ))}
                 <Boton chico onClick={() => void generar()}>
-                  Generar código de vinculación
+                  Generar código
                 </Boton>
               </div>
             )}
+            {ok && <Aviso tono="ok">{ok}</Aviso>}
+            <Ayuda>
+              <b>Invitar por correo:</b> se crea la cuenta con el correo de la ficha y el tutor recibe una liga para elegir su contraseña (vence en 7 días). <b>Código:</b> el tutor crea su cuenta en el portal y escribe el código (vence en 72 h). Nadie ve un expediente por coincidir en nombre o teléfono.
+            </Ayuda>
             {msg && <Aviso tono="malo">{msg}</Aviso>}
           </div>
         </div>

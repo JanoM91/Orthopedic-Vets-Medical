@@ -11,6 +11,7 @@
  * base ya tiene primer usuario, usa las credenciales de abajo.
  */
 import fs from 'node:fs'
+import pg from 'pg'
 
 const BASE = process.argv[2] || 'http://localhost:3000'
 /* CRON_SECRET de .env (solo para probar el recordatorio de citas). */
@@ -453,6 +454,43 @@ async function main() {
   ok(r.status === 404, 'Portal: no imprime la cartilla de una mascota ajena', r.status)
   r = await new Sesion().get(`/api/clinica/mascotas/${toby.id}/cartilla`)
   ok(r.status === 401, 'Sin sesión no hay cartilla', r.status)
+
+  /* ── invitar al portal desde la ficha del cliente ── */
+  console.log('\nInvitar al portal desde la ficha')
+  r = await recepcion.post(`/api/clinica/clientes/${cliente.id}/invitar`, {})
+  ok(r.status === 200 && r.data.accion === 'creada' && r.data.email === cliente.email, 'Recepción invita con el correo de la ficha: se crea la cuenta ligada', r.data)
+  ok(r.status === 200 && !JSON.stringify(r.data).includes('restablecer'), 'La liga nunca sale en la respuesta (solo por correo)')
+  r = await recepcion.post(`/api/clinica/clientes/${cliente.id}/invitar`, {})
+  ok(r.status === 200 && r.data.accion === 'reenviada', 'Invitar otra vez solo reenvía la liga (no duplica la cuenta)', r.data)
+  r = await recepcion.post(`/api/clinica/clientes/${cliente2.id}/invitar`, {})
+  ok(r.status === 400, 'Sin correo en la ficha no se puede invitar', r.status)
+  r = await recepcion.post(`/api/clinica/clientes/${cliente2.id}/invitar`, { email: cliente.email })
+  ok(r.status === 409, 'Un correo ligado a otro cliente no se roba', r.status)
+  r = await recepcion.post(`/api/clinica/clientes/${cliente2.id}/invitar`, { email: 'no-es-correo' })
+  ok(r.status === 400, 'Correo inválido: 400', r.status)
+  r = await new Sesion().post(`/api/clinica/clientes/${cliente.id}/invitar`, {})
+  ok(r.status === 401, 'Sin sesión no se invita', r.status)
+  r = await recepcion.get(`/api/clinica/clientes/${cliente.id}`)
+  ok(r.status === 200 && r.data.cuentasPortal.some((u) => u.email === cliente.email), 'La ficha muestra la cuenta invitada con acceso', r.data?.cuentasPortal)
+  {
+    const urlBase = ENV.DATABASE_URL || process.env.DATABASE_URL || ''
+    if (/@(localhost|127\.0\.0\.1)[:/]/.test(urlBase)) {
+      const bd = new pg.Client({ connectionString: urlBase })
+      await bd.connect()
+      const fila = (await bd.query('select reset_password_token, reset_password_expiration from tutores where email = $1', [cliente.email])).rows[0]
+      await bd.end()
+      const dias = fila ? (new Date(fila.reset_password_expiration).getTime() - Date.now()) / 86400000 : 0
+      ok(Boolean(fila?.reset_password_token) && dias > 6.5 && dias <= 7.01, 'La liga de invitación vence en 7 días', dias)
+      const invitado = new Sesion()
+      r = await invitado.post('/api/tutores/reset-password', { token: fila?.reset_password_token, password: 'Invitado-2026' })
+      ok(r.status === 200, 'El tutor elige su contraseña con la liga', r.status)
+      ok(await invitado.login('tutores', cliente.email, 'Invitado-2026'), 'Y entra al portal con ella')
+      r = await invitado.get('/api/clinica/portal/resumen')
+      ok(r.status === 200 && r.data.mascotas?.some((m) => m.nombre === 'Toby'), 'Ve las mascotas de su ficha', r.data?.mascotas?.map((m) => m.nombre))
+      r = await new Sesion().post('/api/tutores/reset-password', { token: fila?.reset_password_token, password: 'Otra-2026xx' })
+      ok(r.status >= 400, 'La liga sirve una sola vez', r.status)
+    } else ok(false, 'La prueba de invitación lee el token de la base LOCAL (DATABASE_URL en .env)')
+  }
 
   /* ── visitante y sitio público ── */
   console.log('\nVisitante y sitio público')

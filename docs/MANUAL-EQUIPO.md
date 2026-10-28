@@ -17,7 +17,7 @@
 
 **Clientes y mascotas**
 - Busca por nombre, teléfono o folio. Teléfono a 10 dígitos.
-- En la ficha del cliente: **WhatsApp**, mascotas, cuentas del portal y **«Generar código»** para vincular al tutor.
+- En la ficha del cliente: **WhatsApp**, mascotas y **Acceso al portal**: **«Invitar por correo»** (crea la cuenta con el correo de la ficha y le llega al tutor una liga para elegir su contraseña, vence en 7 días) o **«Generar código»** (el tutor crea su cuenta y escribe el código). «Reenviar acceso» si perdió la liga; «Quitar acceso» para desligarla.
 - **Cartilla**: en el expediente, pestaña Cartilla → registrar vacuna o desparasitación → **«Imprimir cartilla»** (también sirve para guardarla en PDF y mandarla).
 
 ## Médicos

@@ -67,7 +67,7 @@ export default async function VistaFinanzas({ initPageResult, params, searchPara
       query={query}
       rutaAdmin={rutaAdmin}
       soloCaptura={esSoloCaptura(ctx.p)}
-      marca={{ wordmark: '/logo-mark-white.png', nombre: site.brand.name }}
+      marca={{ wordmark: '/logo-mark.png', nombre: site.brand.name }}
     />
   )
   return ctx.p.panel ? plantilla(app) : app

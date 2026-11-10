@@ -386,7 +386,7 @@ export default function Captura({ tipoInicial, cuentaInicial = null }: { tipoIni
         </div>
         {avisoClasif && <div className="fz-ayuda fz-ayuda--aviso">Se guardará como pendiente de clasificar ({!categoria ? 'sin categoría' : 'sin asignación'}).</div>}
         {error && <Aviso tono="malo">{error}</Aviso>}
-        <button type="button" className={`fz-btn fz-btn--bloque ${entra ? 'fz-btn--teal' : 'fz-btn--navy'}`} disabled={guardando} onClick={guardar}>
+        <button type="button" className={`fz-btn fz-btn--bloque ${entra ? 'fz-btn--teal' : 'fz-btn--gasto'}`} disabled={guardando} onClick={guardar}>
           {guardando ? 'Guardando…' : entra ? 'Guardar entrada' : 'Guardar gasto'}
         </button>
       </div>

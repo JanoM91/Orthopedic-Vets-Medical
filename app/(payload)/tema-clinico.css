@@ -627,6 +627,15 @@ h3 {
 }
 
 /* 3.6 Botones, chips, segmentos, formularios */
+/* Enlaces-botón de texto («Ver todo», «Descartar»…): zona tocable de 40 px; los
+   márgenes negativos devuelven el alto de una línea para que nada se mueva. */
+.fz-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0;
+  margin: -10px 0;
+}
 .fz-btn {
   border-radius: 8px;
   font-size: 14px;
@@ -882,7 +891,8 @@ html {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 40px;
+  margin: -4px 0;
   cursor: pointer;
   list-style: none;
   color: var(--mx-teal-text);
@@ -1036,7 +1046,7 @@ input[type='time']::-webkit-date-and-time-value {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 12px;
   border-radius: 8px;
   font-size: 13.5px;

@@ -453,7 +453,7 @@ export function FormularioProducto({ existente, alGuardar }: { existente?: Produ
           <Campo etiqueta="Mínimo de inventario (unidades base)">
             <input className="fz-input" type="number" step="1" min={0} value={d.minimoInventario} onChange={(e) => set('minimoInventario', e.target.value)} />
           </Campo>
-          <Campo etiqueta="Punto de reorden aceptado" ayuda={existente?.puntoReordenPropuesto != null ? `El sistema propone ${existente.puntoReordenPropuesto}` : 'Lo propone el sistema con 8 semanas de ventas (fase 4)'}>
+          <Campo etiqueta="Punto de reorden aceptado" ayuda={existente?.puntoReordenPropuesto != null ? `El sistema propone ${existente.puntoReordenPropuesto}` : 'Lo propone el sistema con 8 semanas de ventas'}>
             <input className="fz-input" type="number" step="1" min={0} value={d.puntoReordenAceptado} onChange={(e) => set('puntoReordenAceptado', e.target.value)} />
           </Campo>
         </div>
@@ -698,7 +698,7 @@ export function TablaLotes({ lotes, unidad, verCostos, puedeAjustar, alAjustar, 
       setError(e instanceof Error ? e.message : 'No se pudo.')
     }
   }
-  if (!lotes.length) return <p className="fz-tenue fz-chico">Sin lotes todavía. Entran por compras (fase 2) o con «Entrada o ajuste».</p>
+  if (!lotes.length) return <p className="fz-tenue fz-chico">Sin lotes todavía. Entran por «Compras» o con «Entrada o ajuste».</p>
   return (
     <div style={{ overflowX: 'auto' }}>
       {error && <Aviso tono="malo">{error}</Aviso>}
@@ -921,7 +921,7 @@ export function ModalAjuste({ producto, lote, onCerrar, alGuardar }: { producto:
           ))}
         </div>
         <p className="fz-chico fz-tenue">
-          {modo === 'entrada' ? 'Inventario inicial, muestra médica, corrección positiva. Las compras con factura entran por «Compras» (fase 2).' : modo === 'merma' ? 'Producto roto, vencido retirado, derrame. Sale del lote y queda en el kardex con tu nombre.' : 'Corrección negativa por conteo o error de captura. Queda en el kardex con motivo.'}
+          {modo === 'entrada' ? 'Inventario inicial, muestra médica, corrección positiva. Las compras con factura entran por «Compras».' : modo === 'merma' ? 'Producto roto, vencido retirado, derrame. Sale del lote y queda en el kardex con tu nombre.' : 'Corrección negativa por conteo o error de captura. Queda en el kardex con motivo.'}
         </p>
         <Campo etiqueta="Lote *">
           <Select valor={loteId} onChange={setLoteId}>

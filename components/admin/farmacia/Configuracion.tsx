@@ -118,7 +118,7 @@ export default function Configuracion() {
         </div>
 
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-          <h2 className="fz-h2">Ligas con Finanzas (fases 2 y 3)</h2>
+          <h2 className="fz-h2">Ligas con Finanzas</h2>
           <p className="fz-chico fz-tenue">Cada venta creará una entrada y cada compra un gasto con esta área y categorías. Si el área «Farmacia» no existe, créala en Finanzas → Actividades y áreas.</p>
           <div className="cl-grid cl-grid--3">
             <Campo etiqueta="Área (actividad)">
@@ -154,7 +154,7 @@ export default function Configuracion() {
           </div>
         </div>
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-          <h2 className="fz-h2">Métodos de pago del mostrador (fase 3)</h2>
+          <h2 className="fz-h2">Métodos de pago del mostrador</h2>
           <p className="fz-chico fz-tenue">Cada cobro entra a la cuenta o caja de Finanzas de su método. La cuenta del efectivo es la caja del cierre del día. Lo «por confirmar» (transferencia) entra a Finanzas cuando el encargado lo confirma.</p>
           {c.metodosPago.map((m, i) => {
             const setM = (cambio: Partial<typeof m>) => setC({ ...c, metodosPago: c.metodosPago.map((x, k) => (k === i ? { ...x, ...cambio } : x)) })

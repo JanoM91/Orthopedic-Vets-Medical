@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import React from 'react'
+import { diaLocal } from '../../lib/localTime'
 import { site } from '../../lib/site'
 import { enlaceWhatsApp, mensajes } from '../../lib/whatsapp'
 
@@ -16,6 +17,7 @@ const TRAZOS: Record<string, React.ReactNode> = {
   back: <path d="M15 5l-7 7 7 7" />,
   next: <path d="M9 5l7 7-7 7" />,
   cal: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
+  calmas: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5" /></>),
   link: (<><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>),
 }
 export function Icono({ n }: { n: string }) {
@@ -40,8 +42,9 @@ export function iniciales(nombre: string): string {
   const p = nombre.trim().split(/\s+/).filter(Boolean)
   return p.length ? ((p[0][0] ?? '') + (p.length > 1 ? p[p.length - 1][0] ?? '' : '')).toUpperCase() : '?'
 }
+/** «Hoy» como AAAA-MM-DD en la zona del negocio (no en UTC: después de las 18:00 en México ya sería mañana). */
 export function hoyISO(): string {
-  return new Date().toISOString().slice(0, 10)
+  return diaLocal(new Date())
 }
 
 export function Avatar({ nombre, especie, grande }: { nombre: string; especie?: string; grande?: boolean }) {

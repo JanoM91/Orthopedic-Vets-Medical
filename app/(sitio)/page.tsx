@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 import { BotonesCita, Cabecera, Horario, Icono, Pie } from '../../components/sitio/Piezas'
+import { partesLocales } from '../../lib/localTime'
 import { contenidoSitio, ligaWhatsApp } from '../../lib/sitio/contenido'
 
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,7 @@ export default async function Inicio() {
     )
   }
   const abiertoHoy = (() => {
-    const i = (new Date().getUTCDay() + 6) % 7 // horario va de lunes (0) a domingo (6)
+    const i = (partesLocales(new Date()).weekday + 6) % 7 // día de la semana en la zona del negocio; el horario va de lunes (0) a domingo (6)
     return c.horario[i]
   })()
   return (

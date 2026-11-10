@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
 import type { ClienteVista, CodigoVista, FichaCliente as Ficha, InvitacionVista } from '../../../lib/clinica/tipos'
-import { api, Avatar, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, fecha, Icono, momento, Pastilla, telefonoBonito, useCarga, useClinica } from './comun'
+import { api, Avatar, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, ESPECIE_LABEL, fecha, Icono, momento, Pastilla, telefonoBonito, useCarga, useClinica } from './comun'
 import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
 
@@ -185,6 +185,7 @@ export function FichaCliente({ id }: { id: number }) {
   const [msg, setMsg] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [invitando, setInvitando] = useState(false)
+  const [porQuitar, setPorQuitar] = useState<number | null>(null)
 
   if (error) return <Aviso tono="malo">{error}</Aviso>
   if (cargando || !datos) return <p className="fz-tenue">Cargando…</p>
@@ -216,7 +217,6 @@ export function FichaCliente({ id }: { id: number }) {
     }
   }
   const desvincular = async (cuentaId: number) => {
-    if (!confirm('¿Quitar la ficha a esta cuenta del portal? Dejará de ver las mascotas hasta vincularse con otro código.')) return
     try {
       await api.post(`cuentas/${cuentaId}/desvincular`)
       recargar()
@@ -225,8 +225,24 @@ export function FichaCliente({ id }: { id: number }) {
     }
   }
 
+  const cuentaPorQuitar = porQuitar != null ? datos.cuentasPortal.find((u) => u.id === porQuitar) : undefined
   return (
     <div className="fz-stack fz-stack--grande">
+      {cuentaPorQuitar && (
+        <Confirmar
+          titulo="¿Quitar el acceso al portal?"
+          etiquetaSi="Sí, quitar acceso"
+          etiquetaNo="No quitar"
+          tono="peligro"
+          onNo={() => setPorQuitar(null)}
+          onSi={() => {
+            setPorQuitar(null)
+            void desvincular(cuentaPorQuitar.id)
+          }}
+        >
+          <p>{cuentaPorQuitar.email} dejará de ver las mascotas de esta ficha hasta que se vincule con otro código.</p>
+        </Confirmar>
+      )}
       <div className="fz-entre">
         <div className="cl-cabecera-ficha">
           <Avatar nombre={c.nombreCompleto} grande />
@@ -312,7 +328,7 @@ export function FichaCliente({ id }: { id: number }) {
                       <Boton chico disabled={invitando} onClick={() => void invitar(u.email)}>
                         Reenviar acceso
                       </Boton>
-                      <Boton chico tono="peligro" onClick={() => void desvincular(u.id)}>
+                      <Boton chico tono="peligro" onClick={() => setPorQuitar(u.id)}>
                         Quitar acceso
                       </Boton>
                     </span>

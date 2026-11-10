@@ -263,7 +263,7 @@ export type CitaVista = {
   creadoEn: string
 }
 export const ESTADO_CITA_LABEL: Record<EstadoCitaVista, string> = {
-  solicitada: 'Solicitada',
+  solicitada: 'Por confirmar',
   confirmada: 'Confirmada',
   llegada: 'Llegada registrada',
   atencion: 'En atención',
@@ -272,7 +272,7 @@ export const ESTADO_CITA_LABEL: Record<EstadoCitaVista, string> = {
   no_asistio: 'No asistió',
 }
 export const ACCION_ESTADO_LABEL: Record<EstadoCitaVista, string> = {
-  solicitada: 'Volver a solicitada',
+  solicitada: 'Volver a «por confirmar»',
   confirmada: 'Confirmar',
   llegada: 'Registrar llegada',
   atencion: 'Pasar a atención',

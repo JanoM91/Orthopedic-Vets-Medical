@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import { ACCION_ESTADO_LABEL, type CitaVista, type DisponibilidadDia, ESTADO_CITA_LABEL, type EstadoCitaVista, type RecursoVista, type ResultadoBusqueda, type ServicioVista, type ConfiguracionAgenda } from '../../../lib/clinica/tipos'
-import { api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
+import { api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, ESPECIE_LABEL, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
 import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
 
@@ -13,7 +13,7 @@ import { mensajes } from '../../../lib/whatsapp'
  * las solicitudes del portal por confirmar.
  */
 
-const TONO: Record<EstadoCitaVista, 'ok' | 'aviso' | 'malo' | 'info' | 'gris'> = { solicitada: 'aviso', confirmada: 'info', llegada: 'info', atencion: 'ok', finalizada: 'gris', cancelada: 'malo', no_asistio: 'malo' }
+const pesos = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n)
 const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
 const sumarDias = (d: string, n: number) => {
   const x = new Date(d + 'T12:00:00Z')
@@ -25,8 +25,9 @@ const diaLargo = (d: string) => `${DIAS[new Date(d + 'T12:00:00Z').getUTCDay()]}
 
 type Catalogo = { recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda }
 
+/** Pastilla de estado con la paleta de la marca (clinica.css: .cl-st); es la misma de los bloques de la agenda. */
 export function EstadoCita({ estado }: { estado: EstadoCitaVista }) {
-  return <Pastilla tono={TONO[estado]}>{ESTADO_CITA_LABEL[estado]}</Pastilla>
+  return <span className={`cl-st cl-st--${estado}`}>{ESTADO_CITA_LABEL[estado]}</span>
 }
 
 export default function Agenda({ diaInicial, mascotaInicial }: { diaInicial: string | null; mascotaInicial: number | null }) {
@@ -231,6 +232,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
   const [error, setError] = useState<string | null>(null)
   const [moviendo, setMoviendo] = useState(false)
   const [cancelando, setCancelando] = useState(false)
+  const [confirmando, setConfirmando] = useState<EstadoCitaVista | null>(null)
   const [motivo, setMotivo] = useState('')
   const [notas, setNotas] = useState(cita.notasInternas ?? '')
   const [ocupado, setOcupado] = useState(false)
@@ -238,6 +240,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
     setNotas(cita.notasInternas ?? '')
     setMoviendo(false)
     setCancelando(false)
+    setConfirmando(null)
     setError(null)
   }, [cita.id, cita.notasInternas])
 
@@ -253,6 +256,10 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
     setOcupado(false)
   }
   const puede = cat.permisos.agenda
+  const cambiarEstado = (e: EstadoCitaVista) => accion(() => api.post(`agenda/citas/${cita.id}/estado`, { estado: e }))
+  /* Finalizar (genera el cargo en Finanzas) y «No asistió» cierran la cita sin vuelta atrás: piden confirmación. */
+  const pideConfirmar = (e: EstadoCitaVista) => e === 'finalizada' || e === 'no_asistio'
+  const precioServicio = catalogo.servicios.find((x) => x.id === cita.servicio.id)?.precio ?? null
   return (
     <div className="fz-stack fz-stack--chico">
       <div className="fz-entre">
@@ -297,7 +304,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
           {cita.siguientes
             .filter((e) => e !== 'cancelada')
             .map((e) => (
-              <Boton key={e} chico tono={e === 'no_asistio' ? 'peligro' : 'navy'} disabled={ocupado} onClick={() => void accion(() => api.post(`agenda/citas/${cita.id}/estado`, { estado: e }))}>
+              <Boton key={e} chico tono={e === 'no_asistio' ? 'peligro' : 'navy'} disabled={ocupado} onClick={() => (pideConfirmar(e) ? setConfirmando(e) : void cambiarEstado(e))}>
                 {ACCION_ESTADO_LABEL[e]}
               </Boton>
             ))}
@@ -344,6 +351,44 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
           onElegir={(d, h, r) => void accion(() => api.post(`agenda/citas/${cita.id}/reprogramar`, { dia: d, hora: h, recursoId: r })).then(() => setMoviendo(false))}
           onCancelar={() => setMoviendo(false)}
         />
+      )}
+      {confirmando === 'finalizada' && (
+        <Confirmar
+          titulo={`¿Finalizar la cita de ${cita.mascota.nombre}?`}
+          etiquetaSi="Finalizar"
+          ocupado={ocupado}
+          onNo={() => setConfirmando(null)}
+          onSi={() => {
+            setConfirmando(null)
+            void cambiarEstado('finalizada')
+          }}
+        >
+          {precioServicio ? (
+            <p>
+              Se registrará en Finanzas un cargo de <b>{pesos(precioServicio)}</b> por «{cita.servicio.nombre}»{cita.cliente ? <> a nombre de {cita.cliente.nombre}</> : null}.
+            </p>
+          ) : (
+            <p>Este servicio no tiene precio, así que no se genera ningún cargo en Finanzas.</p>
+          )}
+          <p>La cita quedará como finalizada y ya no se podrá cambiar de estado.</p>
+        </Confirmar>
+      )}
+      {confirmando === 'no_asistio' && (
+        <Confirmar
+          titulo={`¿Marcar que ${cita.mascota.nombre} no asistió?`}
+          etiquetaSi="Sí, no asistió"
+          tono="peligro"
+          ocupado={ocupado}
+          onNo={() => setConfirmando(null)}
+          onSi={() => {
+            setConfirmando(null)
+            void cambiarEstado('no_asistio')
+          }}
+        >
+          <p>
+            La cita de {diaLargo(cita.dia)} a las {cita.horaInicio} se cierra como «No asistió» y ya no se podrá cambiar de estado.
+          </p>
+        </Confirmar>
       )}
       {puede && !compacto && (
         <details>

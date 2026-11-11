@@ -6,9 +6,13 @@
 
 `/admin` con tu correo y contraseña. En el teléfono funciona igual (agrégalo a la pantalla de inicio). La sesión dura 7 días; si pierdes el teléfono, avisa para que cierren tus sesiones.
 
+Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia y Finanzas (solo lo que tu rol usa). Los catálogos (Sistema, Clínica, Farmacia, Finanzas) quedan plegados debajo; ábrelos con un clic y se quedan como los dejes.
+
+**Hoy** (`/admin`) es el tablero del día: citas de hoy, en clínica, por confirmar, ventas de mostrador y cobros pendientes; la agenda de hoy con el siguiente paso de cada cita («Confirmar», «Llegó», «Atender», «Abrir nota»), acciones rápidas y pendientes. Finalizar y «No asistió» se hacen en la agenda, donde piden confirmación.
+
 ## Recepción
 
-**Agenda** (Clínica → Agenda)
+**Agenda** (Trabajo → Agenda)
 - Elige el día; cada columna es un consultorio. «Nueva cita»: mascota, servicio, hora. «Confirmar» si ya quedó con el tutor.
 - Estados: por confirmar → confirmada → llegó → en atención → finalizada (o cancelada con motivo / no asistió). **Finalizar** y **No asistió** piden confirmación porque cierran la cita; al finalizar una cita con precio, se crea solo el cargo en Finanzas (el aviso te dice el importe).
 - «Por confirmar» muestra lo que pidieron los tutores desde el portal (también llega un correo a la clínica). Confírmalas o muévelas.
@@ -29,7 +33,7 @@
 
 ## Farmacia
 
-**Vender** (Farmacia → Vender)
+**Mostrador** (Trabajo → Mostrador, o Farmacia → Mostrador)
 1. Escanea el código (lector o cámara) o busca por nombre.
 2. Opcional: «Agregar mascota» → revisa especie, peso, edad y alergias. Si algo choca, no deja vender; el encargado puede autorizar con motivo.
 3. Grupo II y I: «Ligar receta». Grupo I además «Recibí el original».

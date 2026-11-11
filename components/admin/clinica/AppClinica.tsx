@@ -11,6 +11,7 @@
  *   mascotas/:id            expediente de la mascota
  *   importar                importación de archivo
  *   agenda?dia=&mascota=    agenda del día; con mascota abre «nueva cita» para ella
+ *   agenda?nueva=1          abre «nueva cita» sin mascota (acción rápida del tablero «Hoy»)
  *
  * Quien no entra al panel completo la ve sola, con encabezado y barra
  * inferior; además tiene acceso a Finanzas desde la barra si su rol lo usa.
@@ -51,7 +52,7 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
   else if (seccion === 'mascotas' && id === 'nueva') pantalla = p.editarPacientes ? <FormularioMascota clienteInicial={numero(query.cliente)} /> : <Aviso>Tu rol no incluye dar de alta mascotas.</Aviso>
   else if (seccion === 'mascotas' && numero(id)) pantalla = <Expediente key={id} id={numero(id)!} pestana={query.ver ?? null} />
   else if (seccion === 'importar') pantalla = p.importar ? <Importar /> : <Aviso>Tu rol no incluye importar archivos.</Aviso>
-  else if (seccion === 'agenda') pantalla = p.agenda ? <Agenda diaInicial={query.dia ?? null} mascotaInicial={numero(query.mascota)} /> : <Aviso>Tu rol no incluye la agenda.</Aviso>
+  else if (seccion === 'agenda') pantalla = p.agenda ? <Agenda diaInicial={query.dia ?? null} mascotaInicial={numero(query.mascota)} nuevaInicial={query.nueva === '1'} /> : <Aviso>Tu rol no incluye la agenda.</Aviso>
   else
     pantalla = (
       <Aviso tono="aviso">

@@ -152,7 +152,7 @@ export default function Vender() {
       <div className="fz-entre">
         <div>
           <p className="fz-eyebrow">Farmacia</p>
-          <h1 className="fz-h1">Vender</h1>
+          <h1 className="fz-h1">Mostrador</h1>
         </div>
         <div className="fz-acciones-fin">
           <Link href={`${base}/ventas`} className="fz-btn fz-btn--claro fz-btn--chico">

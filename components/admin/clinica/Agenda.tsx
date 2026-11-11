@@ -30,13 +30,13 @@ export function EstadoCita({ estado }: { estado: EstadoCitaVista }) {
   return <span className={`cl-st cl-st--${estado}`}>{ESTADO_CITA_LABEL[estado]}</span>
 }
 
-export default function Agenda({ diaInicial, mascotaInicial }: { diaInicial: string | null; mascotaInicial: number | null }) {
+export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = false }: { diaInicial: string | null; mascotaInicial: number | null; nuevaInicial?: boolean }) {
   const { catalogo: cat, base } = useClinica()
   const [dia, setDia] = useState(diaInicial && /^\d{4}-\d{2}-\d{2}$/.test(diaInicial) ? diaInicial : hoyISO())
   const agenda = useCarga(() => api.get<{ dia: string; citas: CitaVista[]; porConfirmar: CitaVista[]; abierto: boolean; de: string; a: string }>('agenda', { dia }), [dia])
   const catalogoAgenda = useCarga(() => api.get<Catalogo>('agenda/catalogo'), [])
   const [sel, setSel] = useState<number | null>(null)
-  const [nueva, setNueva] = useState<boolean>(Boolean(mascotaInicial))
+  const [nueva, setNueva] = useState<boolean>(Boolean(mascotaInicial) || nuevaInicial)
   const [msg, setMsg] = useState<string | null>(null)
 
   const recargar = () => {

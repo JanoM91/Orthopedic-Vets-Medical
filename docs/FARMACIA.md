@@ -101,7 +101,7 @@ Con el módulo apagado todo responde 404. `registrarMovimiento` (en `lib/farmaci
 | Permisos | `lib/permisosBase.ts` (`farmacia`, `usaFarmacia`), `lib/permisos.ts` (`esColeccionFarmacia`), `lib/farmacia/roles.ts` |
 | Módulos | `lib/modulos.ts`, `lib/modulosAcceso.ts` |
 | Servicio y API | `lib/farmacia/{servicio,importacion,ejemplos,tipos}.ts` → `app/api/farmacia/[...ruta]/route.ts` |
-| Panel | `components/admin/farmacia/*` (vista `/admin/farmacia` registrada en `payload.config.ts`), `components/admin/EnlaceFarmacia.tsx`, `app/(payload)/farmacia.css` |
+| Panel | `components/admin/farmacia/*` (vista `/admin/farmacia` registrada en `payload.config.ts`), `components/admin/MenuTrabajo.tsx` (enlaces «Mostrador» y «Farmacia» del bloque Trabajo), `app/(payload)/farmacia.css` |
 | Migración | `migrations/20261025_221652_farmacia_base.ts` |
 | Pruebas | `npm run test:farmacia` (102 comprobaciones) contra `npm run start` con Postgres local vacío: roles, importación de 50 ejemplos y CSV con errores, validaciones, lotes y kardex (existencia = suma; inmutable), costos ocultos, configuración, módulos activables, vistas del panel |
 
@@ -191,7 +191,7 @@ Criterios de aceptación de la fase 2:
 
 ### Qué hace
 
-- **Vender** (`/admin/farmacia/vender`, permiso «Vender»): escaneo con lector USB (escribe el código + Enter) o con la **cámara** del teléfono (API `BarcodeDetector`; si el navegador no la tiene, el botón no aparece y queda la captura manual), búsqueda por nombre, principio activo o laboratorio con existencia vendible, carrito con cantidad y descuento por renglón, mascota opcional, receta para Grupo I/II, **pagos mixtos** (efectivo con «recibido» y cambio, billetes rápidos, terminal, transferencia) y ticket. Con un solo método el monto sigue al total: escanear → Cobrar.
+- **Mostrador** (`/admin/farmacia/vender`; antes se llamaba «Vender», permiso «Vender»): escaneo con lector USB (escribe el código + Enter) o con la **cámara** del teléfono (API `BarcodeDetector`; si el navegador no la tiene, el botón no aparece y queda la captura manual), búsqueda por nombre, principio activo o laboratorio con existencia vendible, carrito con cantidad y descuento por renglón, mascota opcional, receta para Grupo I/II, **pagos mixtos** (efectivo con «recibido» y cambio, billetes rápidos, terminal, transferencia) y ticket. Con un solo método el monto sigue al total: escanear → Cobrar.
 - **Inventario por FEFO** dentro de una transacción con candado por lote: sale primero el lote no vencido ni bloqueado que caduca antes. **Un lote vencido nunca se vende.** Venta fraccionada solo si la presentación lo permite (cantidad entera si no).
 - **Idempotencia:** cada intento de cobro lleva una clave; un doble clic o un reintento por mala señal devuelve la misma venta (`duplicado: true`) y no descuenta dos veces.
 - **Finanzas:** entrada pendiente por el total (clave `venta-<id>`, área y categoría de ventas de la configuración) y un cobro por cada pago confirmado en la cuenta de su método (clave `venta-<id>-pago-<n>`). La **transferencia queda «por confirmar»** y entra a Finanzas cuando el encargado la confirma. Si Finanzas falla, la venta ya quedó y se usa «Reintentar Finanzas».

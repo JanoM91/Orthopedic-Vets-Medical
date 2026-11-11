@@ -318,45 +318,297 @@ h3 {
   box-shadow: none;
 }
 
-/* 2.6 Bienvenida del tablero: tarjeta blanca con borde, acciones como botones */
-.mx-bienvenida {
-  background: #ffffff;
-  color: var(--mx-ink);
-  border: 1px solid var(--mx-line);
-  border-radius: 12px;
-  box-shadow: none;
+/* 2.6 Bloque «Trabajo» del menú (components/admin/MenuTrabajo*.tsx) y tablero
+   «Hoy» (components/admin/Tablero*.tsx). Versión A, fase 2 (nov-2026). */
+.mx-trabajo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 18px;
 }
-.mx-bienvenida::after {
-  display: none;
+.mx-trabajo .mx-nav-etiqueta {
+  margin: 4px 0 6px;
 }
-.mx-bienvenida__fecha,
-.mx-bienvenida__bajada {
+.nav a.mx-trabajo__link,
+.mx-trabajo__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  color: #2a3a35;
+}
+.mx-trabajo__ico {
+  flex: none;
   color: var(--mx-muted);
 }
-.mx-bienvenida__saludo {
+.mx-trabajo__link.active .mx-trabajo__ico {
+  color: var(--mx-teal-text);
+}
+.mx-trabajo__n {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fdf1dc;
+  color: #8a5a0a;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hoy.fz-app {
+  max-width: 1240px;
+  container-type: inline-size;
+  container-name: hoy;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+.hoy__cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hoy__bajada {
+  margin-top: 4px;
+}
+.hoy__cifras {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container hoy (min-width: 640px) {
+  .hoy__cifras {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+/* Con un número impar de cifras en dos columnas, la última ocupa el renglón completo. */
+.hoy__cifras .fz-kpi:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+@container hoy (min-width: 640px) {
+  .hoy__cifras .fz-kpi:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+.fz-kpis .hoy__cifra--aviso {
+  background: #fffaf0;
+}
+.hoy__cifra--aviso .fz-kpi__val {
+  color: #8a5a0a;
+}
+.hoy__rejilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+/* Las columnas dependen del ancho real del tablero (con o sin menú abierto), no de la ventana. */
+@container hoy (min-width: 960px) {
+  .hoy__rejilla {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+  .hoy__rejilla--sola {
+    grid-template-columns: minmax(0, 520px);
+  }
+}
+.hoy__agenda,
+.hoy__caja {
+  padding: 16px 18px;
+}
+.hoy__agenda {
+  container-type: inline-size;
+  container-name: hoy-agenda;
+}
+.hoy__titulo {
+  margin-bottom: 8px;
+}
+.hoy__caja .fz-h2 {
+  margin-bottom: 10px;
+}
+.hoy__lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.hoy__vacio {
+  padding: 8px 0;
+}
+.hoy__citas,
+.hoy__pendientes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hoy__cita {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'hora quien quien'
+    'hora servicio servicio'
+    'hora estado accion';
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--mx-line);
+  font-size: 14px;
+}
+.hoy__cita:first-child {
+  border-top: 0;
+}
+/* Teléfonos angostos (320 px): estado y acción en renglones propios para que no se encimen. */
+@container hoy-agenda (max-width: 300px) {
+  .hoy__cita {
+    grid-template-areas:
+      'hora quien quien'
+      'hora servicio servicio'
+      'hora estado estado'
+      'hora accion accion';
+  }
+}
+@container hoy-agenda (min-width: 620px) {
+  .hoy__cita {
+    grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1.3fr) 150px 116px;
+    grid-template-areas: 'hora quien servicio estado accion';
+  }
+}
+.hoy__hora {
+  grid-area: hora;
+  align-self: start;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+.hoy__quien {
+  grid-area: quien;
+  min-width: 0;
+}
+.hoy__servicio {
+  grid-area: servicio;
+  min-width: 0;
+}
+.hoy__estado {
+  grid-area: estado;
+  justify-self: start;
+}
+.hoy__accion-cita {
+  grid-area: accion;
+  justify-self: end;
+  display: flex;
+  gap: 6px;
+}
+.hoy__quien,
+.hoy__servicio {
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: break-word;
+}
+.fz-app a.hoy__mascota {
+  font-weight: 600;
   color: var(--mx-ink);
+  text-decoration: none;
+  align-self: flex-start;
+  min-height: 24px;
+}
+.fz-app a.hoy__mascota:hover {
+  text-decoration: underline;
+}
+.hoy__sub {
+  font-size: 12.5px;
+  color: var(--mx-muted);
+}
+.hoy__cita--cerrada {
+  color: var(--mx-muted);
+}
+.hoy__cita--cerrada .hoy__mascota {
+  font-weight: 500;
+}
+.hoy__error {
+  grid-column: 1 / -1;
+}
+.hoy__acciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.fz-btn.hoy__accion {
+  background: var(--mx-teal-soft);
+  color: var(--mx-teal-text);
+}
+.fz-btn.hoy__accion:hover {
+  background: #d0efe6;
+}
+.hoy__acciones .fz-btn {
+  padding-inline: 10px;
+  text-align: center;
+}
+@container hoy (min-width: 640px) and (max-width: 959px) {
+  .hoy__acciones {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.hoy__pendiente {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-top: 1px solid var(--mx-line);
+  color: var(--mx-ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+.hoy__pendientes li:first-child .hoy__pendiente {
+  border-top: 0;
+}
+.fz-app a.hoy__pendiente {
+  color: var(--mx-ink);
+}
+.hoy__pendiente:hover .hoy__pendiente-texto {
+  text-decoration: underline;
+}
+.hoy__pendiente-texto {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.hoy__flecha {
+  color: var(--mx-muted);
+}
+.hoy__tipo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 600;
 }
-.mx-bienvenida__accion {
-  border-radius: 8px;
-  font-weight: 600;
+.hoy__tipo::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
 }
-.mx-bienvenida__accion--teal {
-  background: var(--mx-navy);
-  color: #ffffff;
+.hoy__tipo--cobro,
+.hoy__tipo--aviso {
+  background: #fdf1dc;
+  color: #8a5a0a;
 }
-.mx-bienvenida__accion--teal:hover {
-  background: var(--mx-navy-dark);
-  color: #ffffff;
+.hoy__tipo--farmacia {
+  background: #e3f8f2;
+  color: #0b6b59;
 }
-.mx-bienvenida__accion--claro {
-  background: #ffffff;
-  color: var(--mx-ink);
-  border: 1px solid #cbd5e1;
-}
-.mx-bienvenida__accion--claro:hover {
-  background: var(--mx-sand);
-  color: var(--mx-ink);
+.hoy__admin {
+  margin: 0;
 }
 
 /* ─── 3 · Módulos (fz-*, cl-*, fa-*) ─────────────────────────────────────── */

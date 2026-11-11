@@ -202,6 +202,49 @@ export function Modal({ titulo, onCerrar, children, ancho }: { titulo: string; o
 }
 
 /**
+ * Confirmación antes de una acción que no se puede deshacer o que mueve dinero
+ * (finalizar una cita, firmar una nota, borrar un borrador, quitar un acceso).
+ * Usa el Modal propio, no el confirm() del navegador. «Todavía no», la tecla
+ * Esc, la × y un clic fuera cierran sin hacer nada. El foco empieza en
+ * «Todavía no» para que un Enter distraído no confirme.
+ */
+export function Confirmar({
+  titulo,
+  children,
+  etiquetaSi,
+  etiquetaNo = 'Todavía no',
+  tono = 'navy',
+  ocupado,
+  onSi,
+  onNo,
+}: {
+  titulo: string
+  children: React.ReactNode
+  etiquetaSi: string
+  etiquetaNo?: string
+  tono?: 'navy' | 'peligro'
+  ocupado?: boolean
+  onSi: () => void
+  onNo: () => void
+}) {
+  return (
+    <Modal titulo={titulo} onCerrar={onNo}>
+      <div className="fz-stack fz-stack--chico">
+        <div className="cl-confirmar__texto">{children}</div>
+        <div className="fz-acciones-fin cl-confirmar__botones">
+          <Boton autoFocus onClick={onNo}>
+            {etiquetaNo}
+          </Boton>
+          <Boton tono={tono} disabled={ocupado} onClick={onSi}>
+            {etiquetaSi}
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/**
  * Botón de WhatsApp con mensaje prellenado (lib/whatsapp.ts). No envía nada:
  * abre WhatsApp con el texto listo para revisarlo y mandarlo. Sin teléfono
  * válido de 10 dígitos no se muestra.

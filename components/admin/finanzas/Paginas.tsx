@@ -57,7 +57,7 @@ export function Inicio() {
       {(p.registrar || p.moverDinero) && (
         <div className="fz-acciones">
           {p.registrar && <Link className="fz-accion fz-accion--teal" href={`${base}/registrar?tipo=entrada`}><span className="fz-accion__ico"><Icono n="entra" /></span><span>Registrar entrada<small>Entró dinero</small></span></Link>}
-          {p.registrar && <Link className="fz-accion fz-accion--navy" href={`${base}/registrar?tipo=gasto`}><span className="fz-accion__ico"><Icono n="sale" /></span><span>Registrar gasto<small>Salió dinero</small></span></Link>}
+          {p.registrar && <Link className="fz-accion fz-accion--gasto" href={`${base}/registrar?tipo=gasto`}><span className="fz-accion__ico"><Icono n="sale" /></span><span>Registrar gasto<small>Salió dinero</small></span></Link>}
           {p.registrar && <Link className="fz-accion fz-accion--claro" href={`${base}/voz`}><span className="fz-accion__ico"><Icono n="mic" /></span><span>Nota de voz<small>Díctalo y revisa el borrador</small></span></Link>}
           {p.moverDinero && <Link className="fz-accion fz-accion--claro" href={`${base}/mover`}><span className="fz-accion__ico"><Icono n="traspaso" /></span><span>Mover dinero<small>Traspasos, fondos y socios</small></span></Link>}
         </div>

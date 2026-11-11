@@ -103,7 +103,7 @@ export default function Inventario({ solo: soloInicial, q: qInicial }: { solo: s
         <div className={`fz-tarjeta fz-lista${cargando ? ' cl-cargando' : ''}`}>
           {datos.productos.length === 0 && (
             <p className="fz-tenue" style={{ padding: 14 }}>
-              {solo === 'con_existencia' ? 'Nada en existencia todavía. Las entradas se registran desde cada producto («Entrada o ajuste») o por compras (fase 2).' : 'Ningún producto coincide con el filtro.'}
+              {solo === 'con_existencia' ? 'Nada en existencia todavía. Las entradas se registran desde cada producto («Entrada o ajuste») o por «Compras».' : 'Ningún producto coincide con el filtro.'}
             </p>
           )}
           {datos.productos.map((pr) => {

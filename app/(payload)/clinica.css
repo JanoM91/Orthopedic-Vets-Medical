@@ -78,6 +78,11 @@
 @media (min-width: 700px) { .cl-overlay { align-items: center; } }
 .cl-modal { background: #fff; color: var(--mx-ink); border-radius: 16px; max-width: 620px; width: 100%; max-height: 88vh; overflow: auto; padding: 20px; box-shadow: var(--mx-shadow-lift); }
 .cl-modal--ancho { max-width: 900px; }
+/* Confirmación (components/admin/clinica/comun.tsx → Confirmar): texto corto y dos botones. */
+.cl-confirmar__texto { display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; line-height: 1.5; }
+.cl-confirmar__texto p { margin: 0; }
+.cl-confirmar__botones { justify-content: flex-end; margin-top: 4px; }
+@media (max-width: 480px) { .cl-confirmar__botones { flex-direction: column-reverse; } .cl-confirmar__botones .fz-btn { width: 100%; } }
 
 /* agenda: columnas por recurso, filas por intervalo */
 .cl-agenda-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -90,14 +95,21 @@
 .cl-cita { position: absolute; top: 2px; left: 3px; right: 3px; border: 0; border-radius: 8px; padding: 4px 8px; text-align: left; font-size: 12px; line-height: 1.25; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; gap: 1px; z-index: 1; border-left: 4px solid transparent; }
 .cl-cita b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cl-cita span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cl-cita__st { font-size: 10.5px; opacity: 0.8; }
+.cl-cita__st { font-size: 12px; opacity: 0.85; }
 .cl-cita.is-sel { outline: 2px solid var(--mx-navy); z-index: 2; }
-.cl-cita.st-solicitada { background: var(--mx-amber-soft); color: #92400e; border-left-color: var(--mx-amber); }
-.cl-cita.st-confirmada { background: #e1ecf7; color: #2c5a87; border-left-color: #2c5a87; }
-.cl-cita.st-llegada { background: #e3eaf6; color: #2b4a85; border-left-color: #2b4a85; }
-.cl-cita.st-atencion { background: var(--mx-teal-light); color: #0c2c26; border-left-color: var(--mx-teal-dark); }
-.cl-cita.st-finalizada { background: var(--mx-sand-dark); color: var(--mx-muted); border-left-color: var(--mx-muted); }
-.cl-cita.st-cancelada, .cl-cita.st-no_asistio { background: #fdecee; color: #b42330; border-left-color: #b42330; text-decoration: line-through; }
+/* Estados de cita: una sola escala de la marca (Versión A). Los mismos colores
+   sirven a las citas de la agenda (.cl-cita) y a las pastillas de la leyenda
+   y del detalle (.cl-st). Fondo / texto / punto. */
+.cl-cita.st-solicitada, .cl-st--solicitada { background: #fdf1dc; color: #8a5a0a; --cl-punto: #b45309; border-left-color: #b45309; }
+.cl-cita.st-confirmada, .cl-st--confirmada { background: #e3f8f2; color: #0b6b59; --cl-punto: #0b6b59; border-left-color: #0b6b59; }
+.cl-cita.st-llegada, .cl-st--llegada { background: #d0efe6; color: #0f2f2a; --cl-punto: #13967c; border-left-color: #13967c; }
+.cl-cita.st-atencion, .cl-st--atencion { background: #36dab7; color: #0f2f2a; --cl-punto: #0f2f2a; border-left-color: #0f2f2a; }
+.cl-cita.st-finalizada, .cl-st--finalizada { background: #e9eeec; color: #4b5b56; --cl-punto: #64748b; border-left-color: #64748b; }
+.cl-cita.st-cancelada, .cl-cita.st-no_asistio, .cl-st--cancelada, .cl-st--no_asistio { background: #fbe3e0; color: #ad2a20; --cl-punto: #ad2a20; border-left-color: #ad2a20; }
+.cl-cita.st-cancelada, .cl-cita.st-no_asistio { text-decoration: line-through; }
+/* Pastilla de estado (leyenda de la agenda y detalle de la cita): mismo aspecto que .fz-pastilla, con la paleta de arriba. */
+.cl-st { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.cl-st::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--cl-punto, currentColor); flex: none; }
 .cl-huecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
 .cl-hueco { min-height: 40px; border: 1px solid var(--mx-line); border-radius: 8px; background: #fff; font-weight: 600; cursor: pointer; }
 .cl-hueco[disabled] { opacity: 0.35; text-decoration: line-through; cursor: not-allowed; }

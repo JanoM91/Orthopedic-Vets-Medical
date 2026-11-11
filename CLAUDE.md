@@ -71,6 +71,8 @@ Marca **OVM Centro Veterinario** (27-oct-2026, decisión de Jano; dominio `ovets
 - Barras de pestañas que no caben: `components/Carriles.tsx` (montado en las tres apps del panel y en el portal) marca `data-izq`/`data-der` para el desvanecido y centra la pestaña activa. Si una barra pasa de ~8 opciones, las poco usadas van en `<MenuMas>` (`components/admin/MenuMas.tsx`), como en Farmacia.
 - Campos de 16 px en el teléfono (iOS acerca la pantalla con menos); `tema-clinico.css` §4 lo fuerza también en los formularios de Payload. Botones de al menos 40–44 px de alto.
 - Fechas, horas y archivos con estilo propio (Safari y Firefox los dibujan distinto). `100vh` siempre con respaldo `100dvh`; `:has()` solo para adornos.
+- Lo que no se puede deshacer pide confirmación con `<Confirmar>` (`components/admin/clinica/comun.tsx`, sobre el `Modal` propio), nunca con `confirm()` del navegador: finalizar una cita, «No asistió», firmar o borrar una nota, quitar un acceso. «Todavía no» no cambia nada.
+- Entrada y gasto no comparten color: la entrada usa el acento (`fz-btn--teal`, `fz-accion--teal`) y el gasto la terracota `--mx-gasto` (`fz-btn--gasto`, `fz-accion--gasto`). Los estados de cita usan una sola escala (`clinica.css`: `.cl-cita.st-*` y `.cl-st--*`). Mínimos: botón 44 px, chico/chip/segmento/pestaña 40 px, texto de barra inferior y de estado de cita 12 px.
 - Auditoría automática: `scripts/auditoria-front.mjs` (desbordes, campos chicos, botones chicos, errores de consola) contra `npm run start` con datos de prueba.
 
 ## Convenciones

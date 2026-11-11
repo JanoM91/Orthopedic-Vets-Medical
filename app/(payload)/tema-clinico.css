@@ -46,6 +46,9 @@
   --mx-ok: #047857;
   --mx-ok-soft: #dcfce7;
   --mx-slate: #0f172a; /* panel oscuro (inventario a costo) */
+  --mx-tinta: #0f2f2a; /* primario oscuro de la marca: nombre y marca del menú, textos sobre menta */
+  --mx-gasto: #9a3412; /* terracota: lo que sale (7.3:1 sobre blanco). La entrada conserva el acento */
+  --mx-gasto-dark: #7c2a0c;
 
   --mx-radius-card: 12px;
   --mx-radius-panel: 16px;
@@ -153,6 +156,19 @@ h3 {
   background: #ffffff;
   color: var(--mx-ink);
   border-right: 1px solid var(--mx-line);
+}
+/* Marca arriba del menú (components/admin/MarcaDelPanel.tsx). custom.css la
+   pintó para un menú oscuro (nombre blanco, borde translúcido); sobre el menú
+   blanco de este tema el nombre no se veía. Aquí va en tinta. */
+.mx-marca {
+  border-bottom-color: var(--mx-line);
+}
+.mx-marca__nombre {
+  color: var(--mx-tinta);
+  font-weight: 700;
+}
+.mx-marca__sub {
+  color: var(--mx-muted);
 }
 .nav-group__toggle,
 .mx-nav-etiqueta {
@@ -359,7 +375,7 @@ h3 {
   margin-right: 8px;
 }
 .fz-subnav a {
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 12px;
   border-radius: 8px;
   border-bottom: 0;
@@ -399,7 +415,7 @@ h3 {
   border-color: #cbd5e1;
 }
 .fz-barra a {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
   gap: 3px;
 }
@@ -611,14 +627,23 @@ h3 {
 }
 
 /* 3.6 Botones, chips, segmentos, formularios */
+/* Enlaces-botón de texto («Ver todo», «Descartar»…): zona tocable de 40 px; los
+   márgenes negativos devuelven el alto de una línea para que nada se mueva. */
+.fz-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0;
+  margin: -10px 0;
+}
 .fz-btn {
   border-radius: 8px;
   font-size: 14px;
-  min-height: 42px;
+  min-height: 44px;
 }
 .fz-btn--chico {
-  min-height: 36px;
-  font-size: 13px;
+  min-height: 40px;
+  font-size: 13.5px;
 }
 .fz-btn--claro {
   border-color: #cbd5e1;
@@ -627,9 +652,18 @@ h3 {
   border-color: #fecaca;
   color: #991b1b;
 }
+/* Gasto en terracota: la entrada conserva el acento verde y las dos se
+   distinguen sin leer (Captura.tsx «Guardar gasto», Paginas.tsx «Registrar gasto»). */
+.fz-btn--gasto {
+  background: var(--mx-gasto);
+  color: #ffffff;
+}
+.fz-btn--gasto:hover:not([disabled]) {
+  background: var(--mx-gasto-dark);
+}
 .fz-chip {
   border-radius: 8px;
-  min-height: 36px;
+  min-height: 40px;
   padding: 6px 12px;
   font-size: 13.5px;
 }
@@ -644,7 +678,7 @@ h3 {
 }
 .fz-seg button {
   border-radius: 7px;
-  min-height: 36px;
+  min-height: 40px;
   font-size: 13px;
 }
 .fz-pestanas button.is-on {
@@ -676,6 +710,10 @@ h3 {
 .fz-accion--teal,
 .fz-accion--navy {
   background: var(--mx-navy);
+}
+.fz-accion--gasto {
+  background: var(--mx-gasto);
+  color: #ffffff;
 }
 .fz-accion--claro .fz-accion__ico {
   background: var(--mx-sand-dark);
@@ -853,7 +891,8 @@ html {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 40px;
+  margin: -4px 0;
   cursor: pointer;
   list-style: none;
   color: var(--mx-teal-text);
@@ -1007,7 +1046,7 @@ input[type='time']::-webkit-date-and-time-value {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 12px;
   border-radius: 8px;
   font-size: 13.5px;

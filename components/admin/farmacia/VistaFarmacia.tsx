@@ -61,6 +61,6 @@ export default async function VistaFarmacia({ initPageResult, params, searchPara
     return ctx?.p.panel ? plantilla(aviso) : aviso
   }
 
-  const app = <AppFarmacia catalogo={await catalogo(ctx)} ruta={ruta} query={query} rutaAdmin={rutaAdmin} marca={{ wordmark: '/logo-mark-white.png', nombre: site.brand.name }} />
+  const app = <AppFarmacia catalogo={await catalogo(ctx)} ruta={ruta} query={query} rutaAdmin={rutaAdmin} marca={{ wordmark: '/logo-mark.png', nombre: site.brand.name }} />
   return ctx.p.panel ? plantilla(app) : app
 }

@@ -64,6 +64,6 @@ export default async function VistaClinica({ initPageResult, params, searchParam
     return ctx?.p.panel ? plantilla(aviso) : aviso
   }
 
-  const app = <AppClinica catalogo={await catalogo(ctx)} ruta={ruta} query={query} rutaAdmin={rutaAdmin} marca={{ wordmark: '/logo-mark-white.png', nombre: site.brand.name }} />
+  const app = <AppClinica catalogo={await catalogo(ctx)} ruta={ruta} query={query} rutaAdmin={rutaAdmin} marca={{ wordmark: '/logo-mark.png', nombre: site.brand.name }} />
   return ctx.p.panel ? plantilla(app) : app
 }

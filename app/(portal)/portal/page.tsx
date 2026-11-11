@@ -69,11 +69,11 @@ export default async function PortalInicio() {
             </div>
             <div className="pt-tiles">
               <Link href="/portal/citas/nueva" className="pt-tile">
-                <Icono n="cal" />
+                <Icono n="calmas" />
                 Pedir cita
               </Link>
               <Link href="/portal/citas" className="pt-tile">
-                <Icono n="shield" />
+                <Icono n="cal" />
                 Mis citas
               </Link>
               <Link href="/portal/cuenta" className="pt-tile">

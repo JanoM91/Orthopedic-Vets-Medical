@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import type { CitaVista, DisponibilidadDia, ServicioVista } from '../../lib/clinica/tipos'
 import { ESTADO_CITA_LABEL } from '../../lib/clinica/tipos'
+import { diaLocal } from '../../lib/localTime'
 import { fecha, Pill } from './comun'
 
 async function pedir<T>(url: string, cuerpo?: unknown): Promise<T> {
@@ -25,11 +26,12 @@ const sumarDias = (d: string, n: number) => {
   x.setUTCDate(x.getUTCDate() + n)
   return x.toISOString().slice(0, 10)
 }
-const hoy = () => new Date().toISOString().slice(0, 10)
+/** «Hoy» en la zona del negocio, no en UTC. */
+const hoy = () => diaLocal(new Date())
 const TONO: Record<string, 'ok' | 'warn' | 'bad' | 'info' | 'gris'> = { solicitada: 'warn', confirmada: 'info', llegada: 'info', atencion: 'ok', finalizada: 'gris', cancelada: 'bad', no_asistio: 'bad' }
 
 export function PillCita({ estado }: { estado: CitaVista['estado'] }) {
-  return <Pill tono={TONO[estado] ?? 'gris'}>{estado === 'solicitada' ? 'Por confirmar' : ESTADO_CITA_LABEL[estado]}</Pill>
+  return <Pill tono={TONO[estado] ?? 'gris'}>{ESTADO_CITA_LABEL[estado]}</Pill>
 }
 
 export function Huecos({ servicioId, diaInicial, ignorarCita, onElegir, etiqueta }: { servicioId: number; diaInicial: string; ignorarCita?: number; onElegir: (dia: string, hora: string) => Promise<void>; etiqueta: string }) {
@@ -172,13 +174,26 @@ export function AccionesCita({ cita, cancelacionHoras }: { cita: CitaVista; canc
   const [modo, setModo] = useState<'nada' | 'mover' | 'cancelar'>('nada')
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [exito, setExito] = useState<string | null>(null)
   const puede = ['solicitada', 'confirmada'].includes(cita.estado)
   if (!puede) return null
   return (
     <div className="pt-form" style={{ marginTop: 6 }}>
+      {exito && modo === 'nada' && (
+        <div className="pt-aviso pt-aviso--ok" role="status">
+          {exito}
+        </div>
+      )}
       {modo === 'nada' && (
         <div className="pt-acciones">
-          <button type="button" className="pt-btn" onClick={() => setModo('mover')}>
+          <button
+            type="button"
+            className="pt-btn"
+            onClick={() => {
+              setExito(null)
+              setModo('mover')
+            }}
+          >
             Reprogramar
           </button>
           <button type="button" className="pt-btn" onClick={() => setModo('cancelar')}>
@@ -194,7 +209,9 @@ export function AccionesCita({ cita, cancelacionHoras }: { cita: CitaVista; canc
             ignorarCita={cita.id}
             etiqueta="Cambiar a"
             onElegir={async (d, h) => {
-              await pedir(`/api/clinica/portal/citas/${cita.id}/reprogramar`, { dia: d, hora: h })
+              /* Si falla, Huecos muestra el error del servidor junto al botón y deja elegir otra hora. */
+              const nueva = await pedir<CitaVista>(`/api/clinica/portal/citas/${cita.id}/reprogramar`, { dia: d, hora: h })
+              setExito(`Listo: tu cita quedó para el ${diaLargo(nueva.dia)} a las ${nueva.horaInicio}. ${nueva.estado === 'confirmada' ? 'Ya está confirmada.' : 'Quedó por confirmar: la clínica te avisará.'}`)
               setModo('nada')
               router.refresh()
             }}
@@ -214,7 +231,7 @@ export function AccionesCita({ cita, cancelacionHoras }: { cita: CitaVista; canc
           <div className="pt-acciones">
             <button
               type="button"
-              className="pt-btn pt-btn--primario"
+              className="pt-btn pt-btn--peligro"
               onClick={async () => {
                 setError(null)
                 try {

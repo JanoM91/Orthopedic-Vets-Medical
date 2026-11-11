@@ -180,7 +180,7 @@ export default function Inicio() {
               <b className="fz-num">{catalogo.hoy.promocionesPropuestas}</b>
             </Link>
           )}
-          <p className="fz-chico fz-tenue">Los pedidos de la tienda llegan en la fase 5.</p>
+          <p className="fz-chico fz-tenue">Los pedidos de la tienda en línea aún no están disponibles.</p>
         </div>
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
           <h2 className="fz-h2">Accesos</h2>

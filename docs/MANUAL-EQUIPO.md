@@ -10,7 +10,7 @@
 
 **Agenda** (Clínica → Agenda)
 - Elige el día; cada columna es un consultorio. «Nueva cita»: mascota, servicio, hora. «Confirmar» si ya quedó con el tutor.
-- Estados: solicitada → confirmada → llegó → en atención → finalizada (o cancelada con motivo / no asistió). Al **finalizar** una cita con precio, se crea solo el cargo en Finanzas.
+- Estados: por confirmar → confirmada → llegó → en atención → finalizada (o cancelada con motivo / no asistió). **Finalizar** y **No asistió** piden confirmación porque cierran la cita; al finalizar una cita con precio, se crea solo el cargo en Finanzas (el aviso te dice el importe).
 - «Por confirmar» muestra lo que pidieron los tutores desde el portal (también llega un correo a la clínica). Confírmalas o muévelas.
 - Junto al tutor hay **«Recordar por WhatsApp»**: abre WhatsApp con el mensaje listo; revísalo y envíalo.
 - El tutor recibe correo al pedir, confirmar, cambiar o cancelar, y un **recordatorio la víspera a las 18:00** (si tiene correo y acepta avisos).

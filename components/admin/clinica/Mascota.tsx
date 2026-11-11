@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { CartillaVista, CitaVista, ClienteVista, ConfiguracionAgenda, DocumentoVista, Expediente as Exp, MascotaVista, NotaVista, PesoVista, RecursoVista, ResultadoBusqueda, ServicioVista } from '../../../lib/clinica/tipos'
 import { DetalleCita, EstadoCita } from './Agenda'
 import { FormularioCliente } from './Cliente'
@@ -10,7 +10,7 @@ import RecetasMascota from '../farmacia/RecetasMascota'
 import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
 import {
-  api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
+  api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
   TIPO_CARTILLA_LABEL, useCarga, useClinica,
 } from './comun'
 
@@ -706,6 +706,8 @@ function FormularioNota({ mascotaId, existente, onListo, onCancelar }: { mascota
   const { catalogo } = useClinica()
   const [d, setD] = useState<DatosNota>(existente ? { fecha: existente.fecha, tipo: existente.tipo, titulo: existente.titulo, subjetivo: existente.subjetivo ?? '', objetivo: existente.objetivo ?? '', analisis: existente.analisis ?? '', plan: existente.plan ?? '' } : notaVacia())
   const [error, setError] = useState<string | null>(null)
+  const [firmando, setFirmando] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
   const set = <K extends keyof DatosNota>(k: K, v: DatosNota[K]) => setD((x) => ({ ...x, [k]: v }))
   const guardar = async (firmar: boolean) => {
     setError(null)
@@ -723,7 +725,9 @@ function FormularioNota({ mascotaId, existente, onListo, onCancelar }: { mascota
     </Campo>
   )
   return (
+    <>
     <form
+      ref={formRef}
       className="fz-tarjeta cl-caja fz-stack fz-stack--chico"
       onSubmit={(e) => {
         e.preventDefault()
@@ -757,13 +761,27 @@ function FormularioNota({ mascotaId, existente, onListo, onCancelar }: { mascota
         <button type="submit" className="fz-btn fz-btn--claro">
           Guardar borrador
         </button>
-        <Boton tono="navy" onClick={() => void guardar(true)}>
+        <Boton tono="navy" onClick={() => formRef.current?.reportValidity() && setFirmando(true)}>
           Guardar y firmar
         </Boton>
         <Boton onClick={onCancelar}>Cancelar</Boton>
       </div>
       <p className="fz-chico fz-tenue">Al firmar, la nota queda congelada: solo admite adendas (que tampoco se editan ni se borran).</p>
     </form>
+    {firmando && (
+      <Confirmar
+        titulo="¿Guardar y firmar la nota?"
+        etiquetaSi="Guardar y firmar"
+        onNo={() => setFirmando(false)}
+        onSi={() => {
+          setFirmando(false)
+          void guardar(true)
+        }}
+      >
+        <p>Se guardará y quedará firmada a tu nombre. Una nota firmada ya no se puede editar ni borrar: solo admite adendas, y estas tampoco se editan ni se borran.</p>
+      </Confirmar>
+    )}
+    </>
   )
 }
 
@@ -772,6 +790,8 @@ function Notas({ mascotaId, lista, onCambio }: { mascotaId: number; lista: NotaV
   const p = catalogo.permisos
   const [modo, setModo] = useState<'lista' | 'nueva' | number>('lista')
   const [adenda, setAdenda] = useState<NotaVista | null>(null)
+  const [porFirmar, setPorFirmar] = useState<NotaVista | null>(null)
+  const [porBorrar, setPorBorrar] = useState<NotaVista | null>(null)
   const [error, setError] = useState<string | null>(null)
   if (lista === null) return <Aviso>Tu rol no incluye leer las notas clínicas. Las alergias y alertas de manejo sí se muestran arriba.</Aviso>
 
@@ -841,10 +861,10 @@ function Notas({ mascotaId, lista, onCambio }: { mascotaId: number; lista: NotaV
                   <Boton chico onClick={() => setModo(n.id)}>
                     Editar
                   </Boton>
-                  <Boton chico tono="navy" onClick={() => void accion(() => api.post(`notas/${n.id}/firma`))}>
+                  <Boton chico tono="navy" onClick={() => setPorFirmar(n)}>
                     Firmar
                   </Boton>
-                  <Boton chico tono="peligro" onClick={() => confirm('¿Borrar este borrador?') && void accion(() => api.post(`notas/${n.id}/borrar`))}>
+                  <Boton chico tono="peligro" onClick={() => setPorBorrar(n)}>
                     Borrar borrador
                   </Boton>
                 </>
@@ -857,6 +877,36 @@ function Notas({ mascotaId, lista, onCambio }: { mascotaId: number; lista: NotaV
           )}
         </article>
       ))}
+      {porFirmar && (
+        <Confirmar
+          titulo={`¿Firmar «${porFirmar.titulo}»?`}
+          etiquetaSi="Firmar"
+          onNo={() => setPorFirmar(null)}
+          onSi={() => {
+            const n = porFirmar
+            setPorFirmar(null)
+            void accion(() => api.post(`notas/${n.id}/firma`))
+          }}
+        >
+          <p>Una nota firmada ya no se puede editar ni borrar: solo admite adendas, y estas tampoco se editan ni se borran.</p>
+        </Confirmar>
+      )}
+      {porBorrar && (
+        <Confirmar
+          titulo="¿Borrar este borrador?"
+          etiquetaSi="Sí, borrar"
+          etiquetaNo="No borrar"
+          tono="peligro"
+          onNo={() => setPorBorrar(null)}
+          onSi={() => {
+            const n = porBorrar
+            setPorBorrar(null)
+            void accion(() => api.post(`notas/${n.id}/borrar`))
+          }}
+        >
+          <p>Se borra «{porBorrar.titulo}». Los borradores no firmados no se pueden recuperar.</p>
+        </Confirmar>
+      )}
       {adenda && (
         <Modal titulo={`Adenda a «${adenda.titulo}»`} onCerrar={() => setAdenda(null)}>
           <FormularioAdenda
@@ -974,7 +1024,7 @@ function Documentos({ mascotaId, lista, onCambio }: { mascotaId: number; lista: 
           }}
         >
           <h2 className="fz-h2">Subir documento</h2>
-          {!catalogo.documentosHabilitados && <Aviso tono="aviso">El almacén privado de archivos no está configurado en esta instalación (CLINICA_BLOB_READ_WRITE_TOKEN). Todo lo demás funciona.</Aviso>}
+          {!catalogo.documentosHabilitados && <Aviso tono="aviso">Los documentos todavía no se pueden subir: falta activar el almacén privado de archivos de esta instalación. Todo lo demás funciona.</Aviso>}
           <Campo etiqueta="Archivo (foto o PDF) *">
             <input className="fz-input" type="file" accept="image/*,application/pdf" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} required />
           </Campo>

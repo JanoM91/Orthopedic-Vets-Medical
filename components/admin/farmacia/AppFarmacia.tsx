@@ -95,7 +95,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   type Opcion = { href: string; on: boolean; texto: string; extra?: React.ReactNode; ver: boolean }
   const opciones: (Opcion & { mas?: boolean })[] = [
     { ver: true, href: base, on: !seccion, texto: 'Inicio' },
-    { ver: p.vender, href: `${base}/vender`, on: seccion === 'vender', texto: 'Vender' },
+    { ver: p.vender, href: `${base}/vender`, on: seccion === 'vender', texto: 'Mostrador' },
     { ver: p.vender, href: `${base}/ventas`, on: seccion === 'ventas', texto: 'Ventas' },
     { ver: p.vender || p.recetas, href: `${base}/recetas`, on: seccion === 'recetas', texto: 'Recetas' },
     {
@@ -165,7 +165,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
             {(
               [
                 [true, base, !seccion, 'inicio', 'Inicio'],
-                [p.vender, `${base}/vender`, seccion === 'vender', 'cartera', 'Vender'],
+                [p.vender, `${base}/vender`, seccion === 'vender', 'cartera', 'Mostrador'],
                 [p.vender, `${base}/ventas`, seccion === 'ventas', 'lista', 'Ventas'],
                 [p.vender || p.recetas, `${base}/recetas`, seccion === 'recetas', 'archivo', 'Recetas'],
                 [true, `${base}/alertas`, seccion === 'alertas', 'alerta', catalogo.hoy.alertasAbiertas ? `Alertas (${catalogo.hoy.alertasAbiertas})` : 'Alertas'],

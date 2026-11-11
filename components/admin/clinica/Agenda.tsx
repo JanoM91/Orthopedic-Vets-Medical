@@ -1,20 +1,30 @@
 'use client'
 
 import Link from 'next/link'
-import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import React, { useEffect, useRef, useState } from 'react'
 import { ACCION_ESTADO_LABEL, type CitaVista, type DisponibilidadDia, ESTADO_CITA_LABEL, type EstadoCitaVista, type RecursoVista, type ResultadoBusqueda, type ServicioVista, type ConfiguracionAgenda } from '../../../lib/clinica/tipos'
-import { api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, ESPECIE_LABEL, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
+import { api, Avatar, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, ESPECIE_LABEL, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, telefonoBonito, useCarga, useClinica } from './comun'
+import { diaLocal, partesLocales } from '../../../lib/localTime'
 import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
 
 /**
- * Agenda del panel: un día, una columna por recurso, las citas como bloques
- * según su hora y duración. A la derecha, la cita elegida con sus acciones y
- * las solicitudes del portal por confirmar.
+ * Agenda del panel: un día, una columna por recurso (espacio), las citas como
+ * bloques según su hora y duración. A la derecha, la cita elegida con su línea
+ * de tiempo y acciones, y las solicitudes del portal por confirmar.
+ *
+ * Dibujo (Versión A, fase 3, nov-2026): cada cita se coloca por minuto sobre
+ * la columna de su espacio (una capa por columna encima de las celdas), así
+ * que una cita a las 10:15 con intervalos de 30 min cae a media fila y ninguna
+ * se pierde al cambiar el intervalo. Las que se enciman se reparten en
+ * columnas del ancho de la celda (`acomodar`). Clic en una celda vacía abre
+ * «Nueva cita» con esa hora y ese espacio.
  */
 
 const pesos = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n)
 const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
+const hhmm = (t: number) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 const sumarDias = (d: string, n: number) => {
   const x = new Date(d + 'T12:00:00Z')
   x.setUTCDate(x.getUTCDate() + n)
@@ -22,29 +32,119 @@ const sumarDias = (d: string, n: number) => {
 }
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 const diaLargo = (d: string) => `${DIAS[new Date(d + 'T12:00:00Z').getUTCDay()]} ${fecha(d)}`
+const esHora = (h: string | null | undefined): h is string => Boolean(h && /^([01]\d|2[0-3]):[0-5]\d$/.test(h))
 
 type Catalogo = { recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda }
+/** Hora y espacio con que se abre «Nueva cita» (clic en una celda vacía o regreso del alta de mascota). */
+type Preparada = { dia?: string; hora?: string | null; recurso?: number | null }
 
 /** Pastilla de estado con la paleta de la marca (clinica.css: .cl-st); es la misma de los bloques de la agenda. */
 export function EstadoCita({ estado }: { estado: EstadoCitaVista }) {
   return <span className={`cl-st cl-st--${estado}`}>{ESTADO_CITA_LABEL[estado]}</span>
 }
 
-export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = false }: { diaInicial: string | null; mascotaInicial: number | null; nuevaInicial?: boolean }) {
+/** Minutos del día y fecha en la zona del negocio; se refresca cada 30 s. Null hasta montar (sin desfase de hidratación). */
+function useAhora(): { dia: string; min: number } | null {
+  const [ahora, setAhora] = useState<{ dia: string; min: number } | null>(null)
+  useEffect(() => {
+    const leer = () => {
+      const d = new Date()
+      const p = partesLocales(d)
+      setAhora({ dia: diaLocal(d), min: p.hour * 60 + p.minute })
+    }
+    leer()
+    const t = setInterval(leer, 30_000)
+    return () => clearInterval(t)
+  }, [])
+  return ahora
+}
+
+/* ───────────────────────────── acomodo de bloques ───────────────────────────── */
+
+const ALTO = 56 // px por intervalo
+const ALTO_MIN = 44 // px: un bloque más bajo no se lee (nombre + hora y servicio)
+const COL_MIN = 120 // px: ancho mínimo de un espacio
+const SUBCOL_MIN = 104 // px: ancho mínimo de cada cita cuando varias se enciman
+
+export type Bloque = { cita: CitaVista; ini: number; top: number; alto: number; col: number; cols: number }
+
+/**
+ * Coloca las citas de UN espacio: posición vertical por minuto y, si se enciman,
+ * columnas lado a lado. Dos bloques chocan si se enciman *a la vista* (un bloque
+ * de 15 min se dibuja al menos de ALTO_MIN px), no solo por horario, para que
+ * ninguno tape a otro. Todos los de un mismo grupo de choques usan el mismo
+ * número de columnas.
+ */
+export function acomodar(citas: CitaVista[], de: number, intervalo: number, alto = ALTO): Bloque[] {
+  const px = alto / intervalo
+  const minVisible = Math.ceil((ALTO_MIN + 4) / px)
+  const orden = [...citas].sort((a, b) => minutos(a.horaInicio) - minutos(b.horaInicio) || b.duracionMin - a.duracionMin || a.id - b.id)
+  const res: Bloque[] = []
+  let grupo: Bloque[] = []
+  let fines: number[] = []
+  let finGrupo = -Infinity
+  const cerrar = () => {
+    for (const b of grupo) b.cols = fines.length
+    grupo = []
+    fines = []
+    finGrupo = -Infinity
+  }
+  for (const c of orden) {
+    const ini = minutos(c.horaInicio)
+    const finVisible = ini + Math.max(c.duracionMin, minVisible)
+    if (grupo.length && ini >= finGrupo) cerrar()
+    let col = fines.findIndex((f) => f <= ini)
+    if (col === -1) {
+      col = fines.length
+      fines.push(finVisible)
+    } else fines[col] = finVisible
+    finGrupo = Math.max(finGrupo, finVisible)
+    const b: Bloque = { cita: c, ini, top: (ini - de) * px + 2, alto: Math.max(ALTO_MIN, c.duracionMin * px - 4), col, cols: 1 }
+    grupo.push(b)
+    res.push(b)
+  }
+  cerrar()
+  return res
+}
+
+/* ───────────────────────────── pantalla ───────────────────────────── */
+
+export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = false, horaInicial = null, recursoInicial = null }: { diaInicial: string | null; mascotaInicial: number | null; nuevaInicial?: boolean; horaInicial?: string | null; recursoInicial?: number | null }) {
   const { catalogo: cat, base } = useClinica()
   const [dia, setDia] = useState(diaInicial && /^\d{4}-\d{2}-\d{2}$/.test(diaInicial) ? diaInicial : hoyISO())
   const agenda = useCarga(() => api.get<{ dia: string; citas: CitaVista[]; porConfirmar: CitaVista[]; abierto: boolean; de: string; a: string }>('agenda', { dia }), [dia])
   const catalogoAgenda = useCarga(() => api.get<Catalogo>('agenda/catalogo'), [])
   const [sel, setSel] = useState<number | null>(null)
-  const [nueva, setNueva] = useState<boolean>(Boolean(mascotaInicial) || nuevaInicial)
+  const [nueva, setNueva] = useState<Preparada | null>(Boolean(mascotaInicial) || nuevaInicial ? { hora: esHora(horaInicial) ? horaInicial : null, recurso: recursoInicial } : null)
   const [msg, setMsg] = useState<string | null>(null)
+  const ahora = useAhora()
+  const rejilla = useRef<HTMLDivElement>(null)
+  const lateral = useRef<HTMLElement>(null)
+  const desplazado = useRef<string | null>(null)
 
-  const recargar = () => {
-    agenda.recargar()
-  }
-  if (catalogoAgenda.error) return <Aviso tono="malo">{catalogoAgenda.error}</Aviso>
-  if (!catalogoAgenda.datos) return <p className="fz-tenue">Cargando…</p>
+  const a = agenda.datos
   const c = catalogoAgenda.datos
+  const intervalo = c?.configuracion.intervaloMin || 30
+  const de = a?.abierto ? minutos(a.de) : 8 * 60
+  const hasta = a?.abierto ? minutos(a.a) : 20 * 60
+  const esHoy = Boolean(ahora && a && ahora.dia === a.dia)
+  const ahoraMin = esHoy && ahora && ahora.min >= de && ahora.min < hasta ? ahora.min : null
+
+  /* Al abrir el día de hoy, la línea de «ahora» queda a la vista (una vez por día mostrado). */
+  useEffect(() => {
+    if (!a || ahoraMin === null || desplazado.current === a.dia || !rejilla.current) return
+    desplazado.current = a.dia
+    rejilla.current.scrollTop = Math.max(0, ((ahoraMin - de) / intervalo) * ALTO - ALTO * 1.5)
+  }, [a, ahoraMin, de, intervalo])
+
+  /* En pantallas angostas el detalle queda debajo de la rejilla: al elegir una cita se lleva a la vista. */
+  useEffect(() => {
+    if (sel === null || !lateral.current || window.matchMedia('(min-width: 1000px)').matches) return
+    lateral.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [sel])
+
+  if (catalogoAgenda.error) return <Aviso tono="malo">{catalogoAgenda.error}</Aviso>
+  if (!c) return <p className="fz-tenue">Cargando…</p>
   const recursos = c.recursos.filter((r) => r.activo)
 
   if (!recursos.length) {
@@ -66,29 +166,36 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
     )
   }
 
-  const a = agenda.datos
-  const de = a?.abierto ? minutos(a.de) : 8 * 60
-  const hasta = a?.abierto ? minutos(a.a) : 20 * 60
   const filas: number[] = []
-  for (let t = de; t < hasta; t += c.configuracion.intervaloMin) filas.push(t)
-  const alto = 56 // px por intervalo
-  const citaSel = a?.citas.find((x) => x.id === sel) ?? a?.porConfirmar.find((x) => x.id === sel) ?? null
+  for (let t = de; t < hasta; t += intervalo) filas.push(t)
+  const N = filas.length
+  const citas = a?.citas ?? []
+  const dentro = citas.filter((x) => minutos(x.horaInicio) >= de && minutos(x.horaInicio) < hasta)
+  const fuera = citas.filter((x) => minutos(x.horaInicio) < de || minutos(x.horaInicio) >= hasta)
+  const filaAhora = ahoraMin === null ? -1 : Math.floor((ahoraMin - de) / intervalo)
+  /* Bloques por espacio; un espacio con citas encimadas se ensancha para que cada una se lea (la rejilla se desplaza de lado si no cabe). */
+  const bloques = recursos.map((r) => acomodar(dentro.filter((x) => x.recurso.id === r.id), de, intervalo))
+  const columnas = bloques.map((bs) => `minmax(${Math.max(COL_MIN, ...bs.map((b) => b.cols * SUBCOL_MIN))}px, 1fr)`).join(' ')
+  const citaSel = citas.find((x) => x.id === sel) ?? a?.porConfirmar.find((x) => x.id === sel) ?? null
+  const libre = Boolean(a?.abierto)
 
   return (
     <div className="fz-stack">
       <div className="fz-entre">
         <div>
-          <p className="fz-eyebrow">Clínica</p>
           <h1 className="fz-h1">Agenda</h1>
+          <p className="fz-chico fz-tenue">
+            {recursos.length} {recursos.length === 1 ? 'espacio' : 'espacios'} · intervalos de {intervalo} min{a?.abierto ? ` · horario ${a.de}–${a.a}` : ''}
+          </p>
         </div>
         <div className="fz-acciones-fin">
-          <Boton onClick={() => setNueva(true)}>
+          <Boton tono="navy" onClick={() => setNueva({})}>
             <Icono n="mas" chico /> Nueva cita
           </Boton>
         </div>
       </div>
       <div className="fz-entre">
-        <div className="row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="cl-agenda__dia">
           <Boton chico onClick={() => setDia(sumarDias(dia, -1))} aria-label="Día anterior">
             ‹
           </Boton>
@@ -101,11 +208,6 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
           </Boton>
           <b style={{ textTransform: 'capitalize' }}>{diaLargo(dia)}</b>
           {a && !a.abierto && <Pastilla tono="gris">cerrado</Pastilla>}
-          {a && a.abierto && (
-            <span className="fz-chico fz-tenue">
-              {a.de}–{a.a}
-            </span>
-          )}
         </div>
         <div className="fz-chips">
           {(['solicitada', 'confirmada', 'llegada', 'atencion', 'finalizada', 'cancelada'] as EstadoCitaVista[]).map((e) => (
@@ -117,68 +219,90 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
       {!c.configuracion.configurada && cat.permisos.configurarAgenda && <Aviso>Horario por omisión: L–V 9–19, sáb 9–14. Ajústalo en «Agenda: horario y reglas».</Aviso>}
 
       <div className="cl-agenda-wrap">
-        <div className={`cl-agenda${agenda.cargando ? ' cl-cargando' : ''}`} style={{ gridTemplateColumns: `56px repeat(${recursos.length}, minmax(150px, 1fr))` }}>
-          <div className="cl-agenda__h" />
-          {recursos.map((r) => (
-            <div key={r.id} className="cl-agenda__h">
+        <div ref={rejilla} className={`cl-agenda${agenda.cargando ? ' cl-cargando' : ''}`} style={{ gridTemplateColumns: `56px ${columnas}` }}>
+          <div className="cl-agenda__h cl-agenda__h--esquina" style={{ gridRow: 1, gridColumn: 1 }} />
+          {recursos.map((r, j) => (
+            <div key={r.id} className="cl-agenda__h" style={{ gridRow: 1, gridColumn: j + 2 }}>
               {r.nombre}
             </div>
           ))}
-          {filas.map((t) => (
+          {filas.map((t, i) => (
             <React.Fragment key={t}>
-              <div className="cl-agenda__t" style={{ height: alto }}>
-                {`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`}
+              <div className="cl-agenda__t" style={{ gridRow: i + 2, gridColumn: 1, height: ALTO }}>
+                {hhmm(t)}
               </div>
-              {recursos.map((r) => {
-                const aqui = (a?.citas ?? []).filter((x) => x.recurso.id === r.id && minutos(x.horaInicio) === t)
-                return (
-                  <div key={r.id} className="cl-agenda__c" style={{ height: alto }} onDoubleClick={() => setNueva(true)}>
-                    {aqui.map((x, i) => (
-                      <button
-                        key={x.id}
-                        type="button"
-                        className={`cl-cita st-${x.estado}${sel === x.id ? ' is-sel' : ''}`}
-                        style={{ height: Math.max(alto - 4, (x.duracionMin / c.configuracion.intervaloMin) * alto - 4), left: `${3 + i * 12}px` }}
-                        onClick={() => setSel(x.id)}
-                        aria-label={`${x.mascota.nombre}, ${x.servicio.nombre}, ${ESTADO_CITA_LABEL[x.estado]}`}
-                      >
-                        <b>
-                          {x.mascota.nombre}
-                          {x.mascota.alertas.length ? ' ⚑' : ''}
-                        </b>
-                        <span>{x.servicio.nombre}</span>
-                        <span className="cl-cita__st">{ESTADO_CITA_LABEL[x.estado]}</span>
-                      </button>
-                    ))}
-                  </div>
-                )
-              })}
+              {recursos.map((r, j) => (
+                <div
+                  key={r.id}
+                  className={`cl-agenda__c${i === filaAhora ? ' is-ahora' : ''}${libre ? ' is-libre' : ''}`}
+                  style={{ gridRow: i + 2, gridColumn: j + 2, height: ALTO }}
+                  data-hora={hhmm(t)}
+                  title={libre ? `Nueva cita: ${hhmm(t)} · ${r.nombre}` : undefined}
+                  onClick={libre ? () => setNueva({ dia, hora: hhmm(t), recurso: r.id }) : undefined}
+                />
+              ))}
             </React.Fragment>
           ))}
-          {/* citas fuera del horario (capturadas a mano) */}
-          {(a?.citas ?? []).filter((x) => minutos(x.horaInicio) < de || minutos(x.horaInicio) >= hasta).length > 0 && (
-            <div className="cl-agenda__fuera" style={{ gridColumn: `1 / span ${recursos.length + 1}` }}>
-              Fuera del horario:{' '}
-              {(a?.citas ?? [])
-                .filter((x) => minutos(x.horaInicio) < de || minutos(x.horaInicio) >= hasta)
-                .map((x) => (
-                  <button key={x.id} type="button" className="fz-chip" onClick={() => setSel(x.id)}>
-                    {x.horaInicio} {x.mascota.nombre} · {x.recurso.nombre}
+          {/* Una capa por espacio con sus citas, colocadas por minuto y repartidas en columnas si se enciman. */}
+          {recursos.map((r, j) => (
+            <div key={`capa-${r.id}`} className="cl-agenda__capa" style={{ gridRow: `2 / span ${N}`, gridColumn: j + 2 }}>
+              {bloques[j].map((b) => {
+                const x = b.cita
+                return (
+                  <button
+                    key={x.id}
+                    type="button"
+                    className={`cl-cita st-${x.estado}${sel === x.id ? ' is-sel' : ''}${b.alto < 64 ? ' is-corta' : ''}`}
+                    style={{ top: b.top, height: b.alto, left: `calc(${(b.col * 100) / b.cols}% + 3px)`, width: `calc(${100 / b.cols}% - 6px)` }}
+                    onClick={() => setSel(x.id)}
+                    title={`${x.horaInicio}–${x.horaFin} · ${x.mascota.nombre} · ${x.servicio.nombre} · ${ESTADO_CITA_LABEL[x.estado]}`}
+                    aria-label={`${x.horaInicio}, ${x.mascota.nombre}, ${x.servicio.nombre}, ${ESTADO_CITA_LABEL[x.estado]}`}
+                  >
+                    <b>
+                      {x.mascota.nombre}
+                      {x.mascota.alertas.length ? ' ⚑' : ''}
+                    </b>
+                    <span>
+                      {x.horaInicio} · {x.servicio.nombre}
+                    </span>
+                    <span className="cl-cita__st">{ESTADO_CITA_LABEL[x.estado]}</span>
                   </button>
-                ))}
+                )
+              })}
+            </div>
+          ))}
+          {ahoraMin !== null && (
+            <div className="cl-agenda__ahora-capa" style={{ gridRow: `2 / span ${N}`, gridColumn: '1 / -1' }} aria-hidden="true">
+              <div className="cl-agenda__ahora" style={{ top: ((ahoraMin - de) / intervalo) * ALTO }}>
+                <span>{hhmm(ahoraMin)}</span>
+              </div>
+            </div>
+          )}
+          {/* citas fuera del horario (capturadas a mano) */}
+          {fuera.length > 0 && (
+            <div className="cl-agenda__fuera" style={{ gridRow: N + 2, gridColumn: '1 / -1' }}>
+              Fuera del horario:{' '}
+              {fuera.map((x) => (
+                <button key={x.id} type="button" className="fz-chip" onClick={() => setSel(x.id)}>
+                  {x.horaInicio} {x.mascota.nombre} · {x.recurso.nombre}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
-        <aside className="fz-stack fz-stack--chico">
+        <aside ref={lateral} className="fz-stack fz-stack--chico cl-agenda__lateral">
           <div className="fz-tarjeta cl-caja">
             {citaSel ? (
-              <DetalleCita cita={citaSel} catalogo={c} onCambio={recargar} />
+              <DetalleCita cita={citaSel} catalogo={c} onCambio={agenda.recargar} />
             ) : (
-              <>
+              <div className="fz-stack fz-stack--chico">
                 <h3>Elige una cita</h3>
-                <p className="fz-chico fz-tenue" style={{ marginTop: 6 }}>Toca una cita para confirmarla, registrar la llegada, pasarla a atención, finalizarla, reprogramarla o cancelarla. Al confirmar o mover, el sistema vuelve a comprobar que el consultorio siga libre.</p>
-              </>
+                <p className="fz-chico fz-tenue">{libre ? 'O toca una hora libre para agendar ahí.' : 'Este día está cerrado.'}</p>
+                <Ayuda>
+                  Toca una cita para confirmarla, registrar la llegada, pasarla a atención, finalizarla, reprogramarla o cancelarla. Al confirmar o mover, el sistema vuelve a comprobar que el espacio siga libre. Una celda vacía abre «Nueva cita» con esa hora y ese espacio ya puestos.
+                </Ayuda>
+              </div>
             )}
           </div>
           {a && a.porConfirmar.length > 0 && (
@@ -187,7 +311,16 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
                 Por confirmar <Pastilla tono="aviso">{a.porConfirmar.length}</Pastilla>
               </h3>
               {a.porConfirmar.map((x) => (
-                <button key={x.id} type="button" className="cl-fila-boton" style={{ padding: '8px 0', display: 'flex', gap: 8, alignItems: 'center' }} onClick={() => { setSel(x.id); if (x.dia !== dia) setDia(x.dia) }}>
+                <button
+                  key={x.id}
+                  type="button"
+                  className="cl-fila-boton"
+                  style={{ padding: '8px 0', display: 'flex', gap: 8, alignItems: 'center' }}
+                  onClick={() => {
+                    setSel(x.id)
+                    if (x.dia !== dia) setDia(x.dia)
+                  }}
+                >
                   <span className="fz-grow fz-chico" style={{ textAlign: 'left' }}>
                     <b>{x.mascota.nombre}</b> · {x.servicio.nombre}
                     <br />
@@ -204,16 +337,18 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
       </div>
 
       {nueva && (
-        <Modal titulo="Nueva cita" onCerrar={() => setNueva(false)} ancho="ancho">
+        <Modal titulo="Nueva cita" onCerrar={() => setNueva(null)} ancho="ancho">
           <FormularioCita
             catalogo={c}
-            diaInicial={dia}
+            diaInicial={nueva.dia ?? dia}
+            horaInicial={nueva.hora ?? null}
+            recursoInicial={nueva.recurso ?? null}
             mascotaInicial={mascotaInicial}
             onListo={(x) => {
-              setNueva(false)
+              setNueva(null)
               if (x.dia !== dia) setDia(x.dia)
               setSel(x.id)
-              recargar()
+              agenda.recargar()
             }}
           />
         </Modal>
@@ -227,15 +362,68 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
 
 /* ───────────────────────────── detalle y acciones ───────────────────────────── */
 
+/** Orden de avance de una cita: la primera transición de esta lista es la acción principal. */
+const AVANCE: EstadoCitaVista[] = ['confirmada', 'llegada', 'atencion', 'finalizada']
+
+const horaCorta = (iso: string) => {
+  try {
+    return new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: site.location.timeZone }).format(new Date(iso))
+  } catch {
+    return ''
+  }
+}
+const duracionTexto = (min: number) => {
+  const m = Math.max(0, Math.round(min))
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`
+}
+
+/**
+ * Tiempo en clínica: desde que se registró la llegada (o, si pasó directo, desde
+ * que entró a atención) hasta ahora o hasta que se finalizó. Sale del historial.
+ */
+function tiempoEnClinica(cita: CitaVista, ahora: number): { desde: string; min: number; enAtencionMin: number | null; termino: boolean } | null {
+  if (!['llegada', 'atencion', 'finalizada'].includes(cita.estado)) return null
+  const ultimo = (e: string) => [...cita.historial].reverse().find((h) => h.estado === e)
+  const llegada = ultimo('llegada') ?? ultimo('atencion')
+  if (!llegada) return null
+  const ini = new Date(llegada.fecha).getTime()
+  const finalizada = cita.estado === 'finalizada' ? ultimo('finalizada') : null
+  if (cita.estado === 'finalizada' && !finalizada) return null
+  const hasta = finalizada ? new Date(finalizada.fecha).getTime() : ahora
+  const atencion = cita.estado === 'atencion' ? ultimo('atencion') : null
+  return {
+    desde: horaCorta(llegada.fecha),
+    min: (hasta - ini) / 60_000,
+    enAtencionMin: atencion && atencion !== llegada ? (ahora - new Date(atencion.fecha).getTime()) / 60_000 : null,
+    termino: Boolean(finalizada),
+  }
+}
+
+/** Hora actual (ms) que avanza cada 30 s mientras `activo` (la mascota está en la clínica). */
+function useReloj(activo: boolean): number {
+  const [t, setT] = useState(() => Date.now())
+  useEffect(() => {
+    if (!activo) return
+    const tic = () => setT(Date.now())
+    tic()
+    const id = setInterval(tic, 30_000)
+    return () => clearInterval(id)
+  }, [activo])
+  return t
+}
+
 export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: CitaVista; catalogo: Catalogo; onCambio: () => void; compacto?: boolean }) {
   const { base, catalogo: cat } = useClinica()
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [moviendo, setMoviendo] = useState(false)
   const [cancelando, setCancelando] = useState(false)
   const [confirmando, setConfirmando] = useState<EstadoCitaVista | null>(null)
+  const [abrirNota, setAbrirNota] = useState(true)
   const [motivo, setMotivo] = useState('')
   const [notas, setNotas] = useState(cita.notasInternas ?? '')
   const [ocupado, setOcupado] = useState(false)
+  const reloj = useReloj(['llegada', 'atencion'].includes(cita.estado))
   useEffect(() => {
     setNotas(cita.notasInternas ?? '')
     setMoviendo(false)
@@ -244,46 +432,88 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
     setError(null)
   }, [cita.id, cita.notasInternas])
 
-  const accion = async (fn: () => Promise<unknown>) => {
+  const accion = async (fn: () => Promise<unknown>): Promise<boolean> => {
     setOcupado(true)
     setError(null)
     try {
       await fn()
       onCambio()
+      setOcupado(false)
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo.')
+      setOcupado(false)
+      return false
     }
-    setOcupado(false)
   }
   const puede = cat.permisos.agenda
+  const verNotas = cat.permisos.verExpediente
+  const hrefNota = `${base}/mascotas/${cita.mascota.id}?ver=notas`
+  const hrefCobro = cita.cargoFinanzas ? `${base.replace(/\/clinica$/, '')}/finanzas/operacion/${cita.cargoFinanzas}` : null
+  const irANota = () => {
+    /* En el expediente de la misma mascota, la pestaña se lee al cargar: recarga en vez de navegar en el cliente. */
+    if (typeof window !== 'undefined' && window.location.pathname === `${base}/mascotas/${cita.mascota.id}`) window.location.assign(new URL(hrefNota, window.location.href).toString())
+    else router.push(hrefNota)
+  }
   const cambiarEstado = (e: EstadoCitaVista) => accion(() => api.post(`agenda/citas/${cita.id}/estado`, { estado: e }))
   /* Finalizar (genera el cargo en Finanzas) y «No asistió» cierran la cita sin vuelta atrás: piden confirmación. */
   const pideConfirmar = (e: EstadoCitaVista) => e === 'finalizada' || e === 'no_asistio'
-  const precioServicio = catalogo.servicios.find((x) => x.id === cita.servicio.id)?.precio ?? null
+  const servicio = catalogo.servicios.find((x) => x.id === cita.servicio.id)
+  const precioServicio = servicio?.precio ?? null
+  const principal = AVANCE.find((e) => cita.siguientes.includes(e)) ?? null
+  const otras = cita.siguientes.filter((e) => e !== 'cancelada' && e !== principal)
+  const enClinica = tiempoEnClinica(cita, reloj)
+  const tutorCorto = cita.cliente?.nombre.split(' ')[0] ?? ''
+  const pulsar = (e: EstadoCitaVista) => (pideConfirmar(e) ? setConfirmando(e) : void cambiarEstado(e))
+
   return (
-    <div className="fz-stack fz-stack--chico">
-      <div className="fz-entre">
-        <div>
-          <p className="fz-eyebrow">
-            {cita.folio} · {cita.origen === 'portal' ? 'pedida desde el portal' : 'agendada en el panel'}
-          </p>
+    <div className="fz-stack fz-stack--chico cl-detalle">
+      <div className="cl-detalle__cab">
+        <Avatar nombre={cita.mascota.nombre} especie={cita.mascota.especie} />
+        <div className="fz-grow" style={{ minWidth: 0 }}>
           <h3 style={{ fontSize: 17 }}>
             <Link href={`${base}/mascotas/${cita.mascota.id}`}>{cita.mascota.nombre}</Link> <span className="fz-tenue fz-normal">· {ESPECIE_LABEL[cita.mascota.especie] ?? cita.mascota.especie}</span>
           </h3>
+          {cita.cliente && (
+            <p className="fz-chico fz-tenue">
+              <Link href={`${base}/clientes/${cita.cliente.id}`}>{cita.cliente.nombre}</Link>
+              {cita.cliente.telefono ? ` · ${telefonoBonito(cita.cliente.telefono)}` : ''}
+            </p>
+          )}
         </div>
-        <EstadoCita estado={cita.estado} />
       </div>
-      <p className="fz-chico">
-        <b>{cita.servicio.nombre}</b> · {diaLargo(cita.dia)} · {cita.horaInicio}–{cita.horaFin} · {cita.recurso.nombre}
-        {cita.profesional ? ` · ${cita.profesional.nombre}` : ''}
-      </p>
-      {cita.cliente && (
-        <p className="fz-chico">
-          Tutor: <Link href={`${base}/clientes/${cita.cliente.id}`}>{cita.cliente.nombre}</Link>
-          {cita.cliente.telefono ? ` · ${cita.cliente.telefono}` : ''}{' '}
-          {['solicitada', 'confirmada'].includes(cita.estado) && <BotonWhatsApp telefono={cita.cliente.telefono} mensaje={mensajes.cita(cita.cliente.nombre.split(' ')[0], cita.mascota.nombre, cita.dia, cita.horaInicio, cita.servicio.nombre, site.brand.name)} etiqueta="Recordar por WhatsApp" />}
-        </p>
-      )}
+      <div className="fz-entre">
+        <span className="cl-detalle__estado">
+          <EstadoCita estado={cita.estado} />
+          {enClinica && !enClinica.termino && <span className="fz-chico">{duracionTexto(enClinica.min)} en clínica</span>}
+        </span>
+        <span className="fz-chico fz-tenue">{cita.folio}</span>
+      </div>
+      <dl className="cl-dl">
+        <dt>Servicio</dt>
+        <dd>
+          {cita.servicio.nombre}
+          {precioServicio ? ` · ${pesos(precioServicio)}` : ''}
+        </dd>
+        <dt>Hora</dt>
+        <dd>
+          <span style={{ textTransform: 'capitalize' }}>{diaLargo(cita.dia)}</span> · {cita.horaInicio}–{cita.horaFin} · {cita.duracionMin} min
+        </dd>
+        <dt>Espacio</dt>
+        <dd>{cita.recurso.nombre}</dd>
+        <dt>Atiende</dt>
+        <dd>{cita.profesional?.nombre ?? <span className="fz-tenue">Sin asignar</span>}</dd>
+        {enClinica && (
+          <>
+            <dt>En clínica</dt>
+            <dd>
+              Desde {enClinica.desde}
+              {enClinica.termino ? ` · ${duracionTexto(enClinica.min)} en total` : ''}
+              {enClinica.enAtencionMin !== null ? ` · ${duracionTexto(enClinica.enAtencionMin)} en atención` : ''}
+            </dd>
+          </>
+        )}
+      </dl>
       {cita.mascota.alertas.length > 0 && <div className="cl-alerta" style={{ fontSize: 13 }}>{cita.mascota.alertas.join(' · ')}</div>}
       {cita.notasTutor && (
         <div className="fz-aviso fz-aviso--info">
@@ -293,39 +523,89 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
         </div>
       )}
       {cita.motivoCancelacion && <p className="fz-chico fz-rojo">Motivo: {cita.motivoCancelacion}</p>}
-      {cita.cargoFinanzas && (
-        <p className="fz-chico">
-          Cargo registrado en Finanzas (<Link href={`${base.replace(/\/clinica$/, '')}/finanzas/operacion/${cita.cargoFinanzas}`}>abrir</Link>).
-        </p>
+      {!compacto && cita.historial.length > 0 && (
+        <ol className="cl-tl" aria-label="Línea de tiempo de la cita">
+          {cita.historial.map((h, i) => {
+            const otroDia = h.fecha && diaLocal(new Date(h.fecha)) !== cita.dia
+            return (
+              <li key={i} data-st={h.estado}>
+                <time dateTime={h.fecha} title={momento(h.fecha)}>
+                  {otroDia ? `${fecha(diaLocal(new Date(h.fecha)), false)} ` : ''}
+                  {horaCorta(h.fecha)}
+                </time>
+                <span>
+                  {h.detalle && i === 0 ? h.detalle : ESTADO_CITA_LABEL[h.estado as EstadoCitaVista] ?? h.estado}
+                  {h.por ? <span className="fz-tenue"> · {h.por}</span> : null}
+                  {h.detalle && i > 0 ? <span className="fz-tenue"> · {h.detalle}</span> : null}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
       )}
       {error && <Aviso tono="malo">{error}</Aviso>}
       {puede && !moviendo && !cancelando && (
-        <div className="fz-acciones-fin">
-          {cita.siguientes
-            .filter((e) => e !== 'cancelada')
-            .map((e) => (
-              <Boton key={e} chico tono={e === 'no_asistio' ? 'peligro' : 'navy'} disabled={ocupado} onClick={() => (pideConfirmar(e) ? setConfirmando(e) : void cambiarEstado(e))}>
+        <div className="fz-stack fz-stack--chico">
+          {principal && (
+            <Boton tono="navy" className="cl-detalle__principal" disabled={ocupado} onClick={() => pulsar(principal)}>
+              {principal === 'finalizada' ? 'Finalizar consulta' : ACCION_ESTADO_LABEL[principal]}
+            </Boton>
+          )}
+          <div className="fz-acciones-fin cl-detalle__acciones">
+            {otras.map((e) => (
+              <Boton key={e} chico tono={e === 'no_asistio' ? 'peligro' : 'claro'} disabled={ocupado} onClick={() => pulsar(e)}>
                 {ACCION_ESTADO_LABEL[e]}
               </Boton>
             ))}
-          {['solicitada', 'confirmada'].includes(cita.estado) && (
-            <Boton chico onClick={() => setMoviendo(true)}>
-              Reprogramar
-            </Boton>
-          )}
-          {cita.siguientes.includes('cancelada') && (
-            <Boton chico tono="peligro" onClick={() => setCancelando(true)}>
-              Cancelar
-            </Boton>
-          )}
+            {cita.estado === 'atencion' && verNotas && (
+              <Link href={hrefNota} className="fz-btn fz-btn--claro fz-btn--chico">
+                Abrir nota
+              </Link>
+            )}
+            {['solicitada', 'confirmada'].includes(cita.estado) && (
+              <Boton chico onClick={() => setMoviendo(true)}>
+                Reprogramar
+              </Boton>
+            )}
+            {cita.cliente && ['solicitada', 'confirmada'].includes(cita.estado) && <BotonWhatsApp telefono={cita.cliente.telefono} mensaje={mensajes.cita(tutorCorto, cita.mascota.nombre, cita.dia, cita.horaInicio, cita.servicio.nombre, site.brand.name)} etiqueta="Recordar por WhatsApp" />}
+            {cita.siguientes.includes('cancelada') && (
+              <Boton chico tono="peligro" onClick={() => setCancelando(true)}>
+                Cancelar
+              </Boton>
+            )}
+          </div>
         </div>
+      )}
+      {cita.estado === 'finalizada' && (verNotas || hrefCobro) && (
+        <div className="cl-detalle__despues">
+          <p className="fz-chico">
+            <b>Consulta finalizada.</b> {hrefCobro ? 'El cargo ya está en Finanzas.' : 'El servicio no tenía precio: no se generó cargo.'}
+          </p>
+          <div className="fz-acciones-fin cl-detalle__acciones">
+            {verNotas && (
+              <Link href={hrefNota} className="fz-btn fz-btn--navy fz-btn--chico">
+                Abrir nota
+              </Link>
+            )}
+            {hrefCobro && (
+              <Link href={hrefCobro} className="fz-btn fz-btn--claro fz-btn--chico">
+                Registrar cobro
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+      {cita.estado !== 'finalizada' && hrefCobro && (
+        <p className="fz-chico">
+          Cargo registrado en Finanzas (<Link href={hrefCobro}>abrir</Link>).
+        </p>
       )}
       {cancelando && (
         <form
           className="fz-stack fz-stack--chico"
           onSubmit={(e) => {
             e.preventDefault()
-            void accion(() => api.post(`agenda/citas/${cita.id}/estado`, { estado: 'cancelada', motivo })).then(() => setCancelando(false))
+            void accion(() => api.post(`agenda/citas/${cita.id}/estado`, { estado: 'cancelada', motivo })).then((ok) => ok && setCancelando(false))
           }}
         >
           <Campo etiqueta="Motivo de la cancelación *">
@@ -348,19 +628,20 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
           recursoId={cita.recurso.id}
           diaInicial={cita.dia}
           ignorarCita={cita.id}
-          onElegir={(d, h, r) => void accion(() => api.post(`agenda/citas/${cita.id}/reprogramar`, { dia: d, hora: h, recursoId: r })).then(() => setMoviendo(false))}
+          onElegir={(d, h, r) => void accion(() => api.post(`agenda/citas/${cita.id}/reprogramar`, { dia: d, hora: h, recursoId: r })).then((ok) => ok && setMoviendo(false))}
           onCancelar={() => setMoviendo(false)}
         />
       )}
       {confirmando === 'finalizada' && (
         <Confirmar
-          titulo={`¿Finalizar la cita de ${cita.mascota.nombre}?`}
-          etiquetaSi="Finalizar"
+          titulo={`¿Finalizar la consulta de ${cita.mascota.nombre}?`}
+          etiquetaSi={verNotas && abrirNota ? 'Finalizar y abrir nota' : 'Finalizar'}
           ocupado={ocupado}
           onNo={() => setConfirmando(null)}
           onSi={() => {
             setConfirmando(null)
-            void cambiarEstado('finalizada')
+            const ir = verNotas && abrirNota
+            void cambiarEstado('finalizada').then((ok) => ok && ir && irANota())
           }}
         >
           {precioServicio ? (
@@ -371,6 +652,11 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
             <p>Este servicio no tiene precio, así que no se genera ningún cargo en Finanzas.</p>
           )}
           <p>La cita quedará como finalizada y ya no se podrá cambiar de estado.</p>
+          {verNotas && (
+            <label className="cl-check">
+              <input type="checkbox" checked={abrirNota} onChange={(e) => setAbrirNota(e.target.checked)} /> Abrir la nota clínica al terminar
+            </label>
+          )}
         </Confirmar>
       )}
       {confirmando === 'no_asistio' && (
@@ -411,43 +697,33 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
           </div>
         </details>
       )}
-      {!compacto && cita.historial.length > 0 && (
-        <details>
-          <summary className="fz-chico" style={{ cursor: 'pointer' }}>Historial ({cita.historial.length})</summary>
-          <ul className="cl-ul fz-chico">
-            {cita.historial.map((h, i) => (
-              <li key={i}>
-                {momento(h.fecha)} · {ESTADO_CITA_LABEL[h.estado as EstadoCitaVista] ?? h.estado}
-                {h.por ? ` · ${h.por}` : ''}
-                {h.detalle ? ` · ${h.detalle}` : ''}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
     </div>
   )
 }
 
 /* ───────────────────────────── elegir día y hora ───────────────────────────── */
 
-function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, ignorarCita, onElegir, onCancelar, portal }: { catalogo: Catalogo; servicioId: number; recursoId: number | null; diaInicial: string; ignorarCita?: number; onElegir: (dia: string, hora: string, recursoId: number | null) => void; onCancelar?: () => void; portal?: boolean }) {
+function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, horaInicial = null, ignorarCita, onElegir, onCancelar, portal }: { catalogo: Catalogo; servicioId: number; recursoId: number | null; diaInicial: string; horaInicial?: string | null; ignorarCita?: number; onElegir: (dia: string, hora: string, recursoId: number | null) => void; onCancelar?: () => void; portal?: boolean }) {
   const [dia, setDia] = useState(diaInicial)
   const [recurso, setRecurso] = useState<number | null>(recursoId)
   const disp = useCarga(() => api.get<DisponibilidadDia>(portal ? 'portal/citas/disponibilidad' : 'agenda/disponibilidad', { servicio: servicioId, dia, recurso, ignorar: ignorarCita }), [servicioId, dia, recurso, ignorarCita])
-  const [hora, setHora] = useState<string | null>(null)
+  const [hora, setHora] = useState<string | null>(horaInicial)
+  /* Una hora puesta de antemano (clic en la celda) solo vale si está libre para este servicio, día y espacio. */
+  const hueco = disp.datos?.abierto ? disp.datos.huecos.find((h) => h.hora === hora) : undefined
+  const horaValida = hora && hueco?.disponible ? hora : null
+  const preparadaOcupada = Boolean(horaInicial && hora === horaInicial && disp.datos && !disp.cargando && !horaValida)
   return (
     <div className="fz-stack fz-stack--chico">
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Boton chico onClick={() => setDia(sumarDias(dia, -1))}>
+        <Boton chico onClick={() => setDia(sumarDias(dia, -1))} aria-label="Día anterior">
           ‹
         </Boton>
         <InputFecha valor={dia} onChange={(v) => v && setDia(v)} />
-        <Boton chico onClick={() => setDia(sumarDias(dia, 1))}>
+        <Boton chico onClick={() => setDia(sumarDias(dia, 1))} aria-label="Día siguiente">
           ›
         </Boton>
         {!portal && (
-          <select className="fz-input fz-input--compacto" value={recurso ?? ''} onChange={(e) => setRecurso(e.target.value ? Number(e.target.value) : null)}>
+          <select className="fz-input fz-input--compacto" value={recurso ?? ''} onChange={(e) => setRecurso(e.target.value ? Number(e.target.value) : null)} aria-label="Espacio">
             <option value="">Recurso del servicio</option>
             {catalogo.recursos.filter((r) => r.activo).map((r) => (
               <option key={r.id} value={r.id}>
@@ -460,10 +736,11 @@ function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, ignorarC
       <p className="fz-chico" style={{ textTransform: 'capitalize' }}>{diaLargo(dia)}</p>
       {disp.error && <Aviso tono="malo">{disp.error}</Aviso>}
       {disp.datos && !disp.datos.abierto && <Aviso tono="gris">{disp.datos.motivo ?? 'Cerrado.'}</Aviso>}
+      {preparadaOcupada && <Aviso tono="aviso">Las {hora} no están libres para este servicio en ese espacio. Elige otra hora.</Aviso>}
       {disp.datos && disp.datos.abierto && (
         <div className="cl-huecos">
           {disp.datos.huecos.map((h) => (
-            <button key={h.hora} type="button" className={`cl-hueco${hora === h.hora ? ' is-on' : ''}`} disabled={!h.disponible} onClick={() => setHora(h.hora)}>
+            <button key={h.hora} type="button" className={`cl-hueco${horaValida === h.hora ? ' is-on' : ''}`} disabled={!h.disponible} onClick={() => setHora(h.hora)}>
               {h.hora}
             </button>
           ))}
@@ -471,8 +748,8 @@ function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, ignorarC
         </div>
       )}
       <div className="fz-acciones-fin">
-        <Boton chico tono="navy" disabled={!hora} onClick={() => hora && onElegir(dia, hora, recurso)}>
-          {hora ? `Confirmar ${fecha(dia)} ${hora}` : 'Elige una hora'}
+        <Boton chico tono="navy" disabled={!horaValida} onClick={() => horaValida && onElegir(dia, horaValida, recurso)}>
+          {horaValida ? `Confirmar ${fecha(dia)} ${horaValida}` : 'Elige una hora'}
         </Boton>
         {onCancelar && (
           <Boton chico onClick={onCancelar}>
@@ -486,7 +763,8 @@ function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, ignorarC
 
 /* ───────────────────────────── nueva cita ───────────────────────────── */
 
-function FormularioCita({ catalogo, diaInicial, mascotaInicial, onListo }: { catalogo: Catalogo; diaInicial: string; mascotaInicial: number | null; onListo: (c: CitaVista) => void }) {
+function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mascotaInicial, onListo }: { catalogo: Catalogo; diaInicial: string; horaInicial: string | null; recursoInicial: number | null; mascotaInicial: number | null; onListo: (c: CitaVista) => void }) {
+  const { base, catalogo: cat } = useClinica()
   const [q, setQ] = useState('')
   const [res, setRes] = useState<ResultadoBusqueda['mascotas']>([])
   const [mascota, setMascota] = useState<{ id: number; nombre: string; especie: string; tutor: string } | null>(null)
@@ -507,8 +785,17 @@ function FormularioCita({ catalogo, diaInicial, mascotaInicial, onListo }: { cat
     return () => clearTimeout(t)
   }, [q])
   const serv = catalogo.servicios.find((s) => s.id === servicio)
+  const recursoPrep = recursoInicial ? catalogo.recursos.find((r) => r.id === recursoInicial) ?? null : null
+  /* Alta de mascota que regresa a esta agenda con la misma hora y el mismo espacio (AppClinica: ?volver=agenda). */
+  const hrefAlta = `${base}/mascotas/nueva?${new URLSearchParams({ volver: 'agenda', dia: diaInicial, ...(horaInicial ? { hora: horaInicial } : {}), ...(recursoInicial ? { recurso: String(recursoInicial) } : {}) }).toString()}`
   return (
     <div className="fz-stack fz-stack--chico">
+      {horaInicial && (
+        <p className="cl-preparada">
+          <span style={{ textTransform: 'capitalize' }}>{diaLargo(diaInicial)}</span> · {horaInicial}
+          {recursoPrep ? ` · ${recursoPrep.nombre}` : ''}
+        </p>
+      )}
       {!mascota ? (
         <>
           <div className="fz-buscar">
@@ -530,7 +817,17 @@ function FormularioCita({ catalogo, diaInicial, mascotaInicial, onListo }: { cat
               ))}
             </div>
           )}
-          <p className="fz-chico fz-tenue">¿Mascota nueva? Dala de alta primero en «Nueva mascota» y vuelve aquí.</p>
+          {cat.permisos.editarPacientes ? (
+            <p className="fz-chico cl-mascota-nueva">
+              ¿No aparece?{' '}
+              <Link href={hrefAlta} className="fz-btn fz-btn--claro fz-btn--chico">
+                <Icono n="mas" chico /> Mascota nueva
+              </Link>
+              <span className="fz-tenue">Al guardarla vuelves aquí.</span>
+            </p>
+          ) : (
+            <p className="fz-chico fz-tenue">¿Mascota nueva? Pide que la den de alta y vuelve aquí.</p>
+          )}
         </>
       ) : (
         <div className="cl-tutor-fila" style={{ borderBottom: 0 }}>
@@ -564,10 +861,12 @@ function FormularioCita({ catalogo, diaInicial, mascotaInicial, onListo }: { cat
           <ErrorForm error={error} />
           {serv && (
             <SelectorHorario
+              key={serv.id}
               catalogo={catalogo}
               servicioId={serv.id}
-              recursoId={null}
+              recursoId={recursoInicial}
               diaInicial={diaInicial}
+              horaInicial={horaInicial}
               onElegir={(d, h, r) =>
                 api.post<CitaVista>('agenda/citas', { mascotaId: mascota.id, servicioId: serv.id, dia: d, hora: h, recursoId: r, confirmar, notasInternas: notas }).then(onListo, (e) => setError(e instanceof Error ? e.message : 'No se pudo agendar.'))
               }

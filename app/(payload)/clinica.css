@@ -84,19 +84,38 @@
 .cl-confirmar__botones { justify-content: flex-end; margin-top: 4px; }
 @media (max-width: 480px) { .cl-confirmar__botones { flex-direction: column-reverse; } .cl-confirmar__botones .fz-btn { width: 100%; } }
 
-/* agenda: columnas por recurso, filas por intervalo */
+/* agenda: columnas por recurso, filas por intervalo (Versión A, fase 3).
+   Todo va colocado en la rejilla con fila y columna explícitas: las celdas
+   (clic = nueva cita ahí), una capa por espacio con las citas colocadas por
+   minuto (.cl-agenda__capa) y la línea de «ahora». Capas: celdas 0, citas 1,
+   columna de horas y línea de ahora 2, cabecera 3, esquina 4. */
 .cl-agenda-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (min-width: 1000px) { .cl-agenda-wrap { grid-template-columns: minmax(0, 1fr) 340px; } }
-.cl-agenda { display: grid; background: #fff; border: 1px solid var(--mx-line); border-radius: 12px; overflow: auto; max-height: 70vh; position: relative; }
-.cl-agenda__h { position: sticky; top: 0; z-index: 2; background: var(--mx-sand); padding: 8px 10px; font-weight: 700; font-size: 13px; border-bottom: 1px solid var(--mx-line); white-space: nowrap; }
-.cl-agenda__t { font-size: 11.5px; color: var(--mx-muted); padding: 3px 6px; border-top: 1px solid var(--mx-line); position: sticky; left: 0; background: #fff; z-index: 1; }
-.cl-agenda__c { border-top: 1px solid var(--mx-line); border-left: 1px solid var(--mx-line); position: relative; }
+.cl-agenda { display: grid; background: #fff; border: 1px solid var(--mx-line); border-radius: 12px; overflow: auto; max-height: 70vh; max-height: 70dvh; position: relative; }
+.cl-agenda__lateral { scroll-margin-top: 72px; }
+.cl-agenda__dia { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cl-agenda__h { position: sticky; top: 0; z-index: 3; background: var(--mx-sand); padding: 0 10px; min-height: 44px; display: flex; align-items: center; font-weight: 600; font-size: 13.5px; border-bottom: 1px solid var(--mx-line); border-left: 1px solid var(--mx-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-agenda__h--esquina { left: 0; z-index: 4; border-left: 0; }
+.cl-agenda__t { font-size: 12px; color: var(--mx-muted); padding: 4px 8px 0 0; text-align: right; border-top: 1px solid var(--mx-line); position: sticky; left: 0; background: #fff; z-index: 2; box-sizing: border-box; }
+.cl-agenda__c { border-top: 1px solid var(--mx-line); border-left: 1px solid var(--mx-line); position: relative; box-sizing: border-box; }
+.cl-agenda__c.is-ahora { background: #f6fcfa; }
+.cl-agenda__c.is-libre { cursor: pointer; }
+.cl-agenda__c.is-libre:hover { background: var(--mx-teal-soft); }
+.cl-agenda__c.is-libre:hover::after { content: '+ ' attr(data-hora); position: absolute; left: 8px; top: 6px; font-size: 12px; font-weight: 600; color: var(--mx-teal-text); }
+.cl-agenda__capa { position: relative; z-index: 1; overflow: hidden; pointer-events: none; }
+.cl-agenda__ahora-capa { position: relative; z-index: 2; pointer-events: none; }
+.cl-agenda__ahora { position: absolute; left: 56px; right: 0; height: 2px; margin-top: -1px; background: var(--mx-tinta); }
+.cl-agenda__ahora::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--mx-tinta); }
+.cl-agenda__ahora span { position: absolute; left: -54px; top: -10px; font-size: 12px; font-weight: 600; line-height: 1; background: var(--mx-tinta); color: #fff; border-radius: 4px; padding: 4px 5px; }
 .cl-agenda__fuera { padding: 10px; font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--mx-line); }
-.cl-cita { position: absolute; top: 2px; left: 3px; right: 3px; border: 0; border-radius: 8px; padding: 4px 8px; text-align: left; font-size: 12px; line-height: 1.25; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; gap: 1px; z-index: 1; border-left: 4px solid transparent; }
-.cl-cita b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-cita { position: absolute; top: 2px; left: 3px; border: 0; border-radius: 8px; padding: 5px 8px; text-align: left; font-size: 12px; line-height: 1.25; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; gap: 1px; border-left: 4px solid transparent; pointer-events: auto; box-sizing: border-box; min-width: 0; }
+.cl-cita b { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cl-cita span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cl-cita__st { font-size: 12px; opacity: 0.85; }
-.cl-cita.is-sel { outline: 2px solid var(--mx-navy); z-index: 2; }
+.cl-cita.is-corta .cl-cita__st { display: none; }
+.cl-cita:hover { filter: brightness(0.97); }
+.cl-cita:focus-visible { outline: 2px solid var(--mx-tinta); outline-offset: 1px; z-index: 2; }
+.cl-cita.is-sel { outline: 2px solid var(--mx-tinta); outline-offset: 1px; z-index: 2; }
 /* Estados de cita: una sola escala de la marca (Versión A). Los mismos colores
    sirven a las citas de la agenda (.cl-cita) y a las pastillas de la leyenda
    y del detalle (.cl-st). Fondo / texto / punto. */
@@ -120,3 +139,28 @@
 /* Botón de WhatsApp con mensaje prellenado (27-oct-2026) */
 .cl-whatsapp { gap: 6px; color: #128c4a; border-color: #b7e4c7; }
 .cl-whatsapp:hover { background: #effaf3; }
+
+/* Detalle de la cita (Agenda → panel derecho y expediente → Citas) */
+.cl-detalle__cab { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.cl-detalle__cab h3 { margin: 0; }
+.cl-detalle__cab p { margin: 2px 0 0; }
+.cl-detalle__estado { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cl-detalle__principal { width: 100%; }
+.cl-detalle__acciones { justify-content: flex-start; }
+.cl-detalle__despues { border-top: 1px solid var(--mx-line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.cl-detalle__despues p { margin: 0; }
+/* línea de tiempo (historial de la cita): hora a la izquierda, punto del color del estado */
+.cl-tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cl-tl li { display: grid; grid-template-columns: 10px 48px minmax(0, 1fr); gap: 10px; align-items: start; font-size: 13px; padding: 5px 0; position: relative; --cl-punto: #64748b; }
+.cl-tl li::before { content: ''; width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--cl-punto); }
+.cl-tl li:not(:last-child)::after { content: ''; position: absolute; left: 4px; top: 19px; bottom: -5px; width: 2px; background: var(--mx-line); }
+.cl-tl time { color: var(--mx-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cl-tl li[data-st='solicitada'] { --cl-punto: #b45309; }
+.cl-tl li[data-st='confirmada'] { --cl-punto: #0b6b59; }
+.cl-tl li[data-st='llegada'] { --cl-punto: #13967c; }
+.cl-tl li[data-st='atencion'] { --cl-punto: #0f2f2a; }
+.cl-tl li[data-st='finalizada'] { --cl-punto: #64748b; }
+.cl-tl li[data-st='cancelada'], .cl-tl li[data-st='no_asistio'] { --cl-punto: #ad2a20; }
+/* «Nueva cita» con hora y espacio ya puestos; alta de mascota desde ahí */
+.cl-preparada { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--mx-teal-soft); color: var(--mx-tinta); font-weight: 600; font-size: 14px; }
+.cl-mascota-nueva { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }

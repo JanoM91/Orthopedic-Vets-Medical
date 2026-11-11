@@ -13,10 +13,13 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia 
 ## Recepción
 
 **Agenda** (Trabajo → Agenda)
-- Elige el día; cada columna es un consultorio. «Nueva cita»: mascota, servicio, hora. «Confirmar» si ya quedó con el tutor.
-- Estados: por confirmar → confirmada → llegó → en atención → finalizada (o cancelada con motivo / no asistió). **Finalizar** y **No asistió** piden confirmación porque cierran la cita; al finalizar una cita con precio, se crea solo el cargo en Finanzas (el aviso te dice el importe).
+- Elige el día; cada columna es un espacio (consultorio, quirófano, estética). Cada cita se dibuja a su hora exacta; si dos se enciman, quedan lado a lado. La línea oscura marca la hora actual.
+- **Toca una hora libre** y se abre «Nueva cita» con esa hora y ese espacio ya puestos: elige mascota y servicio y confirma. «Nueva cita» (arriba) abre el formulario vacío. «Confirmar» si ya quedó con el tutor.
+- ¿La mascota no existe? En «Nueva cita», **«Mascota nueva»**: la das de alta y regresas a la agenda con la misma hora.
+- Al tocar una cita ves su **línea de tiempo** (cuándo se pidió, confirmó, llegó, entró a atención) y, si está dentro, **cuánto lleva en la clínica**. El botón grande es el siguiente paso.
+- Estados: por confirmar → confirmada → llegó → en atención → finalizada (o cancelada con motivo / no asistió). **Finalizar** y **No asistió** piden confirmación porque cierran la cita; al finalizar una cita con precio, se crea solo el cargo en Finanzas (el aviso te dice el importe). Ya finalizada, la cita ofrece **«Abrir nota»** (expediente, pestaña Notas) y **«Registrar cobro»** (el cargo en Finanzas).
 - «Por confirmar» muestra lo que pidieron los tutores desde el portal (también llega un correo a la clínica). Confírmalas o muévelas.
-- Junto al tutor hay **«Recordar por WhatsApp»**: abre WhatsApp con el mensaje listo; revísalo y envíalo.
+- En una cita por confirmar o confirmada está **«Recordar por WhatsApp»**: abre WhatsApp con el mensaje listo; revísalo y envíalo.
 - El tutor recibe correo al pedir, confirmar, cambiar o cancelar, y un **recordatorio la víspera a las 18:00** (si tiene correo y acepta avisos).
 
 **Clientes y mascotas**

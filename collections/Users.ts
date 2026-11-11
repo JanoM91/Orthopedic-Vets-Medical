@@ -11,6 +11,7 @@ import {
   ligaDeRecuperacion,
 } from '../lib/authEmails'
 import { rateLimit } from '../lib/rateLimit'
+import { plegarMenuAlEntrar } from '../lib/navPlegado'
 
 /**
  * Frenos de la recuperación de contraseña.
@@ -127,6 +128,8 @@ export const Users: CollectionConfig = {
     unlock: crearCuentas,
   },
   hooks: {
+    /* Menú del panel: los grupos de catálogos que la persona no ha tocado quedan plegados (lib/navPlegado.ts). */
+    afterLogin: [plegarMenuAlEntrar],
     /* La primera cuenta de la instalación nace superadministradora (es quien
        arranca: crea los roles sugeridos, las cuentas y las categorías). Toda
        cuenta posterior nace con un rol de acceso. */

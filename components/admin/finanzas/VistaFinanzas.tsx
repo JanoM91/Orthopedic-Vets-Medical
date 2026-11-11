@@ -41,6 +41,8 @@ export default async function VistaFinanzas({ initPageResult, params, searchPara
       locale={initPageResult.locale}
       params={params}
       payload={req.payload}
+      /* Sin `req`, el menú no lee la preferencia `nav` y abre todos los grupos. */
+      req={req}
       permissions={initPageResult.permissions}
       searchParams={searchParams}
       user={req.user || undefined}

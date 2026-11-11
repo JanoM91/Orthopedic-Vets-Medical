@@ -12,12 +12,17 @@
  *   importar                importación de archivo
  *   agenda?dia=&mascota=    agenda del día; con mascota abre «nueva cita» para ella
  *   agenda?nueva=1          abre «nueva cita» sin mascota (acción rápida del tablero «Hoy»)
+ *   agenda?…&hora=&recurso= «nueva cita» con hora y espacio ya puestos
+ *   mascotas/nueva?volver=agenda&dia=&hora=&recurso=
+ *                           alta desde «Nueva cita»: al guardar regresa a la agenda
+ *                           con la mascota nueva, la misma hora y el mismo espacio
  *
  * Quien no entra al panel completo la ve sola, con encabezado y barra
  * inferior; además tiene acceso a Finanzas desde la barra si su rol lo usa.
  */
 import { Carriles } from '../../Carriles'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import React, { useCallback, useState } from 'react'
 import type { CatalogoClinica } from '../../../lib/clinica/tipos'
 import { api, Aviso, ClinicaCtx, Icono, iniciales } from './comun'
@@ -37,6 +42,7 @@ type Props = {
 
 export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, marca }: Props) {
   const base = `${rutaAdmin}/clinica`
+  const router = useRouter()
   const [catalogo, setCatalogo] = useState(inicial)
   const recargarCatalogo = useCallback(() => {
     api.get<CatalogoClinica>('catalogo').then(setCatalogo, () => undefined)
@@ -49,10 +55,27 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
   if (!seccion) pantalla = <Inicio />
   else if (seccion === 'clientes' && id === 'nuevo') pantalla = p.editarPacientes ? <FormularioCliente /> : <Aviso>Tu rol no incluye dar de alta clientes.</Aviso>
   else if (seccion === 'clientes' && numero(id)) pantalla = <FichaCliente key={id} id={numero(id)!} />
-  else if (seccion === 'mascotas' && id === 'nueva') pantalla = p.editarPacientes ? <FormularioMascota clienteInicial={numero(query.cliente)} /> : <Aviso>Tu rol no incluye dar de alta mascotas.</Aviso>
+  else if (seccion === 'mascotas' && id === 'nueva') {
+    /* Desde «Nueva cita» (agenda): al guardar o cancelar se regresa a la agenda con la misma hora y espacio. */
+    const deAgenda = query.volver === 'agenda'
+    const volverAgenda = (mascotaId?: number) => {
+      const q = new URLSearchParams()
+      if (query.dia) q.set('dia', query.dia)
+      if (mascotaId) q.set('mascota', String(mascotaId))
+      else q.set('nueva', '1')
+      if (query.hora) q.set('hora', query.hora)
+      if (query.recurso) q.set('recurso', query.recurso)
+      router.push(`${base}/agenda?${q.toString()}`)
+    }
+    pantalla = p.editarPacientes ? (
+      <FormularioMascota clienteInicial={numero(query.cliente)} onGuardado={deAgenda ? (m) => volverAgenda(m.id) : undefined} onCancelar={deAgenda ? () => volverAgenda() : undefined} />
+    ) : (
+      <Aviso>Tu rol no incluye dar de alta mascotas.</Aviso>
+    )
+  }
   else if (seccion === 'mascotas' && numero(id)) pantalla = <Expediente key={id} id={numero(id)!} pestana={query.ver ?? null} />
   else if (seccion === 'importar') pantalla = p.importar ? <Importar /> : <Aviso>Tu rol no incluye importar archivos.</Aviso>
-  else if (seccion === 'agenda') pantalla = p.agenda ? <Agenda diaInicial={query.dia ?? null} mascotaInicial={numero(query.mascota)} nuevaInicial={query.nueva === '1'} /> : <Aviso>Tu rol no incluye la agenda.</Aviso>
+  else if (seccion === 'agenda') pantalla = p.agenda ? <Agenda diaInicial={query.dia ?? null} mascotaInicial={numero(query.mascota)} nuevaInicial={query.nueva === '1'} horaInicial={query.hora ?? null} recursoInicial={numero(query.recurso)} /> : <Aviso>Tu rol no incluye la agenda.</Aviso>
   else
     pantalla = (
       <Aviso tono="aviso">

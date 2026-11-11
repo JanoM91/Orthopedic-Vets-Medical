@@ -54,9 +54,13 @@ export default buildConfig({
         Logo: '/components/admin/Logo#default',
         Icon: '/components/admin/Icono#default',
       },
-      beforeNavLinks: ['/components/admin/MarcaDelPanel#default'],
-      beforeDashboard: ['/components/admin/Bienvenida#default'],
+      /* Marca y, debajo, el bloque «Trabajo» (Hoy, Agenda, Pacientes, Mostrador, Farmacia, Finanzas) antes de los catálogos. */
+      beforeNavLinks: ['/components/admin/MarcaDelPanel#default', '/components/admin/MenuTrabajo#default'],
       views: {
+        /* Tablero «Hoy» (Versión A, fase 2): reemplaza el tablero de fábrica y la antigua Bienvenida. */
+        dashboard: {
+          Component: '/components/admin/Tablero#default',
+        },
         /**
          * Finanzas. Una sola vista para /admin/finanzas y todo lo que cuelga
          * de ahí (/registrar, /movimientos, /operacion/123…): sin `exact`,
@@ -78,7 +82,6 @@ export default buildConfig({
           path: '/farmacia',
         },
       },
-      afterNavLinks: ['/components/admin/EnlaceClinica#default', '/components/admin/EnlaceFarmacia#default', '/components/admin/EnlaceFinanzas#default'],
     },
   },
   /**

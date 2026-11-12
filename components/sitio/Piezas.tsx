@@ -2,6 +2,7 @@ import Link from 'next/link'
 import React from 'react'
 import type { ContenidoSitio } from '../../lib/sitio/contenido'
 import { ligaWhatsApp } from '../../lib/sitio/contenido'
+import { enlaceWhatsApp, mensajes } from '../../lib/whatsapp'
 
 /* Piezas de servidor del sitio público: cabecera, pie e íconos. Sin estado. */
 
@@ -111,7 +112,26 @@ export function BotonesCita({ c, servicio }: { c: ContenidoSitio; servicio?: str
           <Icono n="phone" /> Llamar
         </a>
       )}
+      <PrimeraVez c={c} servicio={servicio} />
     </div>
+  )
+}
+
+/**
+ * «¿Primera vez?» (fase 6): pedir cita en línea exige cuenta y ficha vinculada.
+ * Quien llega por primera vez tiene la salida por WhatsApp con mensaje listo.
+ */
+export function PrimeraVez({ c, servicio }: { c: ContenidoSitio; servicio?: string }) {
+  const liga = enlaceWhatsApp(c.contacto.whatsapp, mensajes.primeraVez(c.marca.nombre, servicio))
+  if (!liga) return null
+  return (
+    <p className="st-primera">
+      ¿Primera vez?{' '}
+      <a href={liga} target="_blank" rel="noreferrer">
+        Escríbenos por WhatsApp
+      </a>{' '}
+      y te agendamos.
+    </p>
   )
 }
 

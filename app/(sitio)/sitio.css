@@ -109,3 +109,9 @@ a { color: var(--st-accent); }
 .svc-insignia--quirurgico { background: #fbe9e3; color: #9a3412; }
 .svc-insignia--estetica { background: #f3eaf6; color: #6d3a80; }
 .svc-insignia--movimiento { background: #fdf1dc; color: #8a5a0a; }
+
+/* «¿Primera vez? Escríbenos por WhatsApp» (fase 6) */
+.st-primera { flex-basis: 100%; margin: 4px 0 0; font-size: 14px; color: inherit; opacity: 0.9; }
+.st-primera a { font-weight: 700; color: inherit; text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 40px; }
+.st-servicio__acciones { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: auto; }
+.st-servicio__acciones .st-primera { margin: 0; font-size: 13px; }

@@ -311,3 +311,14 @@ input[type='file']::file-selector-button { margin-right: 10px; min-height: 40px;
 .pt-hecha { align-items: flex-start; }
 .pt-hecha__check { width: 48px; height: 48px; border-radius: 50%; background: var(--pt-ok-bg); color: var(--pt-ok); display: grid; place-items: center; }
 .pt-hecha__check .pt-i { width: 28px; height: 28px; stroke-width: 2.4; }
+
+/* Cartilla con estados y «Pedir refuerzo» (fase 6) */
+.pt-refuerzo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--pt-bad-bg); color: var(--pt-bad); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.pt-refuerzo .pt-btn { flex: none; }
+.pt-fila--historial { opacity: 0.6; }
+/* Salida por WhatsApp para quien aún no tiene cuenta o ficha */
+.pt-primera { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #effaf6; border: 1px solid #c6ebdf; color: var(--pt-ink); text-decoration: none; }
+.pt-primera__icono { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #25d366; color: #fff; }
+.pt-primera__icono .pt-i { width: 22px; height: 22px; }
+.pt-primera__texto { display: flex; flex-direction: column; font-size: 14px; }
+.pt-primera__texto b { font-size: 15px; }

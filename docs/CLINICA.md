@@ -144,3 +144,10 @@ El panel toma sus colores de `app/(payload)/custom.css`; si se definen las dos v
 - **Fotos:** colección `mas-fotos` (una por mascota) y `mascotas.fotoFecha`. El navegador recorta al centro y reduce a 720 px en JPEG antes de subir; el servidor acepta JPG, PNG o WEBP de hasta 600 KB. El tutor solo cambia las de sus mascotas; el equipo, con «editar pacientes». La foto se ve en el portal, el expediente, la ficha del tutor, la búsqueda y la agenda.
 - **Iconos de servicio:** campo «Icono» en Clínica → Servicios. «Automático» lo elige por el nombre (consulta, vacuna, cirugía, ortopedia, rehabilitación, rayos X, laboratorio, dental, estética, baño…). Se ven en el portal y en el sitio público.
 - Migración `20261112_055949_clinica_fotos_iconos` (tabla `mas_fotos` con RLS, columnas `mascotas.foto_fecha` y `servicios.icono`). Pruebas: `npm run test:clinica` → 175 comprobaciones.
+
+## Cierre de la fase 6 del portal (12-nov-2026)
+
+- **Ficha de la mascota en el portal:** pestaña «Citas» con las próximas (reprogramar y cancelar) y las anteriores de esa mascota. Cartilla con estado por producto: **Vencida**, **Próxima** (30 días o menos), **Al día**; las aplicaciones viejas de un producto que ya se volvió a aplicar se ven como «Anterior» y no cuentan como vencidas (`lib/clinica/estadoCartilla.ts`).
+- **Pedir refuerzo:** en el resumen (refuerzos vencidos) y en la cartilla (vencidos y próximos). Abre «Pedir cita» con la mascota, el servicio cuyo icono es vacuna o desparasitación y la nota «Refuerzo: <producto>».
+- **Sin callejones:** el sitio muestra «¿Primera vez? Escríbenos por WhatsApp» junto a «Pedir cita» (general y por servicio, con el servicio en el mensaje); en el portal, «¿Aún no eres cliente?» en Entrar y Crear cuenta, y «¿No tienes tu código?» en Vincular y en el inicio sin ficha. Usan el WhatsApp de «Sitio público → Contacto»; sin él no aparecen.
+- Sin migraciones ni variables nuevas.

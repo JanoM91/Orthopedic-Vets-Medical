@@ -8,7 +8,7 @@ import { site } from '../../../lib/site'
 import { contactoClinica } from '../../../lib/sitio/contacto'
 import { InsigniaServicio } from '../../../components/IconoServicio'
 import { PillCita } from '../../../components/portal/Citas'
-import { Barra, Cabecera, Icono, TarjetaContacto } from '../../../components/portal/comun'
+import { Barra, Cabecera, Icono, SalidaWhatsApp, TarjetaContacto } from '../../../components/portal/comun'
 import { diaCorto, TarjetaMascota } from '../../../components/portal/Mascotas'
 
 export const dynamic = 'force-dynamic'
@@ -44,6 +44,7 @@ export default async function PortalInicio() {
                 <Icono n="link" /> Tengo un código
               </Link>
             </div>
+            <SalidaWhatsApp whatsapp={contacto.whatsapp} motivo="codigo" />
             <Link href="/portal/servicios" className="pt-accion pt-accion--menta pt-accion--ancha">
               <span className="pt-accion__icono">
                 <Icono n="servicios" />

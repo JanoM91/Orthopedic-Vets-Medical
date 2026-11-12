@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import React from 'react'
-import { BotonesCita, Cabecera, Pie } from '../../../components/sitio/Piezas'
+import { BotonesCita, Cabecera, Pie, PrimeraVez } from '../../../components/sitio/Piezas'
 import { contenidoSitio } from '../../../lib/sitio/contenido'
 import { InsigniaServicio } from '../../../components/IconoServicio'
 
@@ -38,11 +38,14 @@ export default async function Servicios() {
                       <b>Antes de venir:</b> {s.indicaciones}
                     </p>
                   )}
-                  {s.enLinea && (
-                    <Link href="/portal/citas/nueva" className="st-btn st-btn--acento st-btn--chico">
-                      Pedir cita
-                    </Link>
-                  )}
+                  <div className="st-servicio__acciones">
+                    {s.enLinea && (
+                      <Link href={`/portal/citas/nueva?servicio=${s.id}`} className="st-btn st-btn--acento st-btn--chico">
+                        Pedir cita
+                      </Link>
+                    )}
+                    <PrimeraVez c={c} servicio={s.nombre} />
+                  </div>
                 </article>
               ))}
             </div>

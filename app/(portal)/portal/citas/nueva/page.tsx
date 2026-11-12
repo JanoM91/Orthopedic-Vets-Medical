@@ -8,11 +8,11 @@ import { sesionTutor } from '../../../../../lib/portal/sesion'
 
 export const dynamic = 'force-dynamic'
 
-export default async function PedirCita({ searchParams }: { searchParams: Promise<{ mascota?: string; servicio?: string }> }) {
+export default async function PedirCita({ searchParams }: { searchParams: Promise<{ mascota?: string; servicio?: string; nota?: string }> }) {
   const c = await sesionTutor()
   if (!c) redirect('/portal/entrar?siguiente=/portal/citas/nueva')
   if (!c.tutor.cliente) redirect('/portal')
-  const { mascota, servicio } = await searchParams
+  const { mascota, servicio, nota } = await searchParams
   const num = (v?: string) => (v && /^\d+$/.test(v) ? Number(v) : null)
   const d = await portalCitas(c)
   return (
@@ -23,7 +23,7 @@ export default async function PedirCita({ searchParams }: { searchParams: Promis
           <Icono n="back" /> Mis citas
         </Link>
         <h1>Pedir cita</h1>
-        <NuevaCita mascotas={d.mascotas} servicios={d.servicios} mascotaInicial={num(mascota)} servicioInicial={num(servicio)} anticipacionHoras={d.configuracion.anticipacionHoras} diasAdelante={d.configuracion.diasAdelante} />
+        <NuevaCita mascotas={d.mascotas} servicios={d.servicios} mascotaInicial={num(mascota)} servicioInicial={num(servicio)} notaInicial={typeof nota === 'string' ? nota.slice(0, 200) : undefined} anticipacionHoras={d.configuracion.anticipacionHoras} diasAdelante={d.configuracion.diasAdelante} />
         <p className="pt-chico pt-tenue">Tu cita queda «por confirmar» hasta que la clínica la revise. Para urgencias, llámanos: el portal no es inmediato.</p>
       </main>
       <Barra activa="citas" />

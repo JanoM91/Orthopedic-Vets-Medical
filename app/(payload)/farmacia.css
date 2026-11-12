@@ -160,4 +160,4 @@ a.fa-hoy:hover { background: var(--mx-sand-dark); }
 .fz-barra .fz-mas--arriba.is-on > summary { color: var(--mx-teal-text); font-weight: 600; background: transparent; }
 .fz-barra .fz-mas--arriba.is-on > summary .fz-i { background: var(--mx-teal-soft); }
 .fz-barra .fz-mas--arriba .fz-mas__menu { top: auto; bottom: calc(100% + 8px); right: 6px; }
-.fz-barra .fz-mas--arriba .fz-mas__menu a { min-height: 44px; display: flex; align-items: center; }
+.fz-barra .fz-mas--arriba .fz-mas__menu a { min-height: 44px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; padding: 0 14px; font-size: 14px; color: var(--mx-ink); }

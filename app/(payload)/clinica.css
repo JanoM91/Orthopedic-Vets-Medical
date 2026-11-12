@@ -164,3 +164,19 @@
 /* «Nueva cita» con hora y espacio ya puestos; alta de mascota desde ahí */
 .cl-preparada { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--mx-teal-soft); color: var(--mx-tinta); font-weight: 600; font-size: 14px; }
 .cl-mascota-nueva { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+
+/* Foto de la mascota (nov-2026): avatar con foto y botón de cámara en el expediente. */
+.cl-avatar--foto { background: #e9efed; overflow: hidden; padding: 0; }
+.cl-avatar--foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cl-foto-ficha { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cl-foto-ficha .cl-avatar--grande { width: 88px; height: 88px; font-size: 28px; }
+.cl-foto-ficha__boton { position: absolute; top: 56px; left: 58px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; background: #0f2f2a; color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 8px rgba(15, 47, 42, 0.25); }
+.cl-foto-ficha__boton .fz-i, .cl-foto-ficha__boton svg { width: 18px; height: 18px; }
+.cl-foto-ficha__quitar { margin-top: 6px; min-height: 40px; padding: 0 6px; border: 0; background: none; color: #4b5b56; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.cl-foto-ficha__error { max-width: 200px; font-size: 12px; color: #ad2a20; }
+.cl-giro { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff; animation: cl-giro 0.8s linear infinite; }
+@keyframes cl-giro { to { transform: rotate(360deg); } }
+@media (max-width: 600px) {
+  .cl-foto-ficha .cl-avatar--grande { width: 72px; height: 72px; font-size: 24px; }
+  .cl-foto-ficha__boton { top: 42px; left: 44px; }
+}

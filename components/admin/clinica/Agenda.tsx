@@ -469,7 +469,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
   return (
     <div className="fz-stack fz-stack--chico cl-detalle">
       <div className="cl-detalle__cab">
-        <Avatar nombre={cita.mascota.nombre} especie={cita.mascota.especie} />
+        <Avatar nombre={cita.mascota.nombre} especie={cita.mascota.especie} foto={cita.mascota.foto} />
         <div className="fz-grow" style={{ minWidth: 0 }}>
           <h3 style={{ fontSize: 17 }}>
             <Link href={`${base}/mascotas/${cita.mascota.id}`}>{cita.mascota.nombre}</Link> <span className="fz-tenue fz-normal">· {ESPECIE_LABEL[cita.mascota.especie] ?? cita.mascota.especie}</span>
@@ -806,7 +806,7 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
             <div className="fz-tarjeta fz-lista">
               {res.map((m) => (
                 <button key={m.id} type="button" className="fz-fila cl-fila-boton" onClick={() => setMascota({ id: m.id, nombre: m.nombre, especie: m.especie, tutor: m.tutores.map((t) => t.nombre).join(', ') })}>
-                  <Avatar nombre={m.nombre} especie={m.especie} />
+                  <Avatar nombre={m.nombre} especie={m.especie} foto={m.foto} />
                   <span className="fz-fila__main">
                     <span className="fz-fila__t1">{m.nombre}</span>
                     <span className="fz-fila__t2">

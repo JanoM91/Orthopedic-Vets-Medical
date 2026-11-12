@@ -25,6 +25,8 @@ type Linea = {
   recetaFolio: string | null
   originalRecibido: boolean
   autorizarMascota: string
+  /** Solo pantalla: el campo de descuento se abre con «descuento». */
+  verDescuento?: boolean
 }
 
 type Pago = { metodo: string; monto: string; recibido: string; referencia: string }
@@ -34,6 +36,17 @@ type ErrorApiVenta = Error & { estado?: number; codigo?: string; detalle?: unkno
 const nuevaClave = () => `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 const cent = (s: string | number) => Math.round((typeof s === 'number' ? s : Number(s.replace(',', '.')) || 0) * 100)
 const pesos = (c: number) => c / 100
+/** Con cuánto suele pagar la gente: el monto redondeado hacia arriba a 50, 100, 200, 500 y 1,000 (los tres primeros distintos). */
+function billetesSugeridos(montoCent: number): number[] {
+  const m = montoCent / 100
+  if (m <= 0) return []
+  const r = new Set<number>()
+  for (const paso of [50, 100, 200, 500, 1000]) {
+    const v = Math.ceil(m / paso) * paso
+    if (v > m) r.add(v)
+  }
+  return [...r].sort((a, b) => a - b).slice(0, 3)
+}
 
 async function cobrar(cuerpo: unknown): Promise<VentaVista & { finanzas: string; avisos: string[]; duplicado: boolean }> {
   const r = await fetch('/api/farmacia/ventas', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
@@ -147,17 +160,29 @@ export default function Vender() {
 
   if (!p.vender) return <Aviso>Tu rol no incluye la venta de mostrador.</Aviso>
 
+  const cobrarTexto = ocupado ? 'Cobrando…' : lineas.length ? `Cobrar ${dinero(pesos(totales.tot), true)}` : 'Cobrar'
+  const articulos = lineas.reduce((a, l) => a + (Number(l.cantidad) || 0), 0)
+  const conReceta = lineas.filter((l) => l.recetaId)
+
   return (
     <div className="fz-stack fz-stack--grande fa-vender">
       <div className="fz-entre">
         <div>
           <p className="fz-eyebrow">Farmacia</p>
           <h1 className="fz-h1">Mostrador</h1>
+          <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
+            Hoy: {catalogo.hoy.ventasHoy} {catalogo.hoy.ventasHoy === 1 ? 'venta' : 'ventas'} · {dinero(catalogo.hoy.totalHoy)}
+          </p>
         </div>
         <div className="fz-acciones-fin">
           <Link href={`${base}/ventas`} className="fz-btn fz-btn--claro fz-btn--chico">
             Ventas de hoy
           </Link>
+          {p.cierreDia && catalogo.configuracion.cierreDiaActivo && (
+            <Link href={`${base}/cierre`} className="fz-btn fz-btn--claro fz-btn--chico">
+              Cierre del día
+            </Link>
+          )}
         </div>
       </div>
 
@@ -195,169 +220,237 @@ export default function Vender() {
         </div>
       )}
 
-      <Buscador alElegir={agregar} abrirCamara={() => setModal({ tipo: 'camara' })} />
+      {/* Versión A, fase 4: desde 1000 px, ticket a la izquierda y cobro fijo a la derecha. */}
+      <div className="fa-vender__cols">
+        <div className="fa-vender__izq fz-stack">
+          <Buscador alElegir={agregar} abrirCamara={() => setModal({ tipo: 'camara' })} />
 
-      <section className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-        <div className="fz-entre">
-          <h2 className="fz-h2">Mascota</h2>
-          {catalogo.clinica && (
-            <Boton chico onClick={() => setModal({ tipo: 'mascota' })}>
-              {paciente ? 'Cambiar' : 'Agregar mascota'}
-            </Boton>
-          )}
-        </div>
-        {!paciente && <p className="fz-chico fz-tenue">{catalogo.clinica ? 'Opcional: revisa especie, peso y alergias.' : 'La clínica está apagada: la venta va sin mascota.'}</p>}
-        {paciente && (
-          <div className="fa-paciente">
-            <div>
-              <b>{paciente.nombre}</b> <span className="fz-chico fz-tenue">{paciente.folio} · {paciente.especie}{paciente.raza ? ` · ${paciente.raza}` : ''}{paciente.edadMeses != null ? ` · ${paciente.edadMeses} meses` : ''}</span>
-              <br />
-              <span className="fz-chico">
-                Peso: {pesoConfirmado != null ? `${pesoConfirmado} kg (confirmado hoy)` : paciente.pesoKg != null ? `${paciente.pesoKg} kg · hace ${paciente.pesoDias} días` : 'sin registro'}
-                {paciente.cliente ? ` · Tutor: ${paciente.cliente.nombre}` : ''}
-              </span>
-            </div>
-            {paciente.alergias && <Aviso tono="malo">Alergias: {paciente.alergias}</Aviso>}
-            <button type="button" className="fz-link" onClick={() => { setPaciente(null); setPesoConfirmado(null) }}>
-              Quitar
-            </button>
-          </div>
-        )}
-      </section>
-
-      <section className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-        <h2 className="fz-h2">Carrito</h2>
-        {lineas.length === 0 && <p className="fz-chico fz-tenue">Escanea un código o busca un producto.</p>}
-        {lineas.map((l, i) => {
-          const regulado = l.p.producto.grupo === 'I' || l.p.producto.grupo === 'II'
-          const unidades = (Number(l.cantidad) || 0) * l.p.factor
-          return (
-            <div key={l.p.id} className={`fa-linea${regulado && !l.recetaId ? ' fa-linea--pendiente' : ''}`}>
-              <div className="fa-linea__cab">
-                <span>
-                  <b>{l.p.producto.nombre}</b> · {l.p.nombre} <GrupoPastilla grupo={l.p.producto.grupo} />
+          <section className="fz-tarjeta cl-caja fa-ticket" aria-label="Ticket">
+            <div className="fa-ticket__chips">
+              {paciente ? (
+                <span className="fa-chip fa-chip--on">
+                  <button type="button" className="fa-chip__principal" onClick={() => setModal({ tipo: 'mascota' })} title="Cambiar mascota">
+                    <span className="fa-chip__inicial" aria-hidden="true">
+                      {paciente.nombre.slice(0, 1).toUpperCase()}
+                    </span>
+                    {paciente.nombre}
+                    {paciente.cliente ? ` · ${paciente.cliente.nombre}` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    className="fa-chip__quitar"
+                    aria-label="Quitar la mascota"
+                    onClick={() => {
+                      setPaciente(null)
+                      setPesoConfirmado(null)
+                    }}
+                  >
+                    <Icono n="x" chico />
+                  </button>
                 </span>
-                <button type="button" className="fz-link" onClick={() => quitar(i)} aria-label={`Quitar ${l.p.producto.nombre}`}>
-                  Quitar
+              ) : catalogo.clinica ? (
+                <button type="button" className="fa-chip" onClick={() => setModal({ tipo: 'mascota' })}>
+                  <Icono n="mas" chico /> Mascota
                 </button>
+              ) : (
+                <span className="fz-chico fz-tenue">Clínica apagada: la venta va sin mascota.</span>
+              )}
+              {conReceta.map((l) => (
+                <span key={l.p.id} className="fa-chip fa-chip--receta">
+                  Receta {l.recetaFolio} · {l.p.producto.nombre}
+                </span>
+              ))}
+              {paciente?.alergias && <span className="fa-chip fa-chip--alerta">Alergias: {paciente.alergias}</span>}
+            </div>
+            {paciente ? (
+              <p className="fz-chico fz-tenue">
+                {paciente.folio} · {paciente.especie}
+                {paciente.raza ? ` · ${paciente.raza}` : ''}
+                {paciente.edadMeses != null ? ` · ${paciente.edadMeses} meses` : ''} · Peso: {pesoConfirmado != null ? `${pesoConfirmado} kg (confirmado hoy)` : paciente.pesoKg != null ? `${paciente.pesoKg} kg, hace ${paciente.pesoDias} días` : 'sin registro'}
+              </p>
+            ) : (
+              catalogo.clinica && <p className="fz-chico fz-tenue">Mascota opcional: revisa especie, peso y alergias.</p>
+            )}
+
+            {lineas.length === 0 && <p className="fa-ticket__vacio">Escanea un código o busca un producto.</p>}
+            {lineas.length > 0 && (
+              <div className="fa-tk fa-tk--cab" aria-hidden="true">
+                <span>Producto</span>
+                <span>Cantidad</span>
+                <span>Importe</span>
+                <span />
               </div>
-              <div className="fa-linea__campos">
-                <Campo etiqueta="Cantidad" ayuda={unidades > l.p.vendible ? <span className="fa-sale">Solo hay {fmtCantidad(l.p.vendible, l.p.producto.unidadBase)}</span> : l.p.factor !== 1 ? fmtCantidad(unidades, l.p.producto.unidadBase) : undefined}>
+            )}
+            {lineas.map((l, i) => {
+              const regulado = l.p.producto.grupo === 'I' || l.p.producto.grupo === 'II'
+              const unidades = (Number(l.cantidad) || 0) * l.p.factor
+              const importe = pesos(Math.round(cent(l.p.precio) * (Number(l.cantidad) || 0) * (1 - (Number(l.descuento) || 0) / 100)))
+              return (
+                <div key={l.p.id} className={`fa-tk${regulado && !l.recetaId ? ' fa-tk--pendiente' : ''}`}>
+                  <div className="fa-tk__prod">
+                    <span>
+                      <b>{l.p.producto.nombre}</b> · {l.p.nombre} <GrupoPastilla grupo={l.p.producto.grupo} />
+                    </span>
+                    <span className="fz-chico fz-tenue">
+                      {dinero(l.p.precio, true)} c/u
+                      {l.p.factor !== 1 ? ` · ${fmtCantidad(unidades, l.p.producto.unidadBase)}` : ''}
+                      {!l.verDescuento && !l.descuento && (
+                        <>
+                          {' · '}
+                          <button type="button" className="fz-link fa-tk__desc" onClick={() => setLinea(i, { verDescuento: true })}>
+                            descuento
+                          </button>
+                        </>
+                      )}
+                    </span>
+                    {unidades > l.p.vendible && <span className="fa-sale">Solo hay {fmtCantidad(l.p.vendible, l.p.producto.unidadBase)}</span>}
+                    {(l.verDescuento || l.descuento) && (
+                      <label className="fa-tk__descuento">
+                        <span>Descuento %</span>
+                        <input className="fz-input" inputMode="decimal" value={l.descuento} onChange={(e) => setLinea(i, { descuento: e.target.value })} placeholder="0" aria-label={`Descuento para ${l.p.producto.nombre}`} autoFocus={l.verDescuento && !l.descuento} />
+                        {!p.descuentos && Number(l.descuento) > 0 && <span className="fz-chico fz-tenue">Pedirá al encargado</span>}
+                      </label>
+                    )}
+                    {regulado && (
+                      <div className="fa-linea__receta">
+                        {l.recetaId ? (
+                          <span className="fz-chico">
+                            Receta <b>{l.recetaFolio}</b>{' '}
+                            <button type="button" className="fz-link" onClick={() => setModal({ tipo: 'receta', i })}>
+                              Cambiar
+                            </button>
+                          </span>
+                        ) : (
+                          <Boton chico tono="teal" onClick={() => setModal({ tipo: 'receta', i })}>
+                            Ligar receta (Grupo {l.p.producto.grupo})
+                          </Boton>
+                        )}
+                        {l.p.producto.grupo === 'I' && (
+                          <label className="cl-check">
+                            <input type="checkbox" checked={l.originalRecibido} onChange={(e) => setLinea(i, { originalRecibido: e.target.checked })} />
+                            <span>Recibí el original de la receta cuantificada</span>
+                          </label>
+                        )}
+                      </div>
+                    )}
+                    {l.autorizarMascota && <span className="fz-chico fz-tenue">Autorización solicitada: {l.autorizarMascota}</span>}
+                  </div>
                   <div className="fa-paso">
                     <button type="button" className="fz-btn fz-btn--claro" onClick={() => setLinea(i, { cantidad: String(Math.max(l.p.fraccionada ? 0.5 : 1, (Number(l.cantidad) || 0) - 1)) })} aria-label="Menos">
                       −
                     </button>
-                    <input className="fz-input" inputMode="decimal" value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} aria-label="Cantidad" />
+                    <input className="fz-input" inputMode="decimal" value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} aria-label={`Cantidad de ${l.p.producto.nombre}`} />
                     <button type="button" className="fz-btn fz-btn--claro" onClick={() => setLinea(i, { cantidad: String((Number(l.cantidad) || 0) + 1) })} aria-label="Más">
                       +
                     </button>
                   </div>
-                </Campo>
-                <Campo etiqueta="Desc. %" ayuda={!p.descuentos && Number(l.descuento) > 0 ? 'Pedirá al encargado' : undefined}>
-                  <input className="fz-input" inputMode="decimal" value={l.descuento} onChange={(e) => setLinea(i, { descuento: e.target.value })} placeholder="0" />
-                </Campo>
-                <div className="fa-linea__importe">
-                  <span className="fz-chico fz-tenue">{dinero(l.p.precio, true)} c/u</span>
-                  <b className="fz-num">{dinero(pesos(Math.round(cent(l.p.precio) * (Number(l.cantidad) || 0) * (1 - (Number(l.descuento) || 0) / 100))), true)}</b>
+                  <b className="fz-num fa-tk__importe">{dinero(importe, true)}</b>
+                  <button type="button" className="fa-tk__quitar" onClick={() => quitar(i)} aria-label={`Quitar ${l.p.producto.nombre}`} title="Quitar">
+                    <Icono n="x" chico />
+                  </button>
                 </div>
+              )
+            })}
+            {lineas.length > 0 && (
+              <div className="fa-totales">
+                <span>Subtotal {dinero(pesos(totales.sub), true)}</span>
+                {totales.desc > 0 && <span>Descuentos −{dinero(pesos(totales.desc), true)}</span>}
+                <b>
+                  {articulos} {articulos === 1 ? 'artículo' : 'artículos'}
+                </b>
               </div>
-              {regulado && (
-                <div className="fa-linea__receta">
-                  {l.recetaId ? (
-                    <span className="fz-chico">
-                      Receta <b>{l.recetaFolio}</b>{' '}
-                      <button type="button" className="fz-link" onClick={() => setModal({ tipo: 'receta', i })}>
-                        Cambiar
+            )}
+          </section>
+        </div>
+
+        <aside className="fa-vender__der fz-tarjeta cl-caja" aria-label="Cobro">
+          <div className="fz-entre">
+            <span className="fz-eyebrow">Total a cobrar</span>
+            {lineas.length > 0 && totales.desc > 0 && <span className="fz-chico fz-tenue">con descuento</span>}
+          </div>
+          <b className="fa-caja__total fz-num">{dinero(pesos(totales.tot), true)}</b>
+
+          {lineas.length > 0 && totales.tot > 0 && (
+            <>
+              {pagos.map((x, i) => {
+                const m = metodos.find((y) => y.clave === x.metodo)
+                return (
+                  <div key={i} className="fa-pago">
+                    <div className="fz-seg fa-caja__metodos" role="radiogroup" aria-label="Método de pago">
+                      {metodos.map((y) => (
+                        <button key={y.clave} type="button" className={x.metodo === y.clave ? 'is-on' : ''} onClick={() => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, metodo: y.clave, recibido: y.tipo === 'efectivo' ? z.recibido : '' } : z)))} aria-pressed={x.metodo === y.clave}>
+                          {y.nombre}
+                        </button>
+                      ))}
+                    </div>
+                    {pagos.length > 1 && (
+                      <Campo etiqueta={`Monto ${i + 1}`}>
+                        <input className="fz-input" inputMode="decimal" value={x.monto} onChange={(e) => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, monto: e.target.value } : z)))} />
+                      </Campo>
+                    )}
+                    {m?.tipo === 'efectivo' ? (
+                      <>
+                        <Campo etiqueta="Recibido">
+                          <input className="fz-input fa-caja__recibido" inputMode="decimal" value={x.recibido} onChange={(e) => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, recibido: e.target.value } : z)))} placeholder="Con cuánto paga" />
+                        </Campo>
+                        <div className="fa-billetes" aria-label="Billetes rápidos">
+                          {billetesSugeridos(cent(x.monto)).map((b) => (
+                              <button key={b} type="button" className={`fz-btn fz-btn--claro fz-btn--chico${cent(x.recibido) === b * 100 ? ' is-on' : ''}`} onClick={() => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, recibido: String(b) } : z)))}>
+                                ${b.toLocaleString('es-MX')}
+                              </button>
+                            ))}
+                          <button type="button" className="fz-btn fz-btn--claro fz-btn--chico" onClick={() => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, recibido: z.monto } : z)))}>
+                            Exacto
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <Campo etiqueta={m?.tipo === 'terminal' ? 'Autorización' : 'Referencia'} ayuda={m?.porConfirmar ? 'Queda por confirmar' : undefined}>
+                        <input className="fz-input" value={x.referencia} onChange={(e) => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, referencia: e.target.value } : z)))} />
+                      </Campo>
+                    )}
+                    {pagos.length > 1 && (
+                      <button type="button" className="fz-link" onClick={() => setPagos((ps) => ps.filter((_, k) => k !== i))}>
+                        Quitar este pago
                       </button>
-                    </span>
-                  ) : (
-                    <Boton chico tono="teal" onClick={() => setModal({ tipo: 'receta', i })}>
-                      Ligar receta (Grupo {l.p.producto.grupo})
-                    </Boton>
-                  )}
-                  {l.p.producto.grupo === 'I' && (
-                    <label className="cl-check">
-                      <input type="checkbox" checked={l.originalRecibido} onChange={(e) => setLinea(i, { originalRecibido: e.target.checked })} />
-                      <span>Recibí el original de la receta cuantificada</span>
-                    </label>
-                  )}
+                    )}
+                  </div>
+                )
+              })}
+              {pagos.length < metodos.length && (
+                <Boton chico onClick={() => setPagos((ps) => [...ps, { metodo: metodos.find((m) => !ps.some((x) => x.metodo === m.clave))?.clave ?? metodos[0].clave, monto: falta > 0 ? String(pesos(falta)) : '', recibido: '', referencia: '' }])}>
+                  <Icono n="mas" chico /> Pago mixto
+                </Boton>
+              )}
+              {falta !== 0 && <p className="fa-sale">{falta > 0 ? `Faltan ${dinero(pesos(falta), true)}` : `Sobran ${dinero(pesos(-falta), true)}: en efectivo escribe lo recibido aparte`}</p>}
+              {cambio > 0 && (
+                <div className="fa-caja__cambio">
+                  <span>Cambio</span>
+                  <b className="fz-num">{dinero(pesos(cambio), true)}</b>
                 </div>
               )}
-              {l.autorizarMascota && <p className="fz-chico fz-tenue">Autorización solicitada: {l.autorizarMascota}</p>}
-            </div>
-          )
-        })}
-        {lineas.length > 0 && (
-          <div className="fa-totales">
-            {totales.desc > 0 && <span>Subtotal {dinero(pesos(totales.sub), true)}</span>}
-            {totales.desc > 0 && <span>Descuento −{dinero(pesos(totales.desc), true)}</span>}
-            <b>Total {dinero(pesos(totales.tot), true)}</b>
-          </div>
-        )}
-      </section>
-
-      {lineas.length > 0 && totales.tot > 0 && (
-        <section className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-          <div className="fz-entre">
-            <h2 className="fz-h2">Pago</h2>
-            {pagos.length < metodos.length && (
-              <Boton chico onClick={() => setPagos((ps) => [...ps, { metodo: metodos.find((m) => !ps.some((x) => x.metodo === m.clave))?.clave ?? metodos[0].clave, monto: falta > 0 ? String(pesos(falta)) : '', recibido: '', referencia: '' }])}>
-                <Icono n="mas" chico /> Otro método
+            </>
+          )}
+          <ErrorForm error={error} />
+          <div className="fa-caja__cobrar">
+            <Boton tono="navy" className="fa-caja__boton" onClick={() => void enviar()} disabled={!puedeCobrar}>
+              {cobrarTexto}
+            </Boton>
+            {lineas.length > 0 && (
+              <Boton onClick={reiniciar} disabled={ocupado}>
+                Vaciar
               </Boton>
             )}
           </div>
-          {pagos.map((x, i) => {
-            const m = metodos.find((y) => y.clave === x.metodo)
-            return (
-              <div key={i} className="fa-pago">
-                <div className="fz-seg" role="radiogroup" aria-label="Método de pago">
-                  {metodos.map((y) => (
-                    <button key={y.clave} type="button" className={x.metodo === y.clave ? 'is-on' : ''} onClick={() => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, metodo: y.clave, recibido: y.tipo === 'efectivo' ? z.recibido : '' } : z)))} aria-pressed={x.metodo === y.clave}>
-                      {y.nombre}
-                    </button>
-                  ))}
-                </div>
-                <div className="cl-grid cl-grid--3">
-                  <Campo etiqueta="Monto">
-                    <input className="fz-input" inputMode="decimal" value={x.monto} onChange={(e) => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, monto: e.target.value } : z)))} />
-                  </Campo>
-                  {m?.tipo === 'efectivo' ? (
-                    <Campo etiqueta="Recibido" ayuda={x.recibido && cent(x.recibido) >= cent(x.monto) ? `Cambio ${dinero(pesos(cent(x.recibido) - cent(x.monto)), true)}` : undefined}>
-                      <input className="fz-input" inputMode="decimal" value={x.recibido} onChange={(e) => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, recibido: e.target.value } : z)))} placeholder="Con cuánto paga" />
-                    </Campo>
-                  ) : (
-                    <Campo etiqueta={m?.tipo === 'terminal' ? 'Autorización' : 'Referencia'} ayuda={m?.porConfirmar ? 'Queda por confirmar' : undefined}>
-                      <input className="fz-input" value={x.referencia} onChange={(e) => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, referencia: e.target.value } : z)))} />
-                    </Campo>
-                  )}
-                  {pagos.length > 1 && (
-                    <div style={{ alignSelf: 'end' }}>
-                      <button type="button" className="fz-link" onClick={() => setPagos((ps) => ps.filter((_, k) => k !== i))}>
-                        Quitar pago
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {m?.tipo === 'efectivo' && (
-                  <div className="fa-billetes" aria-label="Billetes rápidos">
-                    {[50, 100, 200, 500, 1000].filter((b) => b * 100 >= cent(x.monto)).slice(0, 4).map((b) => (
-                      <button key={b} type="button" className="fz-btn fz-btn--claro fz-btn--chico" onClick={() => setPagos((ps) => ps.map((z, k) => (k === i ? { ...z, recibido: String(b) } : z)))}>
-                        ${b}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-          {falta !== 0 && <p className={falta > 0 ? 'fa-sale' : 'fa-sale'}>{falta > 0 ? `Faltan ${dinero(pesos(falta), true)}` : `Sobran ${dinero(pesos(-falta), true)}: en efectivo escribe lo recibido aparte`}</p>}
-        </section>
-      )}
+        </aside>
+      </div>
 
-      <ErrorForm error={error} />
+      {/* Teléfono y tableta: barra fija de abajo (como antes). */}
       <div className="fa-cobrar">
         <div>
-          <span className="fz-chico fz-tenue">{lineas.length} producto{lineas.length === 1 ? '' : 's'}</span>
+          <span className="fz-chico fz-tenue">
+            {articulos} {articulos === 1 ? 'artículo' : 'artículos'}
+          </span>
           <b className="fa-cobrar__total">{dinero(pesos(totales.tot), true)}</b>
           {cambio > 0 && <span className="fz-chico">Cambio {dinero(pesos(cambio), true)}</span>}
         </div>

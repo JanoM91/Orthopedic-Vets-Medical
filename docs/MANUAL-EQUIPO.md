@@ -36,12 +36,14 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia 
 
 ## Farmacia
 
-**Mostrador** (Trabajo → Mostrador, o Farmacia → Mostrador)
+**Mostrador** (Trabajo → Mostrador, o Farmacia → Mostrador; en Farmacia → Inicio es el botón principal «Vender»)
+En computadora la pantalla va en dos columnas: el ticket a la izquierda y el cobro siempre visible a la derecha. En el celular, el ticket arriba y la barra «Cobrar» abajo.
 1. Escanea el código (lector o cámara) o busca por nombre.
-2. Opcional: «Agregar mascota» → revisa especie, peso, edad y alergias. Si algo choca, no deja vender; el encargado puede autorizar con motivo.
-3. Grupo II y I: «Ligar receta». Grupo I además «Recibí el original».
-4. Pago: efectivo (escribe con cuánto paga y ve el cambio), terminal, transferencia (queda por confirmar) o una mezcla con «Otro método».
-5. **Cobrar**. Ticket para imprimir o mandar por correo.
+2. Opcional: chip «+ Mascota» → revisa especie, peso, edad y alergias (salen como chip rojo). Si algo choca, no deja vender; el encargado puede autorizar con motivo.
+3. Grupo II y I: «Ligar receta» en el producto; ligada, aparece como chip arriba del ticket. Grupo I además «Recibí el original».
+4. Cantidad con − y +; «descuento» abre el porcentaje de ese producto.
+5. Pago: elige el método; en efectivo toca el billete con que pagan (se sugieren montos redondos) o «Exacto», y ves el cambio. «Pago mixto» agrega otro método.
+6. **Cobrar $…**. Ticket para imprimir o mandar por correo.
 - Un descuento o un medicamento con receta piden la **contraseña del encargado** en el momento.
 - Si te quedas sin señal y vuelves a cobrar, no se cobra dos veces.
 

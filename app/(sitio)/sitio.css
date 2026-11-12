@@ -100,3 +100,12 @@ a { color: var(--st-accent); }
 /* En el teléfono el logotipo ya está en la cabecera: el del hero baja de tamaño o se oculta para que el botón de cita quede a la vista. */
 @media (max-width: 819px) { .st-hero__logo { width: 150px; } .st-hero__in { padding-block: 36px 40px; } }
 @media (max-width: 599px) { .st-hero__logo { display: none; } }
+
+/* Iconos de servicio (nov-2026, components/IconoServicio.tsx) */
+.st-servicio__cab { display: flex; align-items: center; gap: 12px; }
+.svc-insignia { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; }
+.svc-insignia--clinica { background: #e3f8f2; color: #0b6b59; }
+.svc-insignia--diagnostico { background: #e8eef6; color: #2c4a6e; }
+.svc-insignia--quirurgico { background: #fbe9e3; color: #9a3412; }
+.svc-insignia--estetica { background: #f3eaf6; color: #6d3a80; }
+.svc-insignia--movimiento { background: #fdf1dc; color: #8a5a0a; }

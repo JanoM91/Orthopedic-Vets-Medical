@@ -31,7 +31,7 @@ const VIEWPORTS = [
 if (process.env.VP) VIEWPORTS.splice(0, VIEWPORTS.length, ...VIEWPORTS.filter((v) => process.env.VP.split(',').includes(v.n)))
 
 const anon = ['/', '/servicios', '/aviso-de-privacidad', '/portal/entrar', '/portal/registro', '/portal/olvide', '/admin/login', '/admin/forgot']
-const tutor = ['/portal', '/portal/vincular', '/portal/citas', '/portal/citas/nueva', '/portal/cuenta', '/portal/mascotas/1', '/portal/mascotas/1?ver=cartilla', '/portal/mascotas/1?ver=peso', '/portal/mascotas/1?ver=documentos']
+const tutor = ['/portal', '/portal/vincular', '/portal/mascotas', '/portal/servicios', '/portal/citas', '/portal/citas/nueva', '/portal/citas/nueva?servicio=1', '/portal/cuenta', '/portal/mascotas/1', '/portal/mascotas/1?ver=cartilla', '/portal/mascotas/1?ver=peso', '/portal/mascotas/1?ver=documentos']
 const fz = ['', '/registrar', '/voz', '/pendientes', '/movimientos', '/operacion/1', '/saldos', '/fondos', '/mover'].map((r) => '/admin/finanzas' + r)
 const cl = ['', '/agenda', '/clientes/1', '/clientes/nuevo', '/mascotas/1', '/mascotas/1?ver=cartilla', '/mascotas/1?ver=pesos', '/mascotas/1?ver=notas', '/mascotas/1?ver=recetas', '/mascotas/1?ver=documentos', '/mascotas/1?ver=citas', '/mascotas/nueva', '/importar'].map((r) => '/admin/clinica' + r)
 const fa = ['', '/vender', '/ventas', '/ventas/1', '/recetas', '/recetas/1', '/recetas/nueva', '/cierre', '/productos', '/productos/1', '/productos/nuevo', '/inventario', '/compras', '/compras/1', '/compras/nueva', '/conteo', '/alertas', '/reabasto', '/promociones', '/importar', '/configuracion'].map((r) => '/admin/farmacia' + r)

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import React from 'react'
 import { site } from '../../lib/site'
 import { Carriles } from '../../components/Carriles'
+import { IndicadorNavegacion } from '../../components/Cargando'
+import { metadatosInstalables } from '../../lib/appInstalable'
 import './portal.css'
 
 /**
@@ -15,6 +17,7 @@ export const metadata: Metadata = {
   title: { default: `Portal · ${site.brand.name}`, template: `%s · ${site.brand.name}` },
   description: `Portal para tutores de ${site.brand.name}: mascotas, cartilla, peso y documentos.`,
   robots: { index: false },
+  ...metadatosInstalables('portal'),
 }
 export const viewport: Viewport = { themeColor: site.brand.primary, width: 'device-width', initialScale: 1, viewportFit: 'cover' }
 
@@ -28,6 +31,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <body className="pt-body">
         {children}
         <Carriles />
+        <IndicadorNavegacion />
       </body>
     </html>
   )

@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import React from 'react'
 import { FormVincular } from '../../../../components/portal/Formularios'
-import { Barra, Cabecera } from '../../../../components/portal/comun'
+import { Barra, Cabecera, SalidaWhatsApp } from '../../../../components/portal/comun'
 import { sesionTutor } from '../../../../lib/portal/sesion'
+import { contactoClinica } from '../../../../lib/sitio/contacto'
 import { site } from '../../../../lib/site'
 
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,7 @@ export default async function Vincular() {
         <div className="pt-card">
           <FormVincular />
         </div>
+        {!c.tutor.cliente && <SalidaWhatsApp whatsapp={(await contactoClinica(c.payload)).whatsapp} motivo="codigo" />}
         {c.tutor.cliente ? <div className="pt-aviso pt-aviso--info">Tu cuenta ya está vinculada a una ficha. Si vinculas otro código, pasará a esa ficha.</div> : null}
       </main>
       <Barra activa="inicio" />

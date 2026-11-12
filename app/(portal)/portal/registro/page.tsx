@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import React from 'react'
 import { FormRegistro } from '../../../../components/portal/Formularios'
-import { Cabecera } from '../../../../components/portal/comun'
+import { Cabecera, SalidaWhatsApp } from '../../../../components/portal/comun'
 import { sesionTutor } from '../../../../lib/portal/sesion'
+import { contactoDelPortal } from '../../../../lib/portal/contacto'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,7 @@ export default async function Registro() {
         <div className="pt-card">
           <FormRegistro />
         </div>
+        <SalidaWhatsApp whatsapp={(await contactoDelPortal()).whatsapp} motivo="primera" />
       </main>
     </>
   )

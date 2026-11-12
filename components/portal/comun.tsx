@@ -26,6 +26,7 @@ const TRAZOS: Record<string, React.ReactNode> = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   sol: (<><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4" /></>),
   luna: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />,
+  wa: (<><path d="M4 20l1.3-3.9A8 8 0 1 1 8.2 19z" /><path d="M9.5 9.5c0 3 2 5 5 5l1.2-1.2-1.8-.9-.8.8c-1-.4-1.8-1.2-2.2-2.2l.8-.8-.9-1.8z" /></>),
 }
 export function Icono({ n }: { n: string }) {
   return (
@@ -158,5 +159,22 @@ export function TarjetaContacto({ mascota, contacto }: { mascota?: string | null
         )}
       </div>
     </div>
+  )
+}
+
+/** Salida por WhatsApp (nov-2026) para quien aún no puede pedir cita en el portal: primera vez o sin código de vinculación. Sin WhatsApp configurado no se muestra. */
+export function SalidaWhatsApp({ whatsapp, motivo }: { whatsapp: string | null; motivo: 'primera' | 'codigo' }) {
+  const liga = enlaceWhatsApp(whatsapp, motivo === 'primera' ? mensajes.primeraVez(site.brand.name) : mensajes.codigoPortal(site.brand.name))
+  if (!liga) return null
+  return (
+    <a href={liga} target="_blank" rel="noreferrer" className="pt-primera">
+      <span className="pt-primera__icono">
+        <Icono n="wa" />
+      </span>
+      <span className="pt-primera__texto">
+        <b>{motivo === 'primera' ? '¿Aún no eres cliente?' : '¿No tienes tu código?'}</b>
+        <span>{motivo === 'primera' ? 'Escríbenos por WhatsApp y te agendamos.' : 'Pídelo por WhatsApp y te lo enviamos.'}</span>
+      </span>
+    </a>
   )
 }

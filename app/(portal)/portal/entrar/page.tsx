@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import React from 'react'
 import { FormEntrar } from '../../../../components/portal/Formularios'
-import { Cabecera } from '../../../../components/portal/comun'
+import { Cabecera, SalidaWhatsApp } from '../../../../components/portal/comun'
 import { sesionTutor } from '../../../../lib/portal/sesion'
+import { contactoDelPortal } from '../../../../lib/portal/contacto'
 import { site } from '../../../../lib/site'
 
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,7 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
         <div className="pt-card">
           <FormEntrar siguiente={siguiente?.startsWith('/portal') ? siguiente : undefined} />
         </div>
+        <SalidaWhatsApp whatsapp={(await contactoDelPortal()).whatsapp} motivo="primera" />
       </main>
     </>
   )

@@ -48,4 +48,7 @@ export const mensajes = {
     `Hola ${tutor}, te escribimos de ${clinica} para recordarte la cita de ${mascota} (${servicio}) el ${fechaLarga(dia)} a las ${horaLegible(hora)}. ¿Nos confirmas tu asistencia?`,
   mascota: (tutor: string, mascota: string, clinica: string) => `Hola ${tutor}, te escribimos de ${clinica} sobre ${mascota}.`,
   aLaClinica: (mascota?: string | null) => `Hola, tengo una duda${mascota ? ` sobre ${mascota}` : ''}.`,
+  /** Sitio y portal (nov-2026): quien aún no tiene cuenta o ficha no se queda sin salida. */
+  primeraVez: (clinica: string, servicio?: string | null) => `Hola, es mi primera vez en ${clinica} y quiero agendar ${servicio ? `una cita de ${servicio}` : 'una cita'} para mi mascota.`,
+  codigoPortal: (clinica: string) => `Hola, ya tengo cuenta en el portal de ${clinica}. ¿Me pueden dar mi código de vinculación?`,
 }

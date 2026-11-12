@@ -84,3 +84,5 @@ Marca **OVM Centro Veterinario** (27-oct-2026, decisión de Jano; dominio `ovets
 ## Convenciones
 
 Contenido visible en español de México; código y commits en inglés, convencionales. Secretos solo en variables de entorno; `NEXT_PUBLIC_*` nunca como «Sensitive» en Vercel.
+
+**Documentación de cada PR (desde el 12-nov-2026, pedido de Jano):** toda rama trae `docs/pr/<rama>.md` (qué cambia, por qué, cómo probarlo, migraciones y variables, verificación real, riesgos, docs tocadas; formato en `docs/pr/README.md` y `.github/pull_request_template.md`) y la entrega incluye la liga de GitHub `compare/main...<rama>?expand=1&title=…&body=…` con ese texto, para que el PR se abra ya con contexto. Además, cada regla nueva que cambie cómo se trabaja el código va a este archivo y el detalle funcional a `docs/`. PRs anteriores: `docs/pr/HISTORIAL.md`.

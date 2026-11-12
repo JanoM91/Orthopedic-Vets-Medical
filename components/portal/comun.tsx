@@ -19,6 +19,13 @@ const TRAZOS: Record<string, React.ReactNode> = {
   cal: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
   calmas: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5" /></>),
   link: (<><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>),
+  servicios: (<><path d="M5 3v5a4 4 0 0 0 8 0V3" /><path d="M9 12v2.5a5.5 5.5 0 0 0 11 0V13" /><circle cx="20" cy="11" r="2" /></>),
+  camara: (<><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13.5" r="3.5" /></>),
+  reloj: (<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
+  ubicacion: (<><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>),
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  sol: (<><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4" /></>),
+  luna: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />,
 }
 export function Icono({ n }: { n: string }) {
   return (
@@ -47,8 +54,17 @@ export function hoyISO(): string {
   return diaLocal(new Date())
 }
 
-export function Avatar({ nombre, especie, grande }: { nombre: string; especie?: string; grande?: boolean }) {
-  return <span className={`pt-avatar${especie === 'perro' ? ' is-perro' : especie === 'gato' ? ' is-gato' : ''}${grande ? ' pt-avatar--grande' : ''}`}>{iniciales(nombre)}</span>
+/** Foto de la mascota o, si no hay, sus iniciales sobre el color de su especie. */
+export function Avatar({ nombre, especie, grande, foto }: { nombre: string; especie?: string; grande?: boolean; foto?: string | null }) {
+  const clase = `pt-avatar${especie === 'perro' ? ' is-perro' : especie === 'gato' ? ' is-gato' : ''}${grande ? ' pt-avatar--grande' : ''}`
+  if (foto)
+    return (
+      <span className={`${clase} pt-avatar--foto`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={foto} alt={nombre} loading="lazy" decoding="async" />
+      </span>
+    )
+  return <span className={clase}>{iniciales(nombre)}</span>
 }
 
 export function Pill({ tono, children }: { tono: 'ok' | 'warn' | 'bad' | 'info' | 'gris'; children: React.ReactNode }) {
@@ -78,7 +94,7 @@ export function Cabecera({ nombre }: { nombre?: string }) {
 export function Barra({ activa }: { activa: 'inicio' | 'mascotas' | 'citas' | 'cuenta' }) {
   const items: [typeof activa, string, string, string][] = [
     ['inicio', '/portal', 'inicio', 'Inicio'],
-    ['mascotas', '/portal#mascotas', 'paw', 'Mascotas'],
+    ['mascotas', '/portal/mascotas', 'paw', 'Mascotas'],
     ['citas', '/portal/citas', 'cal', 'Citas'],
     ['cuenta', '/portal/cuenta', 'user', 'Mi cuenta'],
   ]

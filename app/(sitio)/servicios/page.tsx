@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import React from 'react'
 import { BotonesCita, Cabecera, Pie } from '../../../components/sitio/Piezas'
 import { contenidoSitio } from '../../../lib/sitio/contenido'
+import { InsigniaServicio } from '../../../components/IconoServicio'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Servicios' }
@@ -23,7 +24,10 @@ export default async function Servicios() {
             <div className="st-servicios">
               {g.servicios.map((s) => (
                 <article key={s.id} id={`s-${s.id}`} className="st-card">
-                  <h3>{s.nombre}</h3>
+                  <div className="st-servicio__cab">
+                    <InsigniaServicio clave={s.icono} />
+                    <h3>{s.nombre}</h3>
+                  </div>
                   <p className="st-tenue st-chico">
                     ≈ {s.duracionMin} min{s.precio ? ` · $${s.precio.toLocaleString('es-MX')}` : ''}
                     {!s.enLinea ? ' · se agenda por teléfono' : ''}

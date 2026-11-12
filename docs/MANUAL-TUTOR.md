@@ -22,7 +22,9 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 
 ## Citas
 
-- **Pedir**: Citas → «Pedir cita» → mascota, servicio, día y hora disponible. Puedes dejar una nota (por ejemplo, «tiene la piel sensible»).
+- **Pedir**: Inicio → «Pedir cita» (o «Servicios» → «Pedir cita») → elige a tu mascota, el servicio y un día del calendario. Los días en verde tienen horas libres; en amarillo quedan pocas; los tachados están llenos. Luego toca una hora libre (las ocupadas se ven tachadas) y «Pedir cita». Puedes dejar una nota (por ejemplo, «tiene la piel sensible»).
+- **Foto de tu mascota**: en Inicio o en «Mascotas», toca la cámara de su tarjeta y toma o elige una foto. También se cambia o se quita desde la ficha de la mascota. La ve la clínica.
+- **Instalar el portal en tu celular**: en el iPhone, Safari → Compartir → «Agregar a pantalla de inicio»; en Android, Chrome → menú ⋮ → «Instalar app» o «Agregar a pantalla principal». Queda con el logo de la clínica.
 - La cita queda **por confirmar**; te llega un correo cuando la recibimos y otro cuando la confirmamos.
 - **Un día antes, a las 6 de la tarde**, te mandamos un recordatorio por correo.
 - **Cambiar o cancelar**: desde la cita, con la anticipación que indique la clínica. Si ya es muy tarde, llámanos.

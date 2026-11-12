@@ -10,10 +10,11 @@ import { registrar as registrarEnFinanzas } from '../finanzas/servicio'
 import { instanteDesdeLocal, minutosDesdeTexto, partesLocales, textoDesdeMinutos } from '../localTime'
 import { calcularPermisos } from '../permisosBase'
 import { site } from '../site'
+import { iconoDeServicio } from '../iconosServicio'
 import { fechaLarga, horaLegible } from '../whatsapp'
 import { avisarCita } from './avisos'
-import { type Ctx, type CtxTutor, ErrorClinica, idDe, vistaMascota } from './servicio'
-import type { CitaVista, ConfiguracionAgenda, DisponibilidadDia, RecursoVista, ServicioVista } from './tipos'
+import { type Ctx, type CtxTutor, ErrorClinica, idDe, urlFoto, vistaMascota } from './servicio'
+import type { CitaVista, ConfiguracionAgenda, DiaCalendario, DisponibilidadDia, RecursoVista, ServicioVista } from './tipos'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -95,6 +96,8 @@ const vistaServicio = (s: Servicio): ServicioVista => ({
   reservaEnLinea: s.reservaEnLinea,
   activo: s.activo ?? true,
   orden: s.orden ?? 0,
+  icono: iconoDeServicio(s.nombre, s.icono),
+  iconoFijado: s.icono ?? 'auto',
 })
 const nombreDe = (v: unknown, campo = 'nombre'): string => (v && typeof v === 'object' ? String((v as Record<string, unknown>)[campo] ?? '') : '')
 
@@ -105,9 +108,9 @@ export function vistaCita(c: Cita, hoy: string): CitaVista {
   return {
     id: c.id,
     folio: folioParaId('CIT', c.id),
-    mascota: m ? { id: m.id, nombre: m.nombre, especie: m.especie, folio: folioParaId('MAS', m.id), alertas: [...(m.alertasManejo ?? []).map((a) => a.texto), m.alergias ? `Alergia: ${m.alergias}` : ''].filter(Boolean) } : { id: idDe(c.mascota) ?? 0, nombre: 'Mascota', especie: 'otra', folio: '', alertas: [] },
+    mascota: m ? { id: m.id, nombre: m.nombre, especie: m.especie, folio: folioParaId('MAS', m.id), alertas: [...(m.alertasManejo ?? []).map((a) => a.texto), m.alergias ? `Alergia: ${m.alergias}` : ''].filter(Boolean), foto: urlFoto(m.id, m.fotoFecha) } : { id: idDe(c.mascota) ?? 0, nombre: 'Mascota', especie: 'otra', folio: '', alertas: [], foto: null },
     cliente: cl ? { id: cl.id, nombre: cl.nombreCompleto || cl.nombre, telefono: cl.telefono ?? null } : null,
-    servicio: { id: idDe(c.servicio) ?? 0, nombre: nombreDe(c.servicio) },
+    servicio: { id: idDe(c.servicio) ?? 0, nombre: nombreDe(c.servicio), icono: iconoDeServicio(nombreDe(c.servicio), typeof c.servicio === 'object' && c.servicio ? c.servicio.icono : null) },
     recurso: { id: idDe(c.recurso) ?? 0, nombre: nombreDe(c.recurso) },
     profesional: prof ? { id: prof.id, nombre: prof.name || prof.email } : null,
     dia: c.dia,
@@ -190,24 +193,61 @@ export async function disponibilidad(payload: Payload, servicioId: number, d: st
   if (opciones.paraPortal && servicio.reservaEnLinea === 'no') throw invalido('Ese servicio no se pide en línea. Llámanos.')
   const recursoId = opciones.recursoId ?? idDe(servicio.recursoPorDefecto)!
   const cfg = await configuracion(payload)
+  const ocupadas = (await citasQueOcupan(payload, recursoId, d)).filter((c) => c.id !== opciones.ignorarCita)
+  return huecosDelDia(cfg, servicio.duracionMin, recursoId, d, ocupadas, Boolean(opciones.paraPortal))
+}
+
+/** El cálculo de un día con las citas ya leídas (lo comparten `disponibilidad` y `calendario`). */
+function huecosDelDia(cfg: Awaited<ReturnType<typeof configuracion>>, duracionMin: number, recursoId: number, d: string, ocupadas: Cita[], paraPortal: boolean): DisponibilidadDia {
   const h = cfg.horarioMin.find((x) => x.dia === diaDeSemana(d))
   const ahora = ahoraLocal()
   const huecos: DisponibilidadDia['huecos'] = []
-  if (opciones.paraPortal) {
+  if (paraPortal) {
     const limite = new Date(Date.now() + cfg.diasAdelante * 86400000)
     if (d < ahora.dia) return { dia: d, abierto: false, huecos: [], motivo: 'Ese día ya pasó.' }
     if (instante(d, 0).getTime() > limite.getTime()) return { dia: d, abierto: false, huecos: [], motivo: `Solo se puede pedir hasta ${cfg.diasAdelante} días adelante.` }
   }
   if (!h || !h.abierto) return { dia: d, abierto: false, huecos: [], motivo: 'La clínica no abre ese día.' }
-  const ocupadas = (await citasQueOcupan(payload, recursoId, d)).filter((c) => c.id !== opciones.ignorarCita)
-  const minimoPortal = opciones.paraPortal ? Date.now() + cfg.anticipacionHoras * 3600000 : 0
-  for (let t = h.de; t + servicio.duracionMin <= h.a; t += cfg.intervaloMin) {
-    const ini = instante(d, t), fin = instante(d, t + servicio.duracionMin)
+  const minimoPortal = paraPortal ? Date.now() + cfg.anticipacionHoras * 3600000 : 0
+  for (let t = h.de; t + duracionMin <= h.a; t += cfg.intervaloMin) {
+    const ini = instante(d, t), fin = instante(d, t + duracionMin)
     const choca = ocupadas.some((c) => new Date(c.inicio).getTime() < fin.getTime() && new Date(c.fin).getTime() > ini.getTime())
-    const pasado = ini.getTime() < (opciones.paraPortal ? minimoPortal : Date.now() - 86400000 * 365) // el equipo puede capturar citas pasadas (registro histórico)
+    const pasado = ini.getTime() < (paraPortal ? minimoPortal : Date.now() - 86400000 * 365) // el equipo puede capturar citas pasadas (registro histórico)
     huecos.push({ hora: textoDesdeMinutos(t), disponible: !choca && !pasado })
   }
-  return { dia: d, abierto: true, huecos, recursoId, duracionMin: servicio.duracionMin }
+  return { dia: d, abierto: true, huecos, recursoId, duracionMin }
+}
+
+const sumarDia = (d: string, n: number): string => {
+  const x = new Date(d + 'T12:00:00Z')
+  x.setUTCDate(x.getUTCDate() + n)
+  return x.toISOString().slice(0, 10)
+}
+
+/**
+ * Calendario del portal (nov-2026): para cada día del rango, si hay horas
+ * libres, cuántas, o por qué no se puede (cerrado, lleno, fuera de la ventana).
+ * Una sola consulta de citas para todo el rango (máximo 62 días). No revela
+ * citas de nadie: solo libre u ocupado.
+ */
+export async function calendario(payload: Payload, servicioId: number, desde: string, hasta: string, opciones: { paraPortal?: boolean; ignorarCita?: number } = {}): Promise<DiaCalendario[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta) || hasta < desde) throw invalido('Rango de días no válido.')
+  const dias: string[] = []
+  for (let d = desde; d <= hasta && dias.length < 62; d = sumarDia(d, 1)) dias.push(d)
+  const servicio = await payload.findByID({ collection: 'servicios', id: servicioId, depth: 0, overrideAccess: true }).catch(() => null)
+  if (!servicio || !servicio.activo) throw invalido('Ese servicio no está disponible.')
+  if (opciones.paraPortal && servicio.reservaEnLinea === 'no') throw invalido('Ese servicio no se pide en línea. Llámanos.')
+  const recursoId = idDe(servicio.recursoPorDefecto)!
+  const cfg = await configuracion(payload)
+  const citas = (
+    await payload.find({ collection: 'citas', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ recurso: { equals: recursoId } }, { dia: { greater_than_equal: dias[0] } }, { dia: { less_than_equal: dias[dias.length - 1] } }, { estado: { in: ESTADOS_OCUPAN } }] } })
+  ).docs.filter((c) => c.id !== opciones.ignorarCita)
+  return dias.map((d) => {
+    const r = huecosDelDia(cfg, servicio.duracionMin, recursoId, d, citas.filter((c) => c.dia === d), Boolean(opciones.paraPortal))
+    const libres = r.huecos.filter((x) => x.disponible).length
+    const estado: DiaCalendario['estado'] = !r.abierto ? (r.motivo?.startsWith('La clínica') ? 'cerrado' : 'fuera') : libres === 0 ? 'lleno' : libres <= Math.max(2, Math.floor(r.huecos.length / 4)) ? 'pocos' : 'libre'
+    return { dia: d, estado, libres, total: r.huecos.length }
+  })
 }
 
 /* ───────────────────────────── crear y mover ───────────────────────────── */
@@ -478,7 +518,7 @@ function actorTutor(c: CtxTutor): Extract<Actor, { tipo: 'tutor' }> {
 }
 const accesoTutor = (c: CtxTutor) => ({ user: c.tutor as Tutor & { collection: 'tutores' }, overrideAccess: false as const })
 
-export async function portalCitas(c: CtxTutor): Promise<{ proximas: CitaVista[]; pasadas: CitaVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda; mascotas: { id: number; nombre: string; especie: string }[] }> {
+export async function portalCitas(c: CtxTutor): Promise<{ proximas: CitaVista[]; pasadas: CitaVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda; mascotas: { id: number; nombre: string; especie: string; foto: string | null }[] }> {
   const [citas, cat, mascotas] = await Promise.all([
     c.payload.find({ collection: 'citas', depth: 1, pagination: false, sort: '-inicio', ...accesoTutor(c) }),
     catalogoAgenda(c.payload, true),
@@ -491,12 +531,16 @@ export async function portalCitas(c: CtxTutor): Promise<{ proximas: CitaVista[];
     pasadas: todas.filter((x) => !abierta(x)),
     servicios: cat.servicios,
     configuracion: cat.configuracion,
-    mascotas: mascotas.docs.map((m) => ({ id: m.id, nombre: m.nombre, especie: m.especie })),
+    mascotas: mascotas.docs.map((m) => ({ id: m.id, nombre: m.nombre, especie: m.especie, foto: urlFoto(m.id, m.fotoFecha) })),
   }
 }
 export async function portalDisponibilidad(c: CtxTutor, servicioId: number, d: string, ignorarCita?: number): Promise<DisponibilidadDia> {
   actorTutor(c)
   return disponibilidad(c.payload, servicioId, d, { paraPortal: true, ignorarCita })
+}
+export async function portalCalendario(c: CtxTutor, servicioId: number, desde: string, hasta: string, ignorarCita?: number): Promise<DiaCalendario[]> {
+  actorTutor(c)
+  return calendario(c.payload, servicioId, desde, hasta, { paraPortal: true, ignorarCita })
 }
 export async function portalCrearCita(c: CtxTutor, entrada: unknown): Promise<CitaVista> {
   return crear(c.payload, actorTutor(c), entrada, c.hoy)

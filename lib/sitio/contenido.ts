@@ -1,4 +1,5 @@
 import { getPayload } from 'payload'
+import { type ClaveIcono, iconoDeServicio } from '../iconosServicio'
 import config from '@payload-config'
 
 import type { SitioConfiguracion } from '../../payload-types'
@@ -14,7 +15,7 @@ import { site } from '../site'
  * con la API local sin sesión: es información pública.
  */
 
-export type ServicioPublico = { id: number; nombre: string; descripcion: string | null; indicaciones: string | null; duracionMin: number; precio: number | null; enLinea: boolean }
+export type ServicioPublico = { id: number; nombre: string; descripcion: string | null; indicaciones: string | null; duracionMin: number; precio: number | null; enLinea: boolean; icono: ClaveIcono }
 export type GrupoServicios = { area: string; servicios: ServicioPublico[] }
 export type ContenidoSitio = {
   marca: { nombre: string; logo: string; logoClaro: string; primario: string; acento: string; ciudad: string }
@@ -45,7 +46,7 @@ export async function contenidoSitio(): Promise<ContenidoSitio> {
   for (const s of servicios.docs) {
     const area = (s.area && nombreArea.get(idDe(s.area)!)) || 'Otros servicios'
     if (!grupos.has(area)) grupos.set(area, [])
-    grupos.get(area)!.push({ id: s.id, nombre: s.nombre, descripcion: t(s.descripcion), indicaciones: t(s.indicaciones), duracionMin: s.duracionMin, precio: s.precio ?? null, enLinea: s.reservaEnLinea !== 'no' })
+    grupos.get(area)!.push({ id: s.id, nombre: s.nombre, descripcion: t(s.descripcion), indicaciones: t(s.indicaciones), duracionMin: s.duracionMin, precio: s.precio ?? null, enLinea: s.reservaEnLinea !== 'no', icono: iconoDeServicio(s.nombre, s.icono) })
   }
   /* «Otros servicios» al final; el resto en el orden en que aparecen. */
   const lista = [...grupos.entries()].map(([area, s]) => ({ area, servicios: s }))

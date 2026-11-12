@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import React from 'react'
 import { FormAportar } from '../../../../../components/portal/Formularios'
+import { CambiarFoto } from '../../../../../components/portal/Foto'
 import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, GraficaPeso, hoyISO, Icono, Pill, TarjetaContacto, TIPO_CARTILLA_LABEL } from '../../../../../components/portal/comun'
 import { ErrorClinica, portalMascota } from '../../../../../lib/clinica/servicio'
 import { sesionTutor } from '../../../../../lib/portal/sesion'
@@ -38,12 +39,12 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
     <>
       <Cabecera nombre={c.tutor.nombre} />
       <main className="pt-main">
-        <Link href="/portal" className="pt-chico" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <Link href="/portal/mascotas" className="pt-chico" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <Icono n="back" /> Mis mascotas
         </Link>
-        <div className="pt-card pt-card--activa">
+        <div className="pt-card pt-card--activa pt-card--mascota">
           <div className="pt-cabecera-mascota">
-            <Avatar nombre={m.nombre} especie={m.especie} grande />
+            <Avatar nombre={m.nombre} especie={m.especie} foto={m.foto} grande />
             <div style={{ minWidth: 0 }}>
               <p className="pt-chico pt-tenue">{m.folio}</p>
               <h1>{m.nombre}</h1>
@@ -62,6 +63,7 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
               {m.alertasManejo.join(' · ')}
             </p>
           )}
+          {m.estado !== 'fallecido' && <CambiarFoto mascotaId={m.id} nombre={m.nombre} tieneFoto={Boolean(m.foto)} variante="claro" />}
         </div>
 
         <nav className="pt-tabs" aria-label="Secciones">
@@ -81,9 +83,11 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
 
         {tab === 'resumen' && (
           <>
-            <Link href={`/portal/citas/nueva?mascota=${m.id}`} className="pt-btn pt-btn--acento">
-              Pedir cita para {m.nombre}
-            </Link>
+            {m.estado !== 'fallecido' && (
+              <Link href={`/portal/citas/nueva?mascota=${m.id}`} className="pt-btn pt-btn--acento">
+                <Icono n="calmas" /> Pedir cita para {m.nombre}
+              </Link>
+            )}
             <div className="pt-card">
               <h2>Cartilla</h2>
               {vencidas.length > 0 && <div className="pt-aviso pt-aviso--warn">Refuerzo pendiente: {vencidas.map((v) => `${v.producto} (${fecha(v.proximaFecha)})`).join(', ')}. Agenda tu cita en la clínica.</div>}

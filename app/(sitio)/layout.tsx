@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import React from 'react'
 import { site } from '../../lib/site'
+import { metadatosInstalables } from '../../lib/appInstalable'
+import { IndicadorNavegacion } from '../../components/Cargando'
 import './sitio.css'
 
 /**
@@ -13,7 +15,8 @@ export const metadata: Metadata = {
   description: `${site.brand.name}: consulta, cirugía, vacunación, estética y más en ${site.location.city}. Pide tu cita en línea.`,
   metadataBase: new URL(site.url),
   openGraph: { title: site.brand.name, description: `Veterinaria en ${site.location.city}. Pide tu cita en línea.`, type: 'website', locale: 'es_MX', images: ['/logo-mark.png'] },
-  icons: { icon: '/finanzas/favicon-64.png', apple: '/finanzas/apple-icon.png' },
+  /* Logo en la pestaña y «Agregar a pantalla de inicio» = la app del portal (abre /portal). */
+  ...metadatosInstalables('portal'),
 }
 export const viewport: Viewport = { themeColor: site.brand.primary, width: 'device-width', initialScale: 1 }
 
@@ -24,7 +27,10 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
       <head>
         <style dangerouslySetInnerHTML={{ __html: estilo }} />
       </head>
-      <body className="st-body">{children}</body>
+      <body className="st-body">
+        {children}
+        <IndicadorNavegacion />
+      </body>
     </html>
   )
 }

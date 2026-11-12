@@ -166,8 +166,15 @@ export function ErrorForm({ error }: { error: string | null }) {
   )
 }
 
-export function Avatar({ nombre, especie, grande }: { nombre: string; especie?: string; grande?: boolean }) {
+export function Avatar({ nombre, especie, grande, foto }: { nombre: string; especie?: string; grande?: boolean; foto?: string | null }) {
   const tono = especie === 'gato' ? 'is-gato' : especie === 'perro' ? 'is-perro' : especie ? 'is-otra' : 'is-persona'
+  if (foto)
+    return (
+      <span className={`cl-avatar cl-avatar--foto${grande ? ' cl-avatar--grande' : ''}`} aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={foto} alt="" loading="lazy" decoding="async" />
+      </span>
+    )
   return (
     <span className={`cl-avatar ${tono}${grande ? ' cl-avatar--grande' : ''}`} aria-hidden="true">
       {iniciales(nombre)}

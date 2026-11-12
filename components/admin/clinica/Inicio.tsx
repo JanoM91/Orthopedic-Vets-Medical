@@ -101,7 +101,7 @@ export default function Inicio() {
               {res.mascotas.length === 0 && <p className="fz-tenue" style={{ padding: 14 }}>{q ? 'Ninguna mascota coincide.' : 'Todavía no hay mascotas.'}</p>}
               {res.mascotas.map((m) => (
                 <Link key={m.id} href={`${base}/mascotas/${m.id}`} className="fz-fila">
-                  <Avatar nombre={m.nombre} especie={m.especie} />
+                  <Avatar nombre={m.nombre} especie={m.especie} foto={m.foto} />
                   <span className="fz-fila__main">
                     <span className="fz-fila__t1">
                       {m.nombre} {m.estado !== 'activo' && <Pastilla tono="gris">{m.estado}</Pastilla>}

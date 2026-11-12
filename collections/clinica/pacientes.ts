@@ -246,6 +246,8 @@ export const Mascotas: CollectionConfig = {
     },
     { name: 'notasInternas', label: 'Notas internas (el tutor no las ve)', type: 'textarea', access: { read: soloEquipoLee } },
     { name: 'origen', label: 'Origen', type: 'select', options: ORIGEN, defaultValue: 'manual', admin: { position: 'sidebar', readOnly: true } },
+    /* Foto (nov-2026): la imagen vive en `mas-fotos` (una por mascota); aquí solo cuándo cambió, para saber si hay y refrescar la caché. La escribe lib/clinica/servicio.ts. */
+    { name: 'fotoFecha', label: 'Foto actualizada', type: 'text', admin: { hidden: true } },
   ],
 }
 

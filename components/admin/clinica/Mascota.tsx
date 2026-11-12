@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useRef, useState } from 'react'
+import { reducirImagen } from '../../../lib/reducirImagen'
 import type { CartillaVista, CitaVista, ClienteVista, ConfiguracionAgenda, DocumentoVista, Expediente as Exp, MascotaVista, NotaVista, PesoVista, RecursoVista, ResultadoBusqueda, ServicioVista } from '../../../lib/clinica/tipos'
 import { DetalleCita, EstadoCita } from './Agenda'
 import { FormularioCliente } from './Cliente'
@@ -290,6 +291,76 @@ export function FormularioMascota({ existente, clienteInicial, onGuardado, onCan
 
 type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'recetas' | 'documentos' | 'citas'
 
+/**
+ * Foto de la mascota en el expediente (nov-2026): la misma que ve el tutor en
+ * el portal. Se reduce en el navegador (lib/reducirImagen.ts) y se sube a
+ * /api/clinica/mascotas/:id/foto. Quitarla pide confirmación.
+ */
+function FotoExpediente({ m, puedeEditar, onCambio }: { m: MascotaVista; puedeEditar: boolean; onCambio: (m: MascotaVista) => void }) {
+  const entrada = React.useRef<HTMLInputElement>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [quitar, setQuitar] = useState(false)
+  const subir = async (archivo: File) => {
+    setOcupado(true)
+    setError(null)
+    try {
+      const foto = await reducirImagen(archivo, { lado: 720, cuadrada: true })
+      onCambio(await api.subir<MascotaVista>(`mascotas/${m.id}/foto`, new File([foto], 'foto.jpg', { type: 'image/jpeg' })))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo subir la foto.')
+    } finally {
+      setOcupado(false)
+      if (entrada.current) entrada.current.value = ''
+    }
+  }
+  return (
+    <div className="cl-foto-ficha">
+      <Avatar nombre={m.nombre} especie={m.especie} foto={m.foto} grande />
+      {puedeEditar && (
+        <>
+          <input ref={entrada} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && subir(e.target.files[0])} />
+          <button type="button" className="cl-foto-ficha__boton" onClick={() => entrada.current?.click()} disabled={ocupado} aria-label={m.foto ? 'Cambiar foto' : 'Agregar foto'} title={m.foto ? 'Cambiar foto' : 'Agregar foto'}>
+            {ocupado ? <span className="cl-giro" aria-hidden="true" /> : <Icono n="camara" />}
+          </button>
+          {m.foto && (
+            <button type="button" className="cl-foto-ficha__quitar" onClick={() => setQuitar(true)} disabled={ocupado}>
+              Quitar foto
+            </button>
+          )}
+        </>
+      )}
+      {error && (
+        <p className="cl-foto-ficha__error" role="alert">
+          {error}
+        </p>
+      )}
+      {quitar && (
+        <Confirmar
+          titulo={`¿Quitar la foto de ${m.nombre}?`}
+          etiquetaSi="Sí, quitar"
+          tono="peligro"
+          ocupado={ocupado}
+          onNo={() => setQuitar(false)}
+          onSi={async () => {
+            setOcupado(true)
+            try {
+              onCambio(await api.post<MascotaVista>(`mascotas/${m.id}/foto/quitar`))
+              setQuitar(false)
+            } catch (e) {
+              setError(e instanceof Error ? e.message : 'No se pudo quitar.')
+            } finally {
+              setOcupado(false)
+            }
+          }}
+        >
+          También deja de verse en el portal del tutor.
+        </Confirmar>
+      )}
+    </div>
+  )
+}
+
 export function Expediente({ id, pestana }: { id: number; pestana: string | null }) {
   const { base, catalogo, rutaAdmin } = useClinica()
   const p = catalogo.permisos
@@ -328,7 +399,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
     <div className="fz-stack fz-stack--grande">
       <div className="fz-entre">
         <div className="cl-cabecera-ficha">
-          <Avatar nombre={m.nombre} especie={m.especie} grande />
+          <FotoExpediente m={m} puedeEditar={p.editarPacientes} onCambio={(nuevo) => poner({ ...datos, mascota: { ...nuevo, ultimoPeso: m.ultimoPeso } })} />
           <div>
             <p className="fz-eyebrow">
               Mascota · {m.folio} {m.estado !== 'activo' && <Pastilla tono="gris">{m.estado}</Pastilla>}

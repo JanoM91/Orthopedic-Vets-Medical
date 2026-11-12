@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import React from 'react'
 import { AccionesCita, PillCita } from '../../../../components/portal/Citas'
+import { InsigniaServicio } from '../../../../components/IconoServicio'
 import { Avatar, Barra, Cabecera, fecha, Icono } from '../../../../components/portal/comun'
+import { diaCorto } from '../../../../components/portal/Mascotas'
 import { portalCitas } from '../../../../lib/clinica/agenda'
 import { sesionTutor } from '../../../../lib/portal/sesion'
 
@@ -20,8 +22,8 @@ export default async function Citas() {
       <main className="pt-main">
         <div className="pt-acciones" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <h1>Mis citas</h1>
-          <Link href="/portal/citas/nueva" className="pt-btn pt-btn--primario">
-            Pedir cita
+          <Link href="/portal/citas/nueva" className="pt-btn pt-btn--primario pt-btn--chico">
+            <Icono n="calmas" /> Pedir cita
           </Link>
         </div>
         <div className="pt-card pt-lista">
@@ -31,19 +33,19 @@ export default async function Citas() {
           {d.proximas.length === 0 && <p className="pt-tenue" style={{ padding: 16 }}>No tienes citas próximas.</p>}
           {d.proximas.map((x) => (
             <div key={x.id} className="pt-fila" style={{ alignItems: 'flex-start' }}>
-              <Avatar nombre={x.mascota.nombre} especie={x.mascota.especie} />
+              <Avatar nombre={x.mascota.nombre} especie={x.mascota.especie} foto={x.mascota.foto} />
               <span className="pt-fila__main">
                 <span className="pt-fila__t1">
                   {x.servicio.nombre} · {x.mascota.nombre}
                 </span>
-                <span className="pt-fila__t2" style={{ textTransform: 'capitalize' }}>
-                  {fecha(x.dia)} · {x.horaInicio}–{x.horaFin}
+                <span className="pt-fila__t2">
+                  {diaCorto(x.dia)} · {x.horaInicio}–{x.horaFin}
                 </span>
                 <span>
                   <PillCita estado={x.estado} />
                 </span>
                 {x.notasTutor && <span className="pt-fila__t2">Notas: {x.notasTutor}</span>}
-                <AccionesCita cita={x} cancelacionHoras={d.configuracion.cancelacionHoras} />
+                <AccionesCita cita={x} cancelacionHoras={d.configuracion.cancelacionHoras} diasAdelante={d.configuracion.diasAdelante} />
               </span>
             </div>
           ))}
@@ -55,7 +57,7 @@ export default async function Citas() {
             </div>
             {d.pasadas.slice(0, 20).map((x) => (
               <div key={x.id} className="pt-fila">
-                <Icono n="shield" />
+                <InsigniaServicio clave={x.servicio.icono} />
                 <span className="pt-fila__main">
                   <span className="pt-fila__t1">
                     {x.servicio.nombre} · {x.mascota.nombre}

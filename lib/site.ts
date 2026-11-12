@@ -23,6 +23,9 @@ const env = {
   brandLogo: process.env.NEXT_PUBLIC_BRAND_LOGO,
   brandPhone: process.env.NEXT_PUBLIC_BRAND_PHONE,
   locationCity: process.env.NEXT_PUBLIC_LOCATION_CITY,
+  /* App instalable (nov-2026): nombre completo y corto bajo el icono del celular. Opcionales. */
+  appName: process.env.NEXT_PUBLIC_APP_NAME,
+  appShortName: process.env.NEXT_PUBLIC_APP_SHORT_NAME,
   locationTimeZone: process.env.NEXT_PUBLIC_LOCATION_TIMEZONE,
 }
 
@@ -82,6 +85,15 @@ export const site = {
     logo: env.brandLogo?.trim() || '/logo-mark-white.png',
     /** Teléfono de la clínica que se muestra en el portal (texto libre). */
     phone: env.brandPhone?.trim() || '',
+  },
+  /**
+   * La plataforma instalada en el celular (lib/appInstalable.ts): nombre
+   * completo (ficha de instalación, Android) y nombre corto, al que se le agrega
+   * « - Portal» o « - Panel» bajo el icono. Si faltan, se usa el nombre comercial.
+   */
+  app: {
+    name: env.appName?.trim() || env.siteName?.trim() || 'Nombre del Negocio',
+    shortName: env.appShortName?.trim() || env.siteName?.trim() || 'Nombre del Negocio',
   },
   location: {
     city: fromEnv('NEXT_PUBLIC_LOCATION_CITY', env.locationCity, 'Ciudad'),

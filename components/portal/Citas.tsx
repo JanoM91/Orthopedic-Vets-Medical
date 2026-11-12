@@ -248,11 +248,11 @@ export function ElegirHorario({ servicioId, diaInicial, ignorarCita, etiqueta, r
 
 type MascotaElegible = { id: number; nombre: string; especie: string; foto: string | null }
 
-export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial, anticipacionHoras, diasAdelante }: { mascotas: MascotaElegible[]; servicios: ServicioVista[]; mascotaInicial: number | null; servicioInicial: number | null; anticipacionHoras: number; diasAdelante: number }) {
+export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial, notaInicial, anticipacionHoras, diasAdelante }: { mascotas: MascotaElegible[]; servicios: ServicioVista[]; mascotaInicial: number | null; servicioInicial: number | null; notaInicial?: string; anticipacionHoras: number; diasAdelante: number }) {
   const router = useRouter()
   const [mascota, setMascota] = useState<number>(mascotas.some((m) => m.id === mascotaInicial) ? mascotaInicial! : mascotas[0]?.id ?? 0)
   const [servicio, setServicio] = useState<number>(servicios.some((x) => x.id === servicioInicial) ? servicioInicial! : 0)
-  const [notas, setNotas] = useState('')
+  const [notas, setNotas] = useState(notaInicial ?? '')
   const [hecha, setHecha] = useState<CitaVista | null>(null)
   const s = servicios.find((x) => x.id === servicio)
   const m = mascotas.find((x) => x.id === mascota)

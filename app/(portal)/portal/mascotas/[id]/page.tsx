@@ -3,6 +3,11 @@ import { notFound, redirect } from 'next/navigation'
 import React from 'react'
 import { FormAportar } from '../../../../../components/portal/Formularios'
 import { CambiarFoto } from '../../../../../components/portal/Foto'
+import { AccionesCita, PillCita } from '../../../../../components/portal/Citas'
+import { diaCorto } from '../../../../../components/portal/Mascotas'
+import { InsigniaServicio } from '../../../../../components/IconoServicio'
+import { portalCitas } from '../../../../../lib/clinica/agenda'
+import { ESTADO_CARTILLA_LABEL, type EstadoCartilla, estadosCartilla } from '../../../../../lib/clinica/estadoCartilla'
 import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, GraficaPeso, hoyISO, Icono, Pill, TarjetaContacto, TIPO_CARTILLA_LABEL } from '../../../../../components/portal/comun'
 import { ErrorClinica, portalMascota } from '../../../../../lib/clinica/servicio'
 import { sesionTutor } from '../../../../../lib/portal/sesion'
@@ -10,8 +15,9 @@ import { contactoClinica } from '../../../../../lib/sitio/contacto'
 
 export const dynamic = 'force-dynamic'
 
-const TABS = ['resumen', 'cartilla', 'peso', 'documentos'] as const
+const TABS = ['resumen', 'cartilla', 'citas', 'peso', 'documentos'] as const
 type Tab = (typeof TABS)[number]
+const TONO_CARTILLA: Record<EstadoCartilla, 'ok' | 'warn' | 'bad' | 'info' | 'gris'> = { vencida: 'bad', proxima: 'warn', al_dia: 'ok', sin_fecha: 'gris', historial: 'gris' }
 
 /** Ficha de la mascota para el tutor: datos, cartilla, peso y documentos publicados. Sin notas clínicas. */
 export default async function MascotaPortal({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ver?: string }> }) {
@@ -29,10 +35,29 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
   const { ver } = await searchParams
   const tab: Tab = (TABS as readonly string[]).includes(ver ?? '') ? (ver as Tab) : 'resumen'
   const m = d.mascota
-  const contacto = await contactoClinica(c.payload)
+  const [contacto, citas] = await Promise.all([contactoClinica(c.payload), portalCitas(c)])
   const hoy = hoyISO()
-  const proxima = d.cartilla.filter((x) => x.proximaFecha && x.proximaFecha >= hoy).sort((a, b) => a.proximaFecha!.localeCompare(b.proximaFecha!))[0]
-  const vencidas = d.cartilla.filter((x) => x.proximaFecha && x.proximaFecha < hoy)
+  const estados = estadosCartilla(d.cartilla, hoy)
+  const vigentes = d.cartilla.filter((x) => estados.get(x.id) !== 'historial')
+  const proxima = vigentes.filter((x) => x.proximaFecha && x.proximaFecha >= hoy).sort((a, b) => a.proximaFecha!.localeCompare(b.proximaFecha!))[0]
+  const vencidas = vigentes.filter((x) => estados.get(x.id) === 'vencida')
+  const puedePedir = m.estado !== 'fallecido' && Boolean(c.tutor.cliente)
+  /* «Pedir refuerzo»: abre «Pedir cita» con la mascota, el servicio de vacunación o desparasitación (por su icono) y una nota. */
+  const servicioPara = (tipo: string) => {
+    const quiero = tipo.startsWith('desparasitacion') ? ['desparasitacion', 'vacuna'] : ['vacuna', 'desparasitacion']
+    for (const q of quiero) {
+      const s = citas.servicios.find((x) => x.icono === q)
+      if (s) return s.id
+    }
+    return null
+  }
+  const ligaRefuerzo = (x: (typeof d.cartilla)[number]) => {
+    const q = new URLSearchParams({ mascota: String(m.id), nota: `Refuerzo: ${x.producto}` })
+    const sid = servicioPara(x.tipo)
+    if (sid) q.set('servicio', String(sid))
+    return `/portal/citas/nueva?${q.toString()}`
+  }
+  const citasMascota = { proximas: citas.proximas.filter((x) => x.mascota.id === m.id), pasadas: citas.pasadas.filter((x) => x.mascota.id === m.id) }
   const documentosHabilitados = Boolean(process.env.CLINICA_BLOB_READ_WRITE_TOKEN || process.env.FINANZAS_BLOB_READ_WRITE_TOKEN)
 
   return (
@@ -71,6 +96,7 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
             [
               ['resumen', 'Resumen'],
               ['cartilla', `Cartilla (${d.cartilla.length})`],
+              ['citas', `Citas${citasMascota.proximas.length ? ` (${citasMascota.proximas.length})` : ''}`],
               ['peso', `Peso (${d.pesos.length})`],
               ['documentos', `Documentos (${d.documentos.length})`],
             ] as [Tab, string][]
@@ -90,7 +116,18 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
             )}
             <div className="pt-card">
               <h2>Cartilla</h2>
-              {vencidas.length > 0 && <div className="pt-aviso pt-aviso--warn">Refuerzo pendiente: {vencidas.map((v) => `${v.producto} (${fecha(v.proximaFecha)})`).join(', ')}. Agenda tu cita en la clínica.</div>}
+              {vencidas.map((v) => (
+                <div key={v.id} className="pt-refuerzo">
+                  <span>
+                    <b>Refuerzo vencido:</b> {v.producto} ({fecha(v.proximaFecha)})
+                  </span>
+                  {puedePedir && (
+                    <Link href={ligaRefuerzo(v)} className="pt-btn pt-btn--acento pt-btn--chico">
+                      Pedir refuerzo
+                    </Link>
+                  )}
+                </div>
+              ))}
               {proxima ? (
                 <p>
                   Próxima fecha indicada: <b>{fecha(proxima.proximaFecha)}</b> · {proxima.producto}
@@ -135,24 +172,84 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
         {tab === 'cartilla' && (
           <div className="pt-card pt-lista">
             {d.cartilla.length === 0 && <p className="pt-tenue" style={{ padding: 16 }}>La cartilla está vacía.</p>}
-            {d.cartilla.map((x) => (
-              <div key={x.id} className="pt-fila">
-                <Icono n="shield" />
-                <span className="pt-fila__main">
-                  <span className="pt-fila__t1">
-                    {x.producto} <Pill tono="info">{TIPO_CARTILLA_LABEL[x.tipo] ?? x.tipo}</Pill>
+            {d.cartilla.map((x) => {
+              const e = estados.get(x.id) ?? 'sin_fecha'
+              return (
+                <div key={x.id} className={`pt-fila${e === 'historial' ? ' pt-fila--historial' : ''}`} style={{ alignItems: 'flex-start' }}>
+                  <Icono n="shield" />
+                  <span className="pt-fila__main">
+                    <span className="pt-fila__t1">
+                      {x.producto} {e !== 'sin_fecha' && <Pill tono={TONO_CARTILLA[e]}>{ESTADO_CARTILLA_LABEL[e]}</Pill>}
+                    </span>
+                    <span className="pt-fila__t2">
+                      {TIPO_CARTILLA_LABEL[x.tipo] ?? x.tipo} · aplicada {fecha(x.fechaAplicacion)}
+                      {x.aplicadoPor ? ` · ${x.aplicadoPor}` : ''}
+                      {x.lote ? ` · lote ${x.lote}` : ''}
+                    </span>
+                    {x.proximaFecha && e !== 'historial' && <span className={`pt-fila__t2${e === 'vencida' ? ' pt-rojo' : ''}`}>Próximo refuerzo: {fecha(x.proximaFecha)}</span>}
+                    {puedePedir && (e === 'vencida' || e === 'proxima') && (
+                      <span style={{ marginTop: 6 }}>
+                        <Link href={ligaRefuerzo(x)} className="pt-btn pt-btn--acento pt-btn--chico">
+                          Pedir refuerzo
+                        </Link>
+                      </span>
+                    )}
                   </span>
-                  <span className="pt-fila__t2">
-                    Aplicada {fecha(x.fechaAplicacion)}
-                    {x.aplicadoPor ? ` · ${x.aplicadoPor}` : ''}
-                    {x.lote ? ` · lote ${x.lote}` : ''}
-                  </span>
-                  <span className={`pt-fila__t2${x.proximaFecha && x.proximaFecha < hoy ? ' pt-rojo' : ''}`}>{x.proximaFecha ? `Próxima: ${fecha(x.proximaFecha)}` : ''}</span>
-                </span>
-              </div>
-            ))}
+                </div>
+              )
+            })}
             <p className="pt-chico pt-tenue" style={{ padding: '10px 16px' }}>Las fechas próximas las indica el médico según el protocolo de la clínica.</p>
           </div>
+        )}
+
+        {tab === 'citas' && (
+          <>
+            {puedePedir && (
+              <Link href={`/portal/citas/nueva?mascota=${m.id}`} className="pt-btn pt-btn--acento">
+                <Icono n="calmas" /> Pedir cita para {m.nombre}
+              </Link>
+            )}
+            <div className="pt-card pt-lista">
+              <div style={{ padding: '12px 16px 0' }}>
+                <h2>Próximas</h2>
+              </div>
+              {citasMascota.proximas.length === 0 && <p className="pt-tenue" style={{ padding: 16 }}>{m.nombre} no tiene citas próximas.</p>}
+              {citasMascota.proximas.map((x) => (
+                <div key={x.id} className="pt-fila" style={{ alignItems: 'flex-start' }}>
+                  <InsigniaServicio clave={x.servicio.icono} />
+                  <span className="pt-fila__main">
+                    <span className="pt-fila__t1">{x.servicio.nombre}</span>
+                    <span className="pt-fila__t2">
+                      {diaCorto(x.dia)} · {x.horaInicio}–{x.horaFin}
+                    </span>
+                    <span>
+                      <PillCita estado={x.estado} />
+                    </span>
+                    <AccionesCita cita={x} cancelacionHoras={citas.configuracion.cancelacionHoras} diasAdelante={citas.configuracion.diasAdelante} />
+                  </span>
+                </div>
+              ))}
+            </div>
+            {citasMascota.pasadas.length > 0 && (
+              <div className="pt-card pt-lista">
+                <div style={{ padding: '12px 16px 0' }}>
+                  <h2>Anteriores</h2>
+                </div>
+                {citasMascota.pasadas.slice(0, 20).map((x) => (
+                  <div key={x.id} className="pt-fila">
+                    <InsigniaServicio clave={x.servicio.icono} />
+                    <span className="pt-fila__main">
+                      <span className="pt-fila__t1">{x.servicio.nombre}</span>
+                      <span className="pt-fila__t2">
+                        {fecha(x.dia)} · {x.horaInicio}
+                      </span>
+                    </span>
+                    <PillCita estado={x.estado} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {tab === 'peso' && (

@@ -412,6 +412,80 @@ async function main() {
   r = await tutor.get('/api/citas?depth=0')
   ok(r.status === 200 && r.data.docs.every((x) => x.notasInternas === undefined && (x.historial === undefined || x.historial.length === 0)), 'API genérica: el tutor no ve notas internas ni historial de citas', r.data.docs?.[0] && Object.keys(r.data.docs[0]))
 
+  /* ── fotos de mascotas, calendario del portal e iconos de servicio (nov-2026) ── */
+  console.log('\nFotos, calendario e iconos')
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')
+  const foto = (tipo = 'image/png', datos = PNG) => {
+    const f = new FormData()
+    f.append('archivo', new File([datos], 'foto.png', { type: tipo }))
+    return f
+  }
+  r = await recepcion.post(`/api/clinica/mascotas/${toby.id}/foto`, foto())
+  ok(r.status === 200 && /^\/api\/clinica\/fotos\/mascotas\/\d+\?v=/.test(r.data.foto || ''), 'Recepción pone foto a Toby (la vista trae la URL con versión)', r.data?.foto)
+  const urlToby = r.data.foto
+  r = await recepcion.llamar('GET', urlToby)
+  ok(r.status === 200 && (r.headers.get('content-type') || '').startsWith('image/png') && (r.headers.get('cache-control') || '').includes('private'), 'El equipo ve la foto (imagen, caché privada)', { s: r.status, t: r.headers.get('content-type') })
+  r = await tutor.llamar('GET', urlToby)
+  ok(r.status === 200, 'El tutor de Toby ve su foto')
+  r = await new Sesion().llamar('GET', urlToby)
+  ok(r.status === 401, 'Sin sesión no se ve la foto (401)')
+  r = await tutor.post(`/api/clinica/portal/mascotas/${max.id}/foto`, foto())
+  ok(r.status === 404, 'El tutor no cambia la foto de una mascota ajena (404)')
+  r = await tutor.llamar('GET', `/api/clinica/fotos/mascotas/${max.id}`)
+  ok(r.status === 404, 'Ni ve fotos de mascotas ajenas (404)')
+  r = await tutor.post(`/api/clinica/portal/mascotas/${luna.id}/foto`, foto('text/plain', Buffer.from('hola')))
+  ok(r.status === 400, 'Un archivo que no es imagen se rechaza')
+  r = await tutor.post(`/api/clinica/portal/mascotas/${luna.id}/foto`, foto('image/png', Buffer.alloc(700 * 1024)))
+  ok(r.status === 400, 'Una foto demasiado pesada se rechaza')
+  r = await tutor.post(`/api/clinica/portal/mascotas/${luna.id}/foto`, foto())
+  ok(r.status === 200 && r.data.foto, 'El tutor pone foto a Luna desde el portal')
+  r = await tutor.get('/api/clinica/portal/resumen')
+  ok(r.data.mascotas.every((m) => m.foto), 'Resumen del portal: las dos mascotas con foto', r.data.mascotas?.map((m) => m.foto))
+  r = await tutor.get('/api/clinica/portal/citas')
+  ok(r.data.mascotas.every((m) => m.foto) && r.data.servicios.every((x) => x.icono), 'Pedir cita: mascotas con foto y servicios con icono', r.data.servicios?.map((x) => x.icono))
+  r = await admin.get('/api/mas-fotos?depth=0')
+  ok(r.status === 403, 'API genérica: mas-fotos cerrada incluso al superadmin (403)', r.status)
+  r = await tutor.post(`/api/clinica/portal/mascotas/${luna.id}/foto/quitar`)
+  ok(r.status === 200 && r.data.foto === null, 'El tutor quita la foto de Luna')
+  r = await tutor.llamar('GET', `/api/clinica/fotos/mascotas/${luna.id}`)
+  ok(r.status === 404, 'Sin foto: 404')
+  r = await recepcion.post(`/api/clinica/mascotas/${toby.id}/foto/quitar`)
+  ok(r.status === 200 && r.data.foto === null, 'Recepción quita la foto de Toby')
+  r = await medico.post(`/api/clinica/mascotas/${toby.id}/foto`, foto())
+  ok(r.status === 200 || r.status === 403, 'Médico: la foto sigue el permiso «editar pacientes»', r.status)
+  // iconos
+  const icono = (n) => cat.servicios.find((x) => x.nombre === n)?.icono
+  ok(icono('Consulta general') === 'consulta' && icono('Baño') === 'bano' && icono('Cirugía ortopédica') === 'cirugia' && icono('Corte de uñas') === 'estetica' && icono('Rehabilitación y fisioterapia') === 'rehabilitacion', 'Iconos automáticos por nombre', cat.servicios.map((x) => [x.nombre, x.icono]))
+  r = await admin.llamar('PATCH', `/api/servicios/${consulta.id}`, { icono: 'cardio' })
+  r = await recepcion.get('/api/clinica/agenda/catalogo')
+  ok(r.data.servicios.find((x) => x.id === consulta.id)?.icono === 'cardio', 'Un icono fijado en el catálogo gana al automático')
+  await admin.llamar('PATCH', `/api/servicios/${consulta.id}`, { icono: 'auto' })
+  // calendario
+  const sumar = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
+  const desde = sumar(martes, -9)
+  r = await tutor.get(`/api/clinica/portal/citas/calendario?servicio=${bano.id}&desde=${desde}&hasta=${sumar(martes, 6)}`)
+  const dia = (d) => r.data.find?.((x) => x.dia === d)
+  ok(r.status === 200 && r.data.length === 16, 'Calendario del portal: un registro por día del rango', r.data?.length)
+  ok(dia(domingo)?.estado === 'cerrado' && dia(domingo)?.libres === 0, 'Domingo: cerrado', dia(domingo))
+  ok(['libre', 'pocos'].includes(dia(martes)?.estado) && dia(martes).libres > 0 && dia(martes).libres <= dia(martes).total, 'Martes: con horas libres para baño', dia(martes))
+  r = await tutor.get(`/api/clinica/portal/citas/calendario?servicio=${bano.id}&desde=2020-01-01&hasta=2020-01-03`)
+  ok(r.status === 200 && r.data.every((x) => x.estado === 'fuera'), 'Días pasados: fuera de la ventana', r.data)
+  r = await tutor.get(`/api/clinica/portal/citas/calendario?servicio=${bano.id}&desde=${martes}&hasta=${desde}`)
+  ok(r.status === 400, 'Rango al revés se rechaza')
+  r = await new Sesion().get(`/api/clinica/portal/citas/calendario?servicio=${bano.id}&desde=${martes}&hasta=${martes}`)
+  ok(r.status === 401, 'Calendario sin sesión: 401')
+  // Lleno: ocupar todo el martes del recurso de Estética con citas del equipo y revisar el día.
+  {
+    const disp = (await recepcion.get(`/api/clinica/agenda/disponibilidad?servicio=${bano.id}&dia=${martes}`)).data
+    for (const h of disp.huecos.filter((x) => x.disponible)) await recepcion.post('/api/clinica/agenda/citas', { mascotaId: max.id, servicioId: bano.id, dia: martes, hora: h.hora })
+    r = await tutor.get(`/api/clinica/portal/citas/calendario?servicio=${bano.id}&desde=${martes}&hasta=${martes}`)
+    ok(r.data?.[0]?.estado === 'lleno' && r.data[0].libres === 0, 'Día con todas las horas tomadas: «lleno»', r.data)
+    const tomadas = (await recepcion.get(`/api/clinica/agenda?dia=${martes}`)).data.citas.filter((x) => x.mascota.id === max.id && ['solicitada', 'confirmada'].includes(x.estado))
+    for (const x of tomadas) await recepcion.post(`/api/clinica/agenda/citas/${x.id}/estado`, { estado: 'cancelada', motivo: 'Prueba del calendario' })
+    r = await tutor.get(`/api/clinica/portal/citas/calendario?servicio=${bano.id}&desde=${martes}&hasta=${martes}`)
+    ok(['libre', 'pocos'].includes(r.data?.[0]?.estado), 'Al cancelarlas, el día vuelve a tener horas', r.data)
+  }
+
   /* ── avisos, recordatorio de la víspera y cartilla imprimible (27-oct-2026) ── */
   console.log('\nAvisos, recordatorios y cartilla imprimible')
   r = await admin.post('/api/globals/agenda-configuracion', { correoAvisos: 'recepcion@ejemplo.mx, no-es-correo', recordatoriosActivos: true })

@@ -12,7 +12,7 @@ import { Roles } from './collections/Roles'
 import { FinActividades, FinCategorias, FinConfiguracion, FinCuentas } from './collections/finanzas/catalogos'
 import { FinBitacora, FinComprobantes, FinMovimientos, FinOperaciones } from './collections/finanzas/registros'
 import { Clientes, Mascotas, MasPesos } from './collections/clinica/pacientes'
-import { MasCartilla, MasDocumentos, MasNotas } from './collections/clinica/expediente'
+import { MasCartilla, MasDocumentos, MasFotos, MasNotas } from './collections/clinica/expediente'
 import { CodigosVinculacion, Importaciones, Tutores } from './collections/clinica/tutores'
 import { AgendaConfiguracion, Citas, Recursos, Servicios } from './collections/clinica/agenda'
 import { SitioConfiguracion } from './collections/clinica/sitio'
@@ -46,8 +46,11 @@ export default buildConfig({
     /* Sin gravatar: el avatar de fábrica no llama a servicios externos. */
     avatar: 'default',
     meta: {
+      title: site.brand.name,
       titleSuffix: ` — ${site.brand.name}`,
-      icons: [{ rel: 'icon', type: 'image/png', url: '/finanzas/favicon-64.png' }],
+      /* Isotipo de la marca en la pestaña (public/app/). Finanzas cambia el suyo en lib/finanzas/appMovil.ts. */
+      icons: [{ rel: 'icon', type: 'image/png', url: '/app/favicon-64.png' }],
+      openGraph: { siteName: site.brand.name, title: site.brand.name, description: `Panel de ${site.brand.name}` },
     },
     components: {
       graphics: {
@@ -56,6 +59,8 @@ export default buildConfig({
       },
       /* Marca y, debajo, el bloque «Trabajo» (Hoy, Agenda, Pacientes, Mostrador, Farmacia, Finanzas) antes de los catálogos. */
       beforeNavLinks: ['/components/admin/MarcaDelPanel#default', '/components/admin/MenuTrabajo#default'],
+      /* Indicador de carga (perro y gato) al moverse entre pantallas, igual que en el portal y el sitio. */
+      providers: ['/components/admin/ProveedorCargando#default'],
       views: {
         /* Tablero «Hoy» (Versión A, fase 2): reemplaza el tablero de fábrica y la antigua Bienvenida. */
         dashboard: {
@@ -95,7 +100,7 @@ export default buildConfig({
     Roles,
     /* Clínica (octubre de 2026): pacientes, tutores y expediente. Reglas propias en collections/clinica/acceso.ts.
        Con el módulo Clínica apagado (lib/modulos.ts) responden «no» a todo. */
-    ...[Clientes, Mascotas, MasPesos, MasCartilla, MasNotas, MasDocumentos, CodigosVinculacion, Importaciones, Recursos, Servicios, Citas].map((c) => conModuloColeccion('clinica', c)),
+    ...[Clientes, Mascotas, MasPesos, MasCartilla, MasNotas, MasDocumentos, MasFotos, CodigosVinculacion, Importaciones, Recursos, Servicios, Citas].map((c) => conModuloColeccion('clinica', c)),
     /* Las cuentas del portal no se apagan con la clínica: en la fase 5 también entran a la tienda. */
     Tutores,
     /* Farmacia (25-oct-2026): reglas propias en collections/farmacia/acceso.ts (ya revisan el módulo). */

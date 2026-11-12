@@ -235,3 +235,25 @@ function normaliza(v: unknown): string {
   if (typeof v === 'object' && 'id' in (v as object)) return String((v as { id: unknown }).id)
   return String(v).trim()
 }
+
+/**
+ * Foto de la mascota (nov-2026): una por mascota, ya reducida en el teléfono
+ * (JPEG de ~640 px, menos de 400 KB). Se guarda en la base para no depender del
+ * almacén de archivos y se sirve solo por /api/clinica/fotos/mascotas/:id, que
+ * revisa permisos (equipo con «ver pacientes» o el tutor de esa mascota).
+ * La API genérica no la toca: todo pasa por lib/clinica/servicio.ts.
+ */
+export const MasFotos: CollectionConfig = {
+  slug: 'mas-fotos',
+  typescript: { interface: 'MasFoto' },
+  labels: { singular: 'Foto de mascota', plural: 'Fotos de mascotas' },
+  admin: { group: 'Clínica', hidden: true },
+  access: { read: nadie, create: nadie, update: nadie, delete: nadie },
+  fields: [
+    { name: 'mascota', type: 'relationship', relationTo: 'mascotas', required: true, unique: true, index: true },
+    { name: 'tipo', label: 'Tipo de contenido', type: 'text', required: true },
+    { name: 'datos', label: 'Imagen (base64)', type: 'textarea', required: true },
+    { name: 'bytes', type: 'number' },
+    { name: 'subidaPor', label: 'Subida por', type: 'text' },
+  ],
+}

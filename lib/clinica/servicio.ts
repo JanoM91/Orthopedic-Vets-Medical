@@ -207,10 +207,16 @@ export function vistaMascota(m: Mascota, hoy: string, ultimoPeso: MasPeso | null
     estado: (m.estado as MascotaVista['estado']) || 'activo',
     notasInternas: t(m.notasInternas),
     origen: (m.origen as MascotaVista['origen']) || 'manual',
+    foto: urlFoto(m.id, m.fotoFecha),
     ultimoPeso: ultimoPeso ? vistaPeso(ultimoPeso) : null,
     creadoEn: m.createdAt,
     actualizadoEn: m.updatedAt,
   }
+}
+
+/** URL de la foto (o null). `v` cambia con cada foto nueva: el navegador la guarda en caché sin pedirla de nuevo. */
+export function urlFoto(mascotaId: number, fotoFecha: string | null | undefined): string | null {
+  return fotoFecha ? `/api/clinica/fotos/mascotas/${mascotaId}?v=${encodeURIComponent(fotoFecha)}` : null
 }
 
 const vistaCartilla = (c: MasCartilla): CartillaVista => ({
@@ -702,6 +708,86 @@ export async function borrarNota(ctx: Ctx, id: number): Promise<void> {
   const previa = await cargarNota(ctx, id)
   if (previa.estado === 'firmada') throw invalido('Una nota firmada no se borra.')
   await ctx.payload.delete({ collection: 'mas-notas', id, overrideAccess: true, req: ctx.req })
+}
+
+/* ───────────────────────────── foto de la mascota ───────────────────────────── */
+
+/* La pantalla la reduce a ~640 px en JPEG antes de subirla; aquí solo se pone un tope. */
+const MAX_FOTO = 600 * 1024
+const TIPOS_FOTO = /^image\/(jpeg|png|webp)$/i
+
+async function guardarFoto(payload: Payload, mascotaId: number, archivo: File, por: string): Promise<string> {
+  if (!archivo || typeof archivo.arrayBuffer !== 'function') throw invalido('Elige una foto.')
+  const tipo = archivo.type || ''
+  if (!TIPOS_FOTO.test(tipo)) throw invalido('La foto debe ser JPG, PNG o WEBP.')
+  if (archivo.size > MAX_FOTO) throw invalido('La foto pesa demasiado. Prueba con otra o recórtala.')
+  const datos = Buffer.from(await archivo.arrayBuffer()).toString('base64')
+  const previa = await payload.find({ collection: 'mas-fotos', depth: 0, limit: 1, overrideAccess: true, where: { mascota: { equals: mascotaId } } })
+  const data = { mascota: mascotaId, tipo, datos, bytes: archivo.size, subidaPor: por }
+  if (previa.docs[0]) await payload.update({ collection: 'mas-fotos', id: previa.docs[0].id, overrideAccess: true, depth: 0, data })
+  else await payload.create({ collection: 'mas-fotos', overrideAccess: true, depth: 0, data })
+  const fecha = new Date().toISOString()
+  await payload.update({ collection: 'mascotas', id: mascotaId, overrideAccess: true, depth: 0, data: { fotoFecha: fecha } })
+  return fecha
+}
+
+async function borrarFoto(payload: Payload, mascotaId: number): Promise<void> {
+  await payload.delete({ collection: 'mas-fotos', overrideAccess: true, where: { mascota: { equals: mascotaId } } })
+  await payload.update({ collection: 'mascotas', id: mascotaId, overrideAccess: true, depth: 0, data: { fotoFecha: null } })
+}
+
+async function respuestaFoto(payload: Payload, mascotaId: number): Promise<Response> {
+  const r = await payload.find({ collection: 'mas-fotos', depth: 0, limit: 1, overrideAccess: true, where: { mascota: { equals: mascotaId } } })
+  const f = r.docs[0]
+  if (!f) throw noEncontrado('Esta mascota no tiene foto.')
+  /* La URL lleva ?v=<fecha de la foto>: cambia con cada foto, así que se puede guardar en caché (privada) mucho tiempo. */
+  return new Response(new Uint8Array(Buffer.from(f.datos, 'base64')), { headers: { 'Content-Type': f.tipo, 'Cache-Control': 'private, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' } })
+}
+
+export async function fijarFoto(ctx: Ctx, mascotaId: number, archivo: File): Promise<MascotaVista> {
+  exigir(ctx, 'editarPacientes')
+  await cargarMascota(ctx, mascotaId)
+  await guardarFoto(ctx.payload, mascotaId, archivo, ctx.user.email ?? `usuario ${ctx.user.id}`)
+  return vistaMascota(await cargarMascota(ctx, mascotaId), ctx.hoy)
+}
+
+export async function quitarFoto(ctx: Ctx, mascotaId: number): Promise<MascotaVista> {
+  exigir(ctx, 'editarPacientes')
+  await cargarMascota(ctx, mascotaId)
+  await borrarFoto(ctx.payload, mascotaId)
+  return vistaMascota(await cargarMascota(ctx, mascotaId), ctx.hoy)
+}
+
+/** El tutor solo cambia la foto de sus mascotas (la regla de acceso decide si la ve). */
+async function mascotaDelTutor(c: CtxTutor, mascotaId: number): Promise<Mascota> {
+  const r = await c.payload.find({ collection: 'mascotas', depth: 1, limit: 1, ...acceso(c), where: { id: { equals: mascotaId } } })
+  if (!r.docs[0]) throw noEncontrado('Esa mascota no está entre las tuyas.')
+  return r.docs[0]
+}
+
+export async function portalFijarFoto(c: CtxTutor, mascotaId: number, archivo: File): Promise<MascotaVista> {
+  await mascotaDelTutor(c, mascotaId)
+  await guardarFoto(c.payload, mascotaId, archivo, `${c.tutor.nombre} (portal)`)
+  return vistaMascota(await mascotaDelTutor(c, mascotaId), c.hoy)
+}
+
+export async function portalQuitarFoto(c: CtxTutor, mascotaId: number): Promise<MascotaVista> {
+  await mascotaDelTutor(c, mascotaId)
+  await borrarFoto(c.payload, mascotaId)
+  return vistaMascota(await mascotaDelTutor(c, mascotaId), c.hoy)
+}
+
+/** GET /api/clinica/fotos/mascotas/:id — equipo con «ver pacientes» o el tutor de esa mascota. */
+export async function abrirFoto(payload: Payload, headers: Headers, mascotaId: number): Promise<Response> {
+  const ctx = await contextoDesdeHeaders(payload, headers)
+  if (ctx) {
+    exigir(ctx, 'verPacientes')
+    return respuestaFoto(payload, mascotaId)
+  }
+  const c = await contextoTutor(payload, headers)
+  if (!c) throw new ErrorClinica(401, 'Tu sesión terminó.')
+  await mascotaDelTutor(c, mascotaId)
+  return respuestaFoto(payload, mascotaId)
 }
 
 /* ───────────────────────────── documentos (almacén privado) ───────────────────────────── */

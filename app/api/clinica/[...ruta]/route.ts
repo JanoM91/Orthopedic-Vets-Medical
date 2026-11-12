@@ -7,6 +7,11 @@ import { contactoClinica } from '@/lib/sitio/contacto'
 
 import {
   abrirDocumento,
+  abrirFoto,
+  fijarFoto,
+  portalFijarFoto,
+  portalQuitarFoto,
+  quitarFoto,
   actualizarCartilla,
   actualizarCliente,
   actualizarDocumento,
@@ -50,6 +55,7 @@ import {
   citasDeMascota,
   crearCita,
   disponibilidadEquipo,
+  portalCalendario,
   portalCancelar,
   portalCitas,
   portalCrearCita,
@@ -112,6 +118,12 @@ import {
  *   GET  portal/citas/disponibilidad?servicio&dia&ignorar
  *   POST portal/citas                          { mascotaId, servicioId, dia, hora, notasTutor? }
  *   POST portal/citas/:id/reprogramar | cancelar
+ *   GET  portal/citas/calendario?servicio&desde&hasta&ignorar   días libres, llenos y cerrados (calendario del mes)
+ *   POST portal/mascotas/:id/foto (multipart: archivo) | portal/mascotas/:id/foto/quitar
+ *
+ * FOTOS (equipo o tutor, nov-2026):
+ *   GET  fotos/mascotas/:id                    la foto (equipo con «ver pacientes» o el tutor de esa mascota)
+ *   POST mascotas/:id/foto (multipart: archivo) | mascotas/:id/foto/quitar   (equipo, «editar pacientes»)
  */
 
 export const dynamic = 'force-dynamic'
@@ -181,6 +193,10 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
       const q = req.nextUrl.searchParams
       return json(await portalDisponibilidad(c, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined))
     }
+    if (a === 'citas' && b === 'calendario') {
+      const q = req.nextUrl.searchParams
+      return json(await portalCalendario(c, idDeRuta(q.get('servicio') ?? undefined), q.get('desde') ?? '', q.get('hasta') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined))
+    }
   } else {
     if (a === 'vincular' && !b) return json(await vincular(c, await leerJson(req)))
     if (a === 'citas' && !b) return json(await portalCrearCita(c, await leerJson(req)), 201)
@@ -189,6 +205,10 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
     if (a === 'mascotas' && b && d === 'documentos') {
       const { archivo, campos } = await leerArchivo(req)
       return json(await portalSubirDocumento(c, idDeRuta(b), archivo, campos), 201)
+    }
+    if (a === 'mascotas' && b && d === 'foto') {
+      if (ruta[3] === 'quitar') return json(await portalQuitarFoto(c, idDeRuta(b)))
+      if (!ruta[3]) return json(await portalFijarFoto(c, idDeRuta(b), (await leerArchivo(req)).archivo))
     }
   }
   return json({ error: 'Ruta no encontrada.' }, 404)
@@ -200,6 +220,8 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
   const payloadModulos = await getPayload({ config })
   if (!(await leerModulos(payloadModulos)).clinica) return json({ error: 'El módulo de Clínica está apagado en esta instalación (Sistema → Instalación: módulos).' }, 404)
   if (ruta[0] === 'portal') return atenderPortal(metodo, req, ruta.slice(1))
+  /* Fotos: las ve el equipo o el tutor de la mascota; la función revisa cuál sesión es. */
+  if (metodo === 'GET' && ruta[0] === 'fotos' && ruta[1] === 'mascotas' && ruta[2] && !ruta[3]) return abrirFoto(payloadModulos, req.headers, idDeRuta(ruta[2]))
 
   const payload = payloadModulos
   const ctx: Ctx | null = await contextoDesdeHeaders(payload, req.headers)
@@ -263,6 +285,8 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
         const { archivo, campos } = await leerArchivo(req)
         return json(await subirDocumento(ctx, id, archivo, campos), 201)
       }
+      if (c === 'foto' && ruta[3] === 'quitar') return json(await quitarFoto(ctx, id))
+      if (c === 'foto' && !ruta[3]) return json(await fijarFoto(ctx, id, (await leerArchivo(req)).archivo))
     }
     if (a === 'cartilla' && b && !c) return json(await actualizarCartilla(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'notas' && b) {

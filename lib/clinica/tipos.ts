@@ -4,6 +4,7 @@
  */
 
 import type { PermisosClinica } from '../permisosBase'
+import type { ClaveIcono } from '../iconosServicio'
 
 export type PersonaBreve = { id: number; nombre: string }
 
@@ -49,6 +50,8 @@ export type MascotaVista = {
   estado: 'activo' | 'inactivo' | 'fallecido'
   notasInternas: string | null
   origen: 'manual' | 'importacion' | 'portal'
+  /** URL de la foto (servida por la API con permisos; cambia al cambiar la foto) o null. */
+  foto: string | null
   ultimoPeso: PesoVista | null
   creadoEn: string
   actualizadoEn: string
@@ -227,6 +230,10 @@ export type ServicioVista = {
   reservaEnLinea: 'inmediata' | 'valoracion' | 'no'
   activo: boolean
   orden: number
+  /** El que se dibuja (fijado o elegido por el nombre). */
+  icono: ClaveIcono
+  /** Lo guardado en el catálogo («auto» si no se fijó). */
+  iconoFijado: string
 }
 export type ConfiguracionAgenda = {
   horario: { dia: number; abierto: boolean; de: string; a: string }[]
@@ -237,14 +244,16 @@ export type ConfiguracionAgenda = {
   /** false mientras nadie haya guardado el horario (se usa el de omisión: L–V 9–19, S 9–14). */
   configurada: boolean
 }
+/** Un día del calendario del portal: libre, pocos (quedan pocas horas), lleno, cerrado o fuera de la ventana (pasado o demasiado adelante). */
+export type DiaCalendario = { dia: string; estado: 'libre' | 'pocos' | 'lleno' | 'cerrado' | 'fuera'; libres: number; total: number }
 export type DisponibilidadDia = { dia: string; abierto: boolean; huecos: { hora: string; disponible: boolean }[]; motivo?: string; recursoId?: number; duracionMin?: number }
 export type EstadoCitaVista = 'solicitada' | 'confirmada' | 'llegada' | 'atencion' | 'finalizada' | 'cancelada' | 'no_asistio'
 export type CitaVista = {
   id: number
   folio: string
-  mascota: { id: number; nombre: string; especie: string; folio: string; alertas: string[] }
+  mascota: { id: number; nombre: string; especie: string; folio: string; alertas: string[]; foto: string | null }
   cliente: { id: number; nombre: string; telefono: string | null } | null
-  servicio: { id: number; nombre: string }
+  servicio: { id: number; nombre: string; icono: ClaveIcono }
   recurso: { id: number; nombre: string }
   profesional: PersonaBreve | null
   dia: string

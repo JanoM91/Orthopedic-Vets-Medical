@@ -2,6 +2,7 @@ import type { CollectionConfig, GlobalConfig } from 'payload'
 import type { Access, AccessResult, Where } from 'payload'
 import { esPersonal, esTutor, permisosDe } from '../../lib/permisos'
 import { equipoCon, folioDesdeId, leerEquipoOTutor, nadie, porMascotaDelCliente, soloEquipoLee } from './acceso'
+import { ICONOS_SERVICIO } from '../../lib/iconosServicio'
 
 /** El equipo con «ver pacientes»; el tutor del portal, solo los activos que se pueden pedir en línea. */
 const leerServicios: Access = async ({ req }): Promise<AccessResult> => {
@@ -116,6 +117,14 @@ export const Servicios: CollectionConfig = {
         { label: 'Solo con valoración previa (el tutor la solicita; la clínica decide)', value: 'valoracion' },
         { label: 'No se pide en línea', value: 'no' },
       ],
+    },
+    {
+      name: 'icono',
+      label: 'Icono',
+      type: 'select',
+      defaultValue: 'auto',
+      options: ICONOS_SERVICIO.map((i) => ({ label: i.etiqueta, value: i.clave })),
+      admin: { description: 'Lo ve el tutor en el portal. «Automático» lo elige por el nombre (consulta, vacuna, cirugía, baño…).' },
     },
     { name: 'orden', label: 'Orden', type: 'number', defaultValue: 0 },
     { name: 'activo', label: 'Activo', type: 'checkbox', defaultValue: true, index: true },

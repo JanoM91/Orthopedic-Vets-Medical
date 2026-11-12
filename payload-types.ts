@@ -76,6 +76,7 @@ export interface Config {
     'mas-cartilla': MasCartilla;
     'mas-notas': MasNota;
     'mas-documentos': MasDocumento;
+    'mas-fotos': MasFoto;
     'codigos-vinculacion': CodigoVinculacion;
     importaciones: Importacion;
     recursos: Recurso;
@@ -118,6 +119,7 @@ export interface Config {
     'mas-cartilla': MasCartillaSelect<false> | MasCartillaSelect<true>;
     'mas-notas': MasNotasSelect<false> | MasNotasSelect<true>;
     'mas-documentos': MasDocumentosSelect<false> | MasDocumentosSelect<true>;
+    'mas-fotos': MasFotosSelect<false> | MasFotosSelect<true>;
     'codigos-vinculacion': CodigosVinculacionSelect<false> | CodigosVinculacionSelect<true>;
     importaciones: ImportacionesSelect<false> | ImportacionesSelect<true>;
     recursos: RecursosSelect<false> | RecursosSelect<true>;
@@ -426,6 +428,7 @@ export interface Mascota {
   estado?: ('activo' | 'inactivo' | 'fallecido') | null;
   notasInternas?: string | null;
   origen?: ('manual' | 'importacion' | 'portal') | null;
+  fotoFecha?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -554,6 +557,20 @@ export interface Tutor {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-fotos".
+ */
+export interface MasFoto {
+  id: number;
+  mascota: number | Mascota;
+  tipo: string;
+  datos: string;
+  bytes?: number | null;
+  subidaPor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "codigos-vinculacion".
  */
 export interface CodigoVinculacion {
@@ -660,6 +677,33 @@ export interface Servicio {
    */
   categoriaFinanzas?: (number | null) | FinCategoria;
   reservaEnLinea: 'inmediata' | 'valoracion' | 'no';
+  /**
+   * Lo ve el tutor en el portal. «Automático» lo elige por el nombre (consulta, vacuna, cirugía, baño…).
+   */
+  icono?:
+    | (
+        | 'auto'
+        | 'consulta'
+        | 'vacuna'
+        | 'desparasitacion'
+        | 'cirugia'
+        | 'ortopedia'
+        | 'rehabilitacion'
+        | 'imagen'
+        | 'ultrasonido'
+        | 'laboratorio'
+        | 'dental'
+        | 'estetica'
+        | 'bano'
+        | 'hospital'
+        | 'urgencias'
+        | 'farmacia'
+        | 'nutricion'
+        | 'cardio'
+        | 'documento'
+        | 'patita'
+      )
+    | null;
   orden?: number | null;
   activo?: boolean | null;
   updatedAt: string;
@@ -1387,6 +1431,10 @@ export interface PayloadLockedDocument {
         value: number | MasDocumento;
       } | null)
     | ({
+        relationTo: 'mas-fotos';
+        value: number | MasFoto;
+      } | null)
+    | ({
         relationTo: 'codigos-vinculacion';
         value: number | CodigoVinculacion;
       } | null)
@@ -1699,6 +1747,7 @@ export interface MascotasSelect<T extends boolean = true> {
   estado?: T;
   notasInternas?: T;
   origen?: T;
+  fotoFecha?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1786,6 +1835,19 @@ export interface MasDocumentosSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "mas-fotos_select".
+ */
+export interface MasFotosSelect<T extends boolean = true> {
+  mascota?: T;
+  tipo?: T;
+  datos?: T;
+  bytes?: T;
+  subidaPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "codigos-vinculacion_select".
  */
 export interface CodigosVinculacionSelect<T extends boolean = true> {
@@ -1840,6 +1902,7 @@ export interface ServiciosSelect<T extends boolean = true> {
   area?: T;
   categoriaFinanzas?: T;
   reservaEnLinea?: T;
+  icono?: T;
   orden?: T;
   activo?: T;
   updatedAt?: T;

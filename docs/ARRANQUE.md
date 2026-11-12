@@ -17,6 +17,8 @@ En Vercel → proyecto → **Settings → Environment Variables** (Production). 
 | `NEXT_PUBLIC_LOCATION_CITY`, `NEXT_PUBLIC_LOCATION_TIMEZONE` | Ciudad y zona (`America/Mexico_City`) | Sí |
 | `NEXT_PUBLIC_BRAND_PHONE` | Teléfono de respaldo (10 dígitos). Manda lo capturado en «Sitio público → Contacto»; esta variable solo se usa si ahí está vacío | Opcional |
 | `NEXT_PUBLIC_BRAND_PRIMARY`, `_ACCENT`, `_LOGO` | Colores y logotipo del portal | Opcional |
+| `NEXT_PUBLIC_APP_NAME` | Nombre completo al instalar en el celular, p. ej. `Centro Veterinario OVM` (si falta, el de la clínica) | Opcional |
+| `NEXT_PUBLIC_APP_SHORT_NAME` | Nombre corto bajo el icono; se le agrega « - Portal» o « - Panel», p. ej. `OVM Vet` | Opcional |
 | `FINANZAS_BLOB_READ_WRITE_TOKEN` | Comprobantes, documentos y fotos de recetas (almacén privado) | Sí |
 | `CRON_SECRET` (Sensitive) | Tareas diarias: resumen de alertas de farmacia (08:00) y recordatorio de citas (18:00). Valor largo al azar: `openssl rand -hex 32` | Sí, si se quieren avisos |
 | `RESEND_API_KEY` (Sensitive), `LEADS_FROM_EMAIL` | Correos (citas, recordatorios, tickets, alertas, contraseña olvidada). Sin ellas no sale ningún correo y nada falla | Recomendada |

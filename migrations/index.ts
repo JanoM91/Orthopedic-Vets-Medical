@@ -10,6 +10,7 @@ import * as migration_20261027_144827_farmacia_alertas from './20261027_144827_f
 import * as migration_20261027_154211_clinica_avisos from './20261027_154211_clinica_avisos';
 import * as migration_20261112_055949_clinica_fotos_iconos from './20261112_055949_clinica_fotos_iconos';
 import * as migration_20261113_053734_farmacia_tienda_pedidos from './20261113_053734_farmacia_tienda_pedidos';
+import * as migration_20261113_185522_farmacia_domicilio_mercadopago from './20261113_185522_farmacia_domicilio_mercadopago';
 
 export const migrations = [
   {
@@ -70,6 +71,11 @@ export const migrations = [
   {
     up: migration_20261113_053734_farmacia_tienda_pedidos.up,
     down: migration_20261113_053734_farmacia_tienda_pedidos.down,
-    name: '20261113_053734_farmacia_tienda_pedidos'
+    name: '20261113_053734_farmacia_tienda_pedidos',
+  },
+  {
+    up: migration_20261113_185522_farmacia_domicilio_mercadopago.up,
+    down: migration_20261113_185522_farmacia_domicilio_mercadopago.down,
+    name: '20261113_185522_farmacia_domicilio_mercadopago'
   },
 ];

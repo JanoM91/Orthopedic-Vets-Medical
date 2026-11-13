@@ -53,6 +53,14 @@ En computadora la pantalla va en dos columnas: el ticket a la izquierda y el cob
 3. Cuando llegue: **«Entregar»**. Si ya pagó en línea, solo entregas. Si paga al recoger, elige el método y cobra. Se registra como una venta normal (con receta y autorización del encargado si es Grupo II).
 4. ¿No hay producto o el cliente desiste? «Cancelar pedido» con el motivo (le llega por correo). Si ya había pagado en línea, el reembolso se hace en la pasarela.
 - Lo que está en un pedido queda **apartado**: el mostrador no lo puede vender. Si el cliente no paga ni recoge a tiempo, se libera solo.
+- **A domicilio** (dice «A domicilio» en la lista): prepara, toca «Listo para salir» y luego **«Enviar con repartidor»**: eliges quién lo lleva y en ese momento se registra la venta. Si regresa sin entregarse, se vuelve a enviar sin vender otra vez. Para cancelarlo, primero anula la venta en Ventas.
+- **Reembolsos**: si cancelas un pedido ya pagado en línea, el encargado toca «Reembolsar» en la ficha del pedido.
+
+**Mis entregas** (repartidor; en el celular es la primera opción de la barra)
+1. Ves cada pedido con dirección (toca para abrir el mapa), **Llamar** y **WhatsApp**.
+2. Al entregar: **«Entregado»** → quién recibió, «Cobré $…» si paga al recibir, y si quieres una foto.
+3. ¿No estaba nadie? **«No se pudo»** con el motivo: el pedido regresa a la farmacia.
+4. Lo cobrado lo entregas en caja: ya quedó registrado en Finanzas.
 
 **Recetas** (Farmacia → Recetas): bandeja «Por validar» (externas) y «Originales pendientes». El encargado valida o rechaza con motivo (el tutor recibe el motivo por correo).
 

@@ -99,6 +99,7 @@ export interface Config {
     'far-promociones': FarPromocion;
     'far-pedidos': FarPedido;
     'far-pagos-eventos': FarPagoEvento;
+    'far-evidencias': FarEvidencia;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -144,6 +145,7 @@ export interface Config {
     'far-promociones': FarPromocionesSelect<false> | FarPromocionesSelect<true>;
     'far-pedidos': FarPedidosSelect<false> | FarPedidosSelect<true>;
     'far-pagos-eventos': FarPagosEventosSelect<false> | FarPagosEventosSelect<true>;
+    'far-evidencias': FarEvidenciasSelect<false> | FarEvidenciasSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -1178,6 +1180,7 @@ export interface FarVenta {
     | null;
   subtotal: number;
   descuento?: number | null;
+  envio?: number | null;
   total: number;
   costoTotal?: number | null;
   pagos?:
@@ -1368,14 +1371,32 @@ export interface FarPedido {
     receta?: (number | null) | FarReceta;
     id?: string | null;
   }[];
+  subtotal?: number | null;
+  costoEnvio?: number | null;
   total: number;
   entrega: 'recoger' | 'domicilio';
   pago: {
-    forma: 'al_recoger' | 'en_linea';
-    estado: 'pendiente' | 'pagado' | 'reembolso_pendiente';
+    forma: 'al_recoger' | 'en_linea' | 'al_recibir';
+    estado: 'pendiente' | 'pagado' | 'reembolso_pendiente' | 'reembolsado';
     proveedor?: string | null;
+    idPago?: string | null;
     referencia?: string | null;
     pagadoEn?: string | null;
+  };
+  direccion?: {
+    calle?: string | null;
+    colonia?: string | null;
+    codigoPostal?: string | null;
+    referencias?: string | null;
+    zona?: string | null;
+  };
+  repartidor?: (number | null) | User;
+  entregaDomicilio?: {
+    salioEn?: string | null;
+    entregadoEn?: string | null;
+    recibio?: string | null;
+    nota?: string | null;
+    intentos?: number | null;
   };
   expiraEn?: string | null;
   venta?: (number | null) | FarVenta;
@@ -1403,6 +1424,20 @@ export interface FarPagoEvento {
   pedido?: (number | null) | FarPedido;
   tipo?: string | null;
   resultado?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-evidencias".
+ */
+export interface FarEvidencia {
+  id: number;
+  pedido: number | FarPedido;
+  tipo: string;
+  datos: string;
+  bytes?: number | null;
+  subidaPor?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1607,6 +1642,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'far-pagos-eventos';
         value: number | FarPagoEvento;
+      } | null)
+    | ({
+        relationTo: 'far-evidencias';
+        value: number | FarEvidencia;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -2329,6 +2368,7 @@ export interface FarVentasSelect<T extends boolean = true> {
       };
   subtotal?: T;
   descuento?: T;
+  envio?: T;
   total?: T;
   costoTotal?: T;
   pagos?:
@@ -2488,6 +2528,8 @@ export interface FarPedidosSelect<T extends boolean = true> {
         receta?: T;
         id?: T;
       };
+  subtotal?: T;
+  costoEnvio?: T;
   total?: T;
   entrega?: T;
   pago?:
@@ -2496,8 +2538,28 @@ export interface FarPedidosSelect<T extends boolean = true> {
         forma?: T;
         estado?: T;
         proveedor?: T;
+        idPago?: T;
         referencia?: T;
         pagadoEn?: T;
+      };
+  direccion?:
+    | T
+    | {
+        calle?: T;
+        colonia?: T;
+        codigoPostal?: T;
+        referencias?: T;
+        zona?: T;
+      };
+  repartidor?: T;
+  entregaDomicilio?:
+    | T
+    | {
+        salioEn?: T;
+        entregadoEn?: T;
+        recibio?: T;
+        nota?: T;
+        intentos?: T;
       };
   expiraEn?: T;
   venta?: T;
@@ -2524,6 +2586,19 @@ export interface FarPagosEventosSelect<T extends boolean = true> {
   pedido?: T;
   tipo?: T;
   resultado?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-evidencias_select".
+ */
+export interface FarEvidenciasSelect<T extends boolean = true> {
+  pedido?: T;
+  tipo?: T;
+  datos?: T;
+  bytes?: T;
+  subidaPor?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2875,6 +2950,24 @@ export interface FarmaciaConfiguracion {
      * Separados por coma. Además, el resumen diario.
      */
     correosPedidos?: string | null;
+    domicilioActivo?: boolean | null;
+    pagarAlRecibir?: boolean | null;
+    /**
+     * Debe existir en «Métodos de pago», con su cuenta y «por confirmar»: se confirma cuando el repartidor entrega y cobra.
+     */
+    metodoContraEntrega?: string | null;
+    horarioEntrega?: string | null;
+    zonas?:
+      | {
+          nombre: string;
+          codigosPostales: string;
+          costo: number;
+          pedidoMinimo?: number | null;
+          gratisDesde?: number | null;
+          activa?: boolean | null;
+          id?: string | null;
+        }[]
+      | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -3038,6 +3131,21 @@ export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
         pagarAlRecoger?: T;
         metodoPagoEnLinea?: T;
         correosPedidos?: T;
+        domicilioActivo?: T;
+        pagarAlRecibir?: T;
+        metodoContraEntrega?: T;
+        horarioEntrega?: T;
+        zonas?:
+          | T
+          | {
+              nombre?: T;
+              codigosPostales?: T;
+              costo?: T;
+              pedidoMinimo?: T;
+              gratisDesde?: T;
+              activa?: T;
+              id?: T;
+            };
       };
   updatedAt?: T;
   createdAt?: T;

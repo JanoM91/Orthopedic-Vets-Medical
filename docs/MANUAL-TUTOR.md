@@ -36,7 +36,8 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 
 1. Entra a **Tienda** (en el sitio o en la pestaña **Farmacia** del portal).
 2. Arriba, elige **para quién compras**: tu mascota (si entraste con tu cuenta) o la especie y el peso. Te decimos qué le queda y qué no.
-3. Agrega al carrito y toca **Hacer pedido**. Lo recoges en la clínica: pagas ahí o en línea.
+3. Agrega al carrito y toca **Hacer pedido**. Lo recoges en la clínica (pagas ahí o en línea) o, si la clínica entrega en tu código postal, **te lo llevamos** (pagas en línea o al recibir; el envío se ve antes de pedir).
+- ¿No sabes qué buscar? En **«¿Qué necesita tu mascota?»** cuéntanos con tus palabras y te sugerimos productos de venta libre. No sustituye a tu veterinario: si algo suena serio, te recomendamos pedir cita.
 4. Te llega un correo con la liga de tu pedido y otro cuando esté **listo para recoger**. Si pagas al recoger, te lo apartamos unas horas; después se libera solo.
 - Los medicamentos **con receta** solo se piden con tu cuenta y con una receta vigente de tu veterinario para esa mascota. Los controlados no se venden en línea.
 - En **Portal → Farmacia** ves tus pedidos y tus recetas; «Surtir» abre la tienda con tu mascota ya elegida.

@@ -4,7 +4,8 @@ import config from '@payload-config'
 
 import { firmarPrueba, proveedorPago } from '@/lib/farmacia/pagos'
 import { ErrorFarmacia } from '@/lib/farmacia/servicio'
-import { cancelarPorCliente, catalogoTienda, crearPedido, pagarPedido, pedidosDelTutor, productoTienda, recibirAviso, seguimiento, sesionTienda } from '@/lib/farmacia/tienda'
+import { sugerirProductos } from '@/lib/farmacia/sugerir'
+import { cancelarPorCliente, catalogoTienda, cotizarEnvio, crearPedido, pagarPedido, pedidosDelTutor, productoTienda, recibirAviso, seguimiento, sesionTienda } from '@/lib/farmacia/tienda'
 import { ErrorConCodigo } from '@/lib/farmacia/util'
 import { contextoTutor } from '@/lib/clinica/servicio'
 import { rateLimit } from '@/lib/rateLimit'
@@ -17,12 +18,14 @@ import { rateLimit } from '@/lib/rateLimit'
  *   GET  catalogo?q=&linea=&mascota=  |  &especie=&peso=
  *   GET  producto/:id?(mismo perfil)
  *   GET  sesion                         tutor con sesión: mascotas, recetas vigentes
+ *   GET  envio?cp=&subtotal=            zona y costo de envío (5b)
+ *   POST sugerir                        { texto, perfil? } búsqueda con IA (5b)
  *   GET  mis-pedidos                    tutor con sesión
  *   GET  pedidos/:folio?t=<token>       seguimiento (tutor o invitado con su liga)
  *   POST pedidos                        crear (idempotente por `clave`)
  *   POST pedidos/:folio/cancelar        { t, motivo? }
  *   POST pedidos/:folio/pagar           { t } → { url } de la pasarela
- *   POST webhook/:proveedor             aviso de la pasarela (firma obligatoria)
+ *   POST webhook/:proveedor             aviso de la pasarela (firma obligatoria; Mercado Pago: x-signature)
  *   POST pago-prueba/:folio             { t, ref, resultado } SOLO con PAGOS_PRUEBA_SECRETO:
  *                                       firma el aviso y lo pasa por el mismo camino que uno real.
  */
@@ -68,7 +71,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
   /* El aviso de la pasarela llega de otro origen y su cuerpo se verifica tal cual llegó. */
   if (metodo === 'POST' && a === 'webhook' && b && !c) {
     const cuerpo = await req.text()
-    return json(await recibirAviso(payload, b, req.headers, cuerpo))
+    return json(await recibirAviso(payload, b, req.headers, cuerpo, req.nextUrl))
   }
   if (metodo === 'POST' && !mismoOrigen(req)) return json({ error: 'Origen no permitido.' }, 403)
   if (!rateLimit(`tienda:${ip(req)}`, 240, 60 * 1000)) return json({ error: 'Demasiadas consultas seguidas. Espera un momento.' }, 429)
@@ -77,6 +80,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'catalogo' && !b) return json(await catalogoTienda(payload, req.headers, { q: q.get('q'), linea: q.get('linea'), perfil: perfilDe(q) }))
     if (a === 'producto' && b && !c) return json(await productoTienda(payload, req.headers, Number(b) || 0, perfilDe(q)))
     if (a === 'sesion' && !b) return json(await sesionTienda(payload, req.headers))
+    if (a === 'envio' && !b) return json(await cotizarEnvio(payload, req.headers, q.get('cp') ?? '', Number(q.get('subtotal') ?? 0)))
     if (a === 'mis-pedidos' && !b) {
       const t = await contextoTutor(payload, req.headers)
       if (!t) return json({ error: 'Entra al portal para ver tus pedidos.' }, 401)
@@ -87,6 +91,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
 
   if (metodo === 'POST') {
     if (a === 'pedidos' && !b) return json(await crearPedido(payload, req.headers, await leerJson(req)), 201)
+    if (a === 'sugerir' && !b) return json(await sugerirProductos(payload, req.headers, await leerJson(req)))
     if (a === 'pedidos' && b && c === 'cancelar') {
       const d = await leerJson(req)
       return json(await cancelarPorCliente(payload, b, String(d.t ?? ''), typeof d.motivo === 'string' ? d.motivo : null))
@@ -101,7 +106,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       if (!ref || ref !== ped.pago.referencia) return json({ error: 'Ese cobro ya no es el vigente. Vuelve a tu pedido y paga otra vez.' }, 409)
       const cuerpo = JSON.stringify({ idEvento: `${ref}:${d.resultado === 'rechazado' ? 'r' : 'a'}`, pedidoId: ped.id, referencia: ref, resultado: d.resultado === 'rechazado' ? 'rechazado' : 'aprobado', monto: ped.total })
       const cab = new Headers({ 'x-firma-prueba': firmarPrueba(cuerpo) })
-      return json(await recibirAviso(payload, 'prueba', cab, cuerpo))
+      return json(await recibirAviso(payload, 'prueba', cab, cuerpo, req.nextUrl))
     }
   }
   return json({ error: 'Ruta no encontrada.' }, 404)

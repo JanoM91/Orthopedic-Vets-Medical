@@ -25,7 +25,7 @@ import {
   producto,
 } from '@/lib/farmacia/servicio'
 import { importarProductos, plantillaProductosXlsx } from '@/lib/farmacia/importacion'
-import { avanzarPedido, entregarPedido, pedidoPanel, pedidosPanel } from '@/lib/farmacia/tienda'
+import { avanzarPedido, entregarDomicilio, entregarPedido, enviarPedido, evidencia, misEntregas, noEntregado, pedidoPanel, pedidosPanel, reembolsarPedido, repartidores } from '@/lib/farmacia/tienda'
 import {
   actualizarCompra,
   anularCompra,
@@ -248,6 +248,12 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'promociones' && !b) return json(await promociones(ctx, { estado: q.get('estado') }))
     if (a === 'pedidos' && !b) return json(await pedidosPanel(ctx, q.get('grupo')))
     if (a === 'pedidos' && b && !c) return json(await pedidoPanel(ctx, idDeRuta(b)))
+    if (a === 'pedidos' && b && c === 'evidencia') {
+      const f = await evidencia(ctx, idDeRuta(b))
+      return new Response(new Uint8Array(f.bytes), { headers: { 'Content-Type': f.tipo, 'Cache-Control': 'private, no-store' } })
+    }
+    if (a === 'repartidores' && !b) return json(await repartidores(ctx))
+    if (a === 'entregas' && !b) return json(await misEntregas(ctx))
     if (a === 'kardex' && !b) {
       return json(await kardex(ctx, { productoId: q.get('producto') ? idDeRuta(q.get('producto')!) : undefined, loteId: q.get('lote') ? idDeRuta(q.get('lote')!) : undefined, limite: q.get('limite') ? Number(q.get('limite')) : undefined }))
     }
@@ -313,6 +319,19 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     }
     if (a === 'pedidos' && b && c === 'estado') return json(await avanzarPedido(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'pedidos' && b && c === 'entregar') return json(await entregarPedido(ctx, idDeRuta(b), await leerJson(req)))
+    if (a === 'pedidos' && b && c === 'enviar') return json(await enviarPedido(ctx, idDeRuta(b), await leerJson(req)))
+    if (a === 'pedidos' && b && c === 'no-entregado') return json(await noEntregado(ctx, idDeRuta(b), await leerJson(req)))
+    if (a === 'pedidos' && b && c === 'reembolsar') return json(await reembolsarPedido(ctx, idDeRuta(b)))
+    if (a === 'pedidos' && b && c === 'entregado') {
+      /* Multipart (con foto opcional) o JSON. */
+      if ((req.headers.get('content-type') ?? '').includes('multipart/form-data')) {
+        const form = await req.formData().catch(() => null)
+        if (!form) throw new ErrorFarmacia(400, 'No llegaron los datos.')
+        const foto = form.get('foto')
+        return json(await entregarDomicilio(ctx, idDeRuta(b), { recibio: form.get('recibio'), nota: form.get('nota'), cobrado: form.get('cobrado') }, foto instanceof File && foto.size > 0 ? foto : null))
+      }
+      return json(await entregarDomicilio(ctx, idDeRuta(b), (await leerJson(req)) as Record<string, unknown>, null))
+    }
     if (a === 'cierre' && !b) return json(await registrarCierre(ctx, await leerJson(req)), 201)
     if (a === 'alertas' && b === 'recalcular') return json(await recalcularAhora(ctx))
     if (a === 'alertas' && b && (c === 'atender' || c === 'descartar')) return json(await cerrarAlerta(ctx, idDeRuta(b), c === 'atender' ? 'atendida' : 'descartada', await leerJson(req).catch(() => ({}))))

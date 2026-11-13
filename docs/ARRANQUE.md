@@ -23,6 +23,7 @@ En Vercel → proyecto → **Settings → Environment Variables** (Production). 
 | `CRON_SECRET` (Sensitive) | Tareas diarias: resumen de alertas de farmacia (08:00) y recordatorio de citas (18:00). Valor largo al azar: `openssl rand -hex 32` | Sí, si se quieren avisos |
 | `RESEND_API_KEY` (Sensitive), `LEADS_FROM_EMAIL` | Correos (citas, recordatorios, tickets, alertas, contraseña olvidada). Sin ellas no sale ningún correo y nada falla | Recomendada |
 | `ANTHROPIC_API_KEY` | Nota de voz en Finanzas | Opcional |
+| `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` (Sensitive) | Pago en línea con Mercado Pago (Checkout Pro). El token sale de Tus integraciones → la aplicación → Credenciales (primero las de **prueba**, `TEST-…`); el secreto, de Webhooks → Configurar notificaciones (URL `https://<dominio>/api/tienda/webhook/mercadopago`, evento «Pagos»). | Solo con tienda y pago en línea |
 | `PAGOS_PRUEBA_SECRETO` (Sensitive) | Solo para probar la tienda con pago **simulado** (`openssl rand -hex 24`). Quitarla antes de abrir la tienda al público | Solo en pruebas |
 
 Después de cambiar variables: **Deployments → … → Redeploy** de la última de producción. En **Settings → Cron Jobs** deben aparecer `/api/farmacia/cron/diario` (diario 14:00 UTC) y `/api/clinica/cron/recordatorios` (diario 00:00 UTC).
@@ -63,7 +64,8 @@ Después de cambiar variables: **Deployments → … → Redeploy** de la últim
 3. **Proveedores** (con días de entrega) en Configuración.
 4. **Catálogo**: Farmacia → Importar catálogo → descarga la plantilla, llénala y súbela. Los 50 productos de ejemplo de la plantilla son inventados: bórralos de la hoja antes de cargar.
 5. **Inventario inicial**: con la primera compra (XML de la factura) o con ajustes positivos por lote y caducidad.
-6. **Tienda en línea (opcional)**: Instalación → módulos → encender «Tienda». En Farmacia → Configuración: horas de apartado, «pagar al recoger» y correos que reciben los pedidos. Para pago en línea, un método de pago con clave `en_linea` y su cuenta de Finanzas. En cada producto que se venda en línea, marcar «Publicado en la tienda» (el Grupo I nunca aparece). Con la pasarela «Pago de prueba» solo se ensaya; Mercado Pago llega en la siguiente fase.
+6. **Tienda en línea (opcional)**: Instalación → módulos → encender «Tienda». En Farmacia → Configuración: horas de apartado, «pagar al recoger» y correos que reciben los pedidos. Para pago en línea, un método de pago con clave `en_linea` y su cuenta de Finanzas. En cada producto que se venda en línea, marcar «Publicado en la tienda» (el Grupo I nunca aparece). Con la pasarela «Pago de prueba» solo se ensaya; para cobrar de verdad, «Mercado Pago» con sus dos variables.
+7. **A domicilio (opcional)**: en Configuración → Tienda en línea, «Entrega a domicilio», horario y una zona por colonia o área con sus códigos postales, envío, mínimo y «gratis desde». Agrega un método de pago `contra_entrega` (tipo «otro», «por confirmar», cuenta = caja del repartidor). Da de alta al repartidor en Usuarios con el rol «Repartidor».
 
 ## 6. Prueba con el equipo (30 minutos)
 

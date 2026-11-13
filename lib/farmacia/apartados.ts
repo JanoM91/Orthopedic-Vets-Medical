@@ -17,9 +17,11 @@ import { n0, r3 } from './util'
 
 export const ESTADOS_QUE_APARTAN = ['pago_pendiente', 'creado', 'pagado', 'receta_por_validar', 'preparando', 'listo_para_recoger', 'en_ruta'] as const
 
-/** ¿Este pedido sigue apartando inventario? Pagado nunca vence; sin pago, hasta `expiraEn`. */
-export function apartaInventario(p: Pick<FarPedido, 'estado' | 'expiraEn' | 'pago'>, ahora = Date.now()): boolean {
+/** ¿Este pedido sigue apartando inventario? Pagado nunca vence; sin pago, hasta `expiraEn`; ya vendido, no. */
+export function apartaInventario(p: Pick<FarPedido, 'estado' | 'expiraEn' | 'pago'> & { venta?: FarPedido['venta'] }, ahora = Date.now()): boolean {
   if (!(ESTADOS_QUE_APARTAN as readonly string[]).includes(p.estado)) return false
+  /* Con venta (a domicilio, al salir con el repartidor) la mercancía ya salió del kardex: no se aparta dos veces. */
+  if (p.venta) return false
   if (p.pago?.estado === 'pagado') return true
   return !(p.expiraEn && Date.parse(p.expiraEn) < ahora)
 }

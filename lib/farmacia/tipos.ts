@@ -133,7 +133,17 @@ export type ConfiguracionVista = {
   finanzas: { areaId: number | null; categoriaVentasId: number | null; categoriaComprasId: number | null }
   pasarelaActiva: 'ninguna' | 'mercadopago' | 'prueba'
   /** Tienda en línea (fase 5a). */
-  tienda: { pagarAlRecoger: boolean; metodoPagoEnLinea: string; correosPedidos: string | null }
+  tienda: {
+    pagarAlRecoger: boolean
+    metodoPagoEnLinea: string
+    correosPedidos: string | null
+    /** Fase 5b: entrega a domicilio */
+    domicilioActivo: boolean
+    pagarAlRecibir: boolean
+    metodoContraEntrega: string
+    horarioEntrega: string | null
+    zonas: ZonaEntrega[]
+  }
   exigirOriginalGrupoII: boolean
   metodosPago: MetodoPagoVista[]
 }
@@ -319,6 +329,9 @@ export type ResultadoConteo = {
 
 /* ───────── venta de mostrador y recetas (fase 3) ───────── */
 
+/** Zona de entrega a domicilio (fase 5b): por código postal. */
+export type ZonaEntrega = { nombre: string; codigosPostales: string[]; envio: number; pedidoMinimo: number; gratisDesde: number | null; activa: boolean }
+
 export type MetodoPagoVista = { clave: string; nombre: string; tipo: 'efectivo' | 'terminal' | 'transferencia' | 'otro'; cuentaId: number | null; porConfirmar: boolean; activo: boolean }
 
 export type RenglonRecetaVista = {
@@ -433,6 +446,8 @@ export type VentaVista = {
   renglones: RenglonVentaVista[]
   subtotal: number
   descuento: number
+  /** Envío a domicilio (tienda, fase 5b); 0 en mostrador. */
+  envio: number
   total: number
   /** Solo con «Ver costos». */
   costoTotal?: number | null

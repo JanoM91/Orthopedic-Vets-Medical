@@ -191,12 +191,15 @@ const CONFIG_POR_OMISION: ConfiguracionVista = {
     { clave: 'transferencia', nombre: 'Transferencia', tipo: 'transferencia', cuentaId: null, porConfirmar: true, activo: true },
   ],
   pasarelaActiva: 'ninguna',
-  tienda: { pagarAlRecoger: true, metodoPagoEnLinea: 'en_linea', correosPedidos: null },
+  tienda: { pagarAlRecoger: true, metodoPagoEnLinea: 'en_linea', correosPedidos: null, domicilioActivo: false, pagarAlRecibir: true, metodoContraEntrega: 'contra_entrega', horarioEntrega: null, zonas: [] },
 }
+
+/** «91000, 91010 91020» → ['91000','91010','91020'] (5 dígitos, sin repetidos). */
+export const listaCP = (texto: string | null | undefined): string[] => [...new Set((texto ?? '').split(/[^0-9]+/).filter((x) => /^\d{5}$/.test(x)))]
 
 function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista {
   const d = CONFIG_POR_OMISION
-  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas }, metodosPago: d.metodosPago.map((m) => ({ ...m })), tienda: { ...d.tienda } }
+  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas }, metodosPago: d.metodosPago.map((m) => ({ ...m })), tienda: { ...d.tienda, zonas: [] } }
   const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : def)
   return {
     caducidad: {
@@ -224,6 +227,18 @@ function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista
       pagarAlRecoger: g.tienda?.pagarAlRecoger == null ? d.tienda.pagarAlRecoger : Boolean(g.tienda.pagarAlRecoger),
       metodoPagoEnLinea: t(g.tienda?.metodoPagoEnLinea) ?? d.tienda.metodoPagoEnLinea,
       correosPedidos: t(g.tienda?.correosPedidos),
+      domicilioActivo: Boolean(g.tienda?.domicilioActivo),
+      pagarAlRecibir: g.tienda?.pagarAlRecibir == null ? d.tienda.pagarAlRecibir : Boolean(g.tienda.pagarAlRecibir),
+      metodoContraEntrega: t(g.tienda?.metodoContraEntrega) ?? d.tienda.metodoContraEntrega,
+      horarioEntrega: t(g.tienda?.horarioEntrega),
+      zonas: (g.tienda?.zonas ?? []).map((z) => ({
+        nombre: z.nombre,
+        codigosPostales: listaCP(z.codigosPostales),
+        envio: num(z.costo, 0),
+        pedidoMinimo: num(z.pedidoMinimo, 0),
+        gratisDesde: typeof z.gratisDesde === 'number' && z.gratisDesde > 0 ? z.gratisDesde : null,
+        activa: z.activa !== false,
+      })),
     },
     exigirOriginalGrupoII: Boolean(g.exigirOriginalGrupoII),
     metodosPago: g.metodosPago?.length
@@ -261,7 +276,30 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     almacenPorOmisionId: z.coerce.number().int().positive().nullable().optional(),
     finanzas: z.object({ areaId: z.coerce.number().int().positive().nullable(), categoriaVentasId: z.coerce.number().int().positive().nullable(), categoriaComprasId: z.coerce.number().int().positive().nullable() }).partial().optional(),
     pasarelaActiva: z.enum(['ninguna', 'mercadopago', 'prueba']).optional(),
-    tienda: z.object({ pagarAlRecoger: z.boolean(), metodoPagoEnLinea: z.string().trim().toLowerCase().regex(/^[a-z0-9_-]{2,30}$/, 'La clave del método va sin espacios ni acentos.'), correosPedidos: z.string().trim().max(500).nullable() }).partial().optional(),
+    tienda: z
+      .object({
+        pagarAlRecoger: z.boolean(),
+        metodoPagoEnLinea: z.string().trim().toLowerCase().regex(/^[a-z0-9_-]{2,30}$/, 'La clave del método va sin espacios ni acentos.'),
+        correosPedidos: z.string().trim().max(500).nullable(),
+        domicilioActivo: z.boolean(),
+        pagarAlRecibir: z.boolean(),
+        metodoContraEntrega: z.string().trim().toLowerCase().regex(/^[a-z0-9_-]{2,30}$/, 'La clave del método va sin espacios ni acentos.'),
+        horarioEntrega: z.string().trim().max(200).nullable(),
+        zonas: z
+          .array(
+            z.object({
+              nombre: z.string().trim().min(2, 'Escribe el nombre de la zona.').max(60),
+              codigosPostales: z.union([z.string(), z.array(z.string())]),
+              envio: z.coerce.number().min(0),
+              pedidoMinimo: z.coerce.number().min(0).optional(),
+              gratisDesde: z.coerce.number().min(0).nullable().optional(),
+              activa: z.boolean().optional(),
+            }),
+          )
+          .max(30),
+      })
+      .partial()
+      .optional(),
     exigirOriginalGrupoII: z.boolean().optional(),
     metodosPago: z
       .array(
@@ -298,7 +336,23 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     }
   }
   if (v.pasarelaActiva) data.pasarelaActiva = v.pasarelaActiva
-  if (v.tienda) data.tienda = { ...(actual.tienda ?? {}), ...v.tienda }
+  if (v.tienda) {
+    const { zonas, ...resto } = v.tienda
+    data.tienda = { ...(actual.tienda ?? {}), ...resto }
+    if (zonas) {
+      const vistos = new Map<string, string>()
+      const limpias = zonas.map((z) => {
+        const cps = listaCP(Array.isArray(z.codigosPostales) ? z.codigosPostales.join(',') : z.codigosPostales)
+        if (!cps.length) throw invalido(`La zona «${z.nombre}» no tiene códigos postales de 5 dígitos.`)
+        for (const cp of cps) {
+          if (z.activa !== false && vistos.has(cp)) throw invalido(`El código postal ${cp} está en dos zonas («${vistos.get(cp)}» y «${z.nombre}»).`)
+          if (z.activa !== false) vistos.set(cp, z.nombre)
+        }
+        return { nombre: z.nombre, codigosPostales: cps.join(', '), costo: z.envio, pedidoMinimo: z.pedidoMinimo ?? 0, gratisDesde: z.gratisDesde || null, activa: z.activa !== false }
+      })
+      ;(data.tienda as Record<string, unknown>).zonas = limpias
+    }
+  }
   if (v.exigirOriginalGrupoII != null) data.exigirOriginalGrupoII = v.exigirOriginalGrupoII
   if (v.correosAlertas !== undefined) {
     const lista = (v.correosAlertas ?? '').split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean)

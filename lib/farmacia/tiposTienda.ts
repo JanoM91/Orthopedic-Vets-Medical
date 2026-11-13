@@ -63,7 +63,17 @@ export type SesionTienda = {
   pagoEnLinea: { disponible: boolean; proveedor: 'prueba' | 'mercadopago' | null }
   pagarAlRecoger: boolean
   horasApartado: number
+  /** Fase 5b: entrega a domicilio */
+  domicilio: { activo: boolean; pagarAlRecibir: boolean; horario: string | null; grupoII: boolean }
+  /** Hay búsqueda con IA («¿qué necesita tu mascota?»). */
+  busquedaIA: boolean
 }
+
+/** Cotización de envío para un código postal. */
+export type CotizacionEnvio = { cubre: boolean; zona: string | null; envio: number; pedidoMinimo: number; gratisDesde: number | null; mensaje: string | null }
+
+/** Respuesta de la búsqueda con IA: productos de la tienda que pueden servir, nunca dosis. */
+export type SugerenciaIA = { productos: ProductoTienda[]; explicacion: string; veterinario: boolean; motivoVeterinario: string | null; conIA: boolean }
 
 export type EstadoPedido = 'pago_pendiente' | 'creado' | 'pagado' | 'receta_por_validar' | 'preparando' | 'listo_para_recoger' | 'en_ruta' | 'entregado' | 'cancelado' | 'expirado'
 
@@ -73,7 +83,7 @@ export const ESTADO_PEDIDO_LABEL: Record<EstadoPedido, string> = {
   pagado: 'Pagado',
   receta_por_validar: 'Receta por validar',
   preparando: 'Preparando',
-  listo_para_recoger: 'Listo para recoger',
+  listo_para_recoger: 'Listo',
   en_ruta: 'En camino',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
@@ -87,12 +97,18 @@ export type PedidoVista = {
   creadoEn: string
   expiraEn: string | null
   entrega: 'recoger' | 'domicilio'
-  pago: { forma: 'al_recoger' | 'en_linea'; estado: 'pendiente' | 'pagado' | 'reembolso_pendiente'; proveedor: string | null; referencia: string | null; pagadoEn: string | null }
+  pago: { forma: 'al_recoger' | 'en_linea' | 'al_recibir'; estado: 'pendiente' | 'pagado' | 'reembolso_pendiente' | 'reembolsado'; proveedor: string | null; referencia: string | null; pagadoEn: string | null }
   contacto: { nombre: string; correo: string; telefono: string | null }
   mascota: { id: number; nombre: string } | null
   perfil: { especie: string | null; pesoKg: number | null } | null
   renglones: { presentacionId: number; productoId: number; descripcion: string; grupo: string | null; cantidad: number; precioUnitario: number; importe: number; recetaId: number | null; recetaFolio: string | null }[]
+  subtotal: number
+  /** Envío a domicilio (precio al cliente). */
+  envio: number
   total: number
+  direccion: { calle: string; colonia: string | null; codigoPostal: string; referencias: string | null; zona: string | null } | null
+  repartidor: { id: number; nombre: string } | null
+  entregaDomicilio: { salioEn: string | null; entregadoEn: string | null; recibio: string | null; nota: string | null; intentos: number; conFoto: boolean } | null
   notasCliente: string | null
   motivoCancelacion: string | null
   ventaId: number | null

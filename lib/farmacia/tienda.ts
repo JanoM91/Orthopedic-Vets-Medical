@@ -13,14 +13,14 @@ import { leerModulos, type Modulos } from '../modulos'
 import { rateLimit } from '../rateLimit'
 import { site } from '../site'
 import { apartadas, apartaInventario, ESTADOS_QUE_APARTAN as ESTADOS_APARTAN } from './apartados'
-import { pasarelaDisponible, proveedorPago, type EventoPago } from './pagos'
+import { pasarelaDisponible, pedidoDeReferencia, proveedorPago, type EventoPago } from './pagos'
 import { pacienteDe, recetaVigente, renglonQueCubre } from './recetas'
 import { almacenPorOmision, type Ctx, ErrorFarmacia, idDe, leerConfiguracion } from './servicio'
 import type { ConfiguracionVista, PacienteVenta } from './tipos'
-import type { AptoTienda, EstadoPedido, MascotaCompra, PedidoVista, PerfilCompra, ProductoTienda, RecetaTienda, SesionTienda } from './tiposTienda'
+import type { AptoTienda, CotizacionEnvio, EstadoPedido, MascotaCompra, PedidoVista, PerfilCompra, ProductoTienda, RecetaTienda, SesionTienda } from './tiposTienda'
 import { ESTADO_PEDIDO_LABEL } from './tiposTienda'
 import { invalido, n0, noEncontrado, nOpc, prohibido, r3, revisarContraMascota, t } from './util'
-import { registrarVenta } from './ventas'
+import { confirmarPagoSinPermiso, registrarVenta } from './ventas'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -75,9 +75,9 @@ export async function disponiblePorProducto(payload: Payload, productoIds: numbe
 
 /* ───────────────────────────── contexto público ───────────────────────────── */
 
-type Publico = { payload: Payload; modulos: Modulos; cfg: ConfiguracionVista; hoy: string; tutor: Tutor | null; clienteId: number | null }
+export type Publico = { payload: Payload; modulos: Modulos; cfg: ConfiguracionVista; hoy: string; tutor: Tutor | null; clienteId: number | null }
 
-async function contextoPublico(payload: Payload, headers: Headers): Promise<Publico> {
+export async function contextoPublico(payload: Payload, headers: Headers): Promise<Publico> {
   const modulos = await leerModulos(payload)
   if (!modulos.farmacia || !modulos.tienda) throw new ErrorFarmacia(404, 'La tienda en línea no está activa.')
   const [cfg, c] = await Promise.all([leerConfiguracion(payload), contextoTutor(payload, headers).catch(() => null)])
@@ -117,7 +117,36 @@ export async function sesionTienda(payload: Payload, headers: Headers): Promise<
     pagoEnLinea: { disponible: Boolean(prov), proveedor: prov?.nombre ?? null },
     pagarAlRecoger: x.cfg.tienda.pagarAlRecoger,
     horasApartado: x.cfg.horasApartado,
+    domicilio: { activo: x.cfg.tienda.domicilioActivo && x.cfg.tienda.zonas.some((z) => z.activa), pagarAlRecibir: x.cfg.tienda.pagarAlRecibir, horario: x.cfg.tienda.horarioEntrega, grupoII: x.cfg.recetaGrupoIIDomicilio },
+    busquedaIA: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
   }
+}
+
+/* ───────────────────────────── envío a domicilio (fase 5b) ───────────────────────────── */
+
+/** Zona y costo para un código postal y un subtotal de productos (pesos). Pura: la usan la cotización y el pedido. */
+export function cotizar(cfg: ConfiguracionVista, cp: string, subtotal: number): CotizacionEnvio {
+  const limpio = (cp ?? '').replace(/\D/g, '')
+  const vacia = { cubre: false, zona: null, envio: 0, pedidoMinimo: 0, gratisDesde: null }
+  if (!cfg.tienda.domicilioActivo) return { ...vacia, mensaje: 'Por ahora no hay entregas a domicilio.' }
+  if (!/^\d{5}$/.test(limpio)) return { ...vacia, mensaje: 'Escribe tu código postal (5 dígitos).' }
+  const z = cfg.tienda.zonas.find((x) => x.activa && x.codigosPostales.includes(limpio))
+  if (!z) return { ...vacia, mensaje: `Todavía no entregamos en el ${limpio}. Puedes recogerlo en la farmacia.` }
+  const gratis = z.gratisDesde != null && subtotal >= z.gratisDesde
+  const falta = z.pedidoMinimo > 0 && subtotal < z.pedidoMinimo ? z.pedidoMinimo - subtotal : 0
+  return {
+    cubre: true,
+    zona: z.nombre,
+    envio: gratis ? 0 : z.envio,
+    pedidoMinimo: z.pedidoMinimo,
+    gratisDesde: z.gratisDesde,
+    mensaje: falta > 0 ? `El pedido mínimo a domicilio en ${z.nombre} es de $${z.pedidoMinimo.toLocaleString('es-MX')}: te faltan $${falta.toLocaleString('es-MX', { minimumFractionDigits: 2 })}.` : gratis ? 'Envío gratis.' : z.gratisDesde ? `Envío gratis desde $${z.gratisDesde.toLocaleString('es-MX')}.` : null,
+  }
+}
+
+export async function cotizarEnvio(payload: Payload, headers: Headers, cp: string, subtotal: number): Promise<CotizacionEnvio> {
+  const x = await contextoPublico(payload, headers)
+  return cotizar(x.cfg, cp, Number.isFinite(subtotal) && subtotal >= 0 ? subtotal : 0)
 }
 
 function vistaRecetaTienda(r: FarReceta): RecetaTienda {
@@ -143,10 +172,10 @@ function vistaRecetaTienda(r: FarReceta): RecetaTienda {
 
 /* ───────────────────────────── catálogo ───────────────────────────── */
 
-const esquemaPerfil = z.union([z.object({ mascotaId: z.coerce.number().int().positive() }), z.object({ especie: z.string().trim().min(2).max(20), pesoKg: z.coerce.number().positive().max(200).nullable() })])
+export const esquemaPerfil = z.union([z.object({ mascotaId: z.coerce.number().int().positive() }), z.object({ especie: z.string().trim().min(2).max(20), pesoKg: z.coerce.number().positive().max(200).nullable() })])
 
 /** Paciente para revisar compatibilidad: mascota del tutor (con alergias, edad y peso) o el perfil rápido del invitado. */
-async function pacienteDePerfil(x: Publico, perfil: PerfilCompra | null): Promise<{ paciente: PacienteVenta | null; mascotaId: number | null }> {
+export async function pacienteDePerfil(x: Publico, perfil: PerfilCompra | null): Promise<{ paciente: PacienteVenta | null; mascotaId: number | null }> {
   if (!perfil) return { paciente: null, mascotaId: null }
   if ('mascotaId' in perfil) {
     const propias = await mascotasDelCliente(x)
@@ -166,9 +195,9 @@ function aptoPara(prod: FarProducto, paciente: PacienteVenta | null): AptoTienda
   return { estado: 'apto', motivos: [] }
 }
 
-const visiblePublico: Where = { and: [{ activo: { equals: true } }, { publicadoTienda: { equals: true } }, { grupo: { not_equals: 'I' } }] }
+export const visiblePublico: Where = { and: [{ activo: { equals: true } }, { publicadoTienda: { equals: true } }, { grupo: { not_equals: 'I' } }] }
 
-async function armarProductos(x: Publico, prods: FarProducto[], paciente: PacienteVenta | null): Promise<ProductoTienda[]> {
+export async function armarProductos(x: Publico, prods: FarProducto[], paciente: PacienteVenta | null): Promise<ProductoTienda[]> {
   if (!prods.length) return []
   const ids = prods.map((p) => p.id)
   const [pres, disp] = await Promise.all([
@@ -232,7 +261,7 @@ export async function productoTienda(payload: Payload, headers: Headers, id: num
 
 /* ───────────────────────────── vistas de pedido ───────────────────────────── */
 
-function vistaPedido(p: FarPedido, conToken = false): PedidoVista {
+function vistaPedido(p: FarPedido, conToken = false, evidencias: Set<number> = new Set()): PedidoVista {
   const m = typeof p.mascota === 'object' && p.mascota ? (p.mascota as Mascota) : null
   const v: PedidoVista = {
     id: p.id,
@@ -256,7 +285,15 @@ function vistaPedido(p: FarPedido, conToken = false): PedidoVista {
       recetaId: idDe(r.receta),
       recetaFolio: idDe(r.receta) ? folioParaId('REC', idDe(r.receta)!) : null,
     })),
+    subtotal: nOpc(p.subtotal) ?? p.total - n0(p.costoEnvio),
+    envio: n0(p.costoEnvio),
     total: p.total,
+    direccion: p.entrega === 'domicilio' && p.direccion?.calle ? { calle: p.direccion.calle, colonia: t(p.direccion.colonia), codigoPostal: p.direccion.codigoPostal ?? '', referencias: t(p.direccion.referencias), zona: t(p.direccion.zona) } : null,
+    repartidor: typeof p.repartidor === 'object' && p.repartidor ? { id: p.repartidor.id, nombre: p.repartidor.name?.trim() || p.repartidor.email } : idDe(p.repartidor) ? { id: idDe(p.repartidor)!, nombre: 'Repartidor' } : null,
+    entregaDomicilio:
+      p.entrega === 'domicilio'
+        ? { salioEn: p.entregaDomicilio?.salioEn ?? null, entregadoEn: p.entregaDomicilio?.entregadoEn ?? null, recibio: t(p.entregaDomicilio?.recibio), nota: t(p.entregaDomicilio?.nota), intentos: n0(p.entregaDomicilio?.intentos), conFoto: Boolean(t(p.entregaDomicilio?.entregadoEn)) && evidencias.has(p.id) }
+        : null,
     notasCliente: t(p.notasCliente),
     motivoCancelacion: t(p.motivoCancelacion),
     ventaId: idDe(p.venta),
@@ -270,7 +307,7 @@ function vistaPedido(p: FarPedido, conToken = false): PedidoVista {
 /** Un apartado sin pago y vencido se muestra «expirado» aunque el cron aún no lo marque. */
 function estadoVisible(p: FarPedido): EstadoPedido {
   const e = p.estado as EstadoPedido
-  if (ESTADOS_QUE_APARTAN.includes(e) && !apartaInventario(p)) return 'expirado'
+  if (ESTADOS_QUE_APARTAN.includes(e) && !p.venta && !apartaInventario(p)) return 'expirado'
   return e
 }
 
@@ -287,11 +324,20 @@ const esquemaPedido = z.object({
   perfil: esquemaPerfil.nullable().optional(),
   contacto: z.object({ nombre: z.string().trim().min(2, 'Escribe tu nombre.').max(120), correo: z.string().trim().toLowerCase().email('Escribe un correo válido.').max(160), telefono: z.string().trim().max(30).nullable().optional() }).optional(),
   entrega: z.enum(['recoger', 'domicilio']).default('recoger'),
-  pago: z.enum(['al_recoger', 'en_linea']),
+  direccion: z
+    .object({
+      calle: z.string().trim().min(4, 'Escribe la calle y el número.').max(160),
+      colonia: z.string().trim().max(100).nullable().optional(),
+      codigoPostal: z.string().trim().regex(/^\d{5}$/, 'El código postal lleva 5 dígitos.'),
+      referencias: z.string().trim().max(200).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+  pago: z.enum(['al_recoger', 'en_linea', 'al_recibir']),
   notas: z.string().trim().max(400).nullable().optional(),
 })
 
-function ipDe(headers: Headers): string {
+export function ipDe(headers: Headers): string {
   return (headers.get('x-forwarded-for') || headers.get('x-real-ip') || 'local').split(',')[0].trim()
 }
 
@@ -322,10 +368,14 @@ export async function crearPedido(payload: Payload, headers: Headers, entrada: u
   if (ya.docs[0]) return { pedido: vistaPedido(ya.docs[0], true), urlPago: null, duplicado: true }
   if (!rateLimit(`pedido:${ipDe(headers)}`, 30, 60 * 60 * 1000)) throw new ErrorFarmacia(429, 'Demasiados pedidos seguidos desde esta conexión. Espera un rato o llámanos.')
 
-  if (v.entrega === 'domicilio') throw invalido('La entrega a domicilio llega pronto. Por ahora, elige «Recoger en farmacia».')
+  const domicilio = v.entrega === 'domicilio'
+  if (domicilio && !x.cfg.tienda.domicilioActivo) throw invalido('Por ahora no hay entregas a domicilio. Elige «Recoger en farmacia».')
+  if (domicilio && !v.direccion) throw invalido('Escribe la dirección de entrega.')
+  if (domicilio && !t(v.contacto?.telefono) && !t(x.tutor?.telefono)) throw invalido('Escribe un teléfono para que el repartidor te localice.')
   const prov = pasarelaDisponible(x.cfg.pasarelaActiva)
-  if (v.pago === 'en_linea' && !prov) throw invalido('El pago en línea todavía no está disponible. Elige pagar al recoger.')
-  if (v.pago === 'al_recoger' && !x.cfg.tienda.pagarAlRecoger) throw invalido('Esta farmacia pide pagar en línea.')
+  if (v.pago === 'en_linea' && !prov) throw invalido(`El pago en línea todavía no está disponible. Elige pagar ${domicilio ? 'al recibir' : 'al recoger'}.`)
+  if (v.pago === 'al_recoger' && (domicilio || !x.cfg.tienda.pagarAlRecoger)) throw invalido(domicilio ? 'A domicilio se paga en línea o al recibir.' : 'Esta farmacia pide pagar en línea.')
+  if (v.pago === 'al_recibir' && (!domicilio || !x.cfg.tienda.pagarAlRecibir)) throw invalido(domicilio ? 'Esta farmacia pide pagar en línea los pedidos a domicilio.' : 'Al recoger se paga en la farmacia o en línea.')
 
   /* Con sesión, el correo es siempre el de la cuenta (ahí llegan los avisos y así lo ve en el portal). */
   const contacto = x.tutor ? { nombre: t(v.contacto?.nombre) ?? x.tutor.nombre, correo: x.tutor.email.toLowerCase(), telefono: t(v.contacto?.telefono) ?? t(x.tutor.telefono) } : v.contacto
@@ -353,6 +403,7 @@ export async function crearPedido(payload: Payload, headers: Headers, entrada: u
       if (duros.length) throw invalido(`${prod.nombre} no es apto para ${paciente.nombre}: ${duros.map((p) => p.mensaje).join(' ')}`)
     }
     let recetaId: number | null = null
+    if (prod.grupo === 'II' && domicilio && !x.cfg.recetaGrupoIIDomicilio) throw invalido(`${prod.nombre} lleva receta y no se envía a domicilio: elige «Recoger en farmacia» o quítalo del carrito.`)
     if (prod.grupo === 'II') {
       if (!x.tutor || !x.clienteId) throw invalido(`${prod.nombre} requiere receta: entra al portal con tu cuenta (o agenda una consulta).`)
       if (!mascotaId) throw invalido(`${prod.nombre} requiere receta: elige para cuál de tus mascotas es.`)
@@ -373,7 +424,17 @@ export async function crearPedido(payload: Payload, headers: Headers, entrada: u
     const precioC = aCentavos(pr.precio) || 0
     planes.push({ pres: pr, prod, cantidad: r.cantidad, unidades: r3(r.cantidad * (n0(pr.factor) || 1)), precioC, importeC: Math.round(precioC * r.cantidad), recetaId })
   }
-  const totalC = planes.reduce((a, p) => a + p.importeC, 0)
+  const subtotalC = planes.reduce((a, p) => a + p.importeC, 0)
+  let envioC = 0
+  let zona: string | null = null
+  if (domicilio) {
+    const c = cotizar(x.cfg, v.direccion!.codigoPostal, aPesos(subtotalC))
+    if (!c.cubre) throw invalido(c.mensaje ?? 'No entregamos en esa zona.')
+    if (c.pedidoMinimo > 0 && aPesos(subtotalC) < c.pedidoMinimo) throw invalido(c.mensaje ?? 'No llega al pedido mínimo a domicilio.')
+    envioC = aCentavos(c.envio) || 0
+    zona = c.zona
+  }
+  const totalC = subtotalC + envioC
   const prodIds = [...new Set(planes.map((p) => p.prod.id))]
   const token = crypto.randomBytes(24).toString('hex')
   const expira = new Date(Date.now() + x.cfg.horasApartado * 3600000).toISOString()
@@ -401,8 +462,11 @@ export async function crearPedido(payload: Payload, headers: Headers, entrada: u
         contacto: { nombre: contacto.nombre, correo: contacto.correo, telefono: t(contacto.telefono) },
         perfil: perfil && !('mascotaId' in perfil) ? { especie: perfil.especie, pesoKg: perfil.pesoKg } : {},
         renglones: planes.map((p) => ({ presentacion: p.pres.id, producto: p.prod.id, descripcion: `${p.prod.nombre} · ${p.pres.nombre}`, grupo: p.prod.grupo, cantidad: p.cantidad, unidades: p.unidades, precioUnitario: aPesos(p.precioC), importe: aPesos(p.importeC), receta: p.recetaId })),
+        subtotal: aPesos(subtotalC),
+        costoEnvio: aPesos(envioC),
         total: aPesos(totalC),
-        entrega: 'recoger',
+        entrega: domicilio ? 'domicilio' : 'recoger',
+        direccion: domicilio ? { calle: v.direccion!.calle, colonia: t(v.direccion!.colonia), codigoPostal: v.direccion!.codigoPostal, referencias: t(v.direccion!.referencias), zona } : {},
         pago: { forma: v.pago, estado: 'pendiente', proveedor: v.pago === 'en_linea' ? prov!.nombre : null },
         expiraEn: expira,
         notasCliente: t(v.notas),
@@ -428,7 +492,13 @@ async function abrirCobro(payload: Payload, pedidoId: number, nombre: string): P
   const prov = proveedorPago(nombre)
   if (!prov || !prov.disponible()) throw invalido('El pago en línea no está disponible ahora.')
   const p = await payload.findByID({ collection: 'far-pedidos', id: pedidoId, depth: 0, overrideAccess: true })
-  const cobro = await prov.crearCobro({ pedidoId: p.id, folio: folioParaId('PED', p.id), total: p.total, token: p.token, base: site.url, descripcion: `Pedido ${folioParaId('PED', p.id)} · ${site.brand.name}` })
+  let cobro
+  try {
+    cobro = await prov.crearCobro({ pedidoId: p.id, folio: folioParaId('PED', p.id), total: p.total, token: p.token, base: site.url, descripcion: `Pedido ${folioParaId('PED', p.id)} · ${site.brand.name}`, expiraEn: p.expiraEn ?? null, correo: t(p.contacto?.correo) })
+  } catch (e) {
+    payload.logger.error(`[tienda] no se abrió el cobro de PED-${p.id}: ${String((e as Error)?.message ?? e)}`)
+    throw new ErrorFarmacia(502, 'No pudimos abrir el pago en línea. Tu pedido quedó guardado: intenta pagar otra vez desde su liga en unos minutos.')
+  }
   await payload.update({ collection: 'far-pedidos', id: p.id, overrideAccess: true, depth: 0, data: { pago: { ...(p.pago ?? {}), forma: 'en_linea', proveedor: prov.nombre, referencia: cobro.referencia } } })
   return cobro.url
 }
@@ -489,12 +559,19 @@ export async function procesarEventoPago(payload: Payload, proveedor: string, ev
     return { resultado, duplicado: false }
   }
   if (!p) return marcar('pedido inexistente')
-  if (t(p.pago?.referencia) !== ev.referencia) return marcar('referencia distinta (cobro anterior o ajeno)')
+  /* La referencia la generamos nosotros (`ped-<id>-…`); un cobro anterior del MISMO pedido también cuenta (el cliente pudo abrir el pago dos veces). */
+  if (t(p.pago?.referencia) !== ev.referencia && pedidoDeReferencia(ev.referencia) !== p.id) return marcar('referencia distinta (cobro ajeno)')
   if (ev.resultado === 'rechazado') {
     await payload.update({ collection: 'far-pedidos', id: p.id, overrideAccess: true, depth: 0, data: { historial: historial(p, p.estado, proveedor, 'Pago rechazado por la pasarela') } })
     return marcar('rechazado')
   }
-  if (p.pago?.estado === 'pagado') return marcar('ya estaba pagado')
+  if (p.pago?.estado === 'pagado') {
+    if (t(p.pago.idPago) && ev.idPago && t(p.pago.idPago) !== ev.idPago) {
+      await payload.update({ collection: 'far-pedidos', id: p.id, overrideAccess: true, depth: 0, data: { historial: historial(p, p.estado, proveedor, `Segundo pago aprobado (${ev.idPago}): reembolsarlo en la pasarela`) } })
+      return marcar('pago duplicado')
+    }
+    return marcar('ya estaba pagado')
+  }
   if (Math.abs((aCentavos(ev.monto) || 0) - (aCentavos(p.total) || 0)) > 0) {
     await payload.update({ collection: 'far-pedidos', id: p.id, overrideAccess: true, depth: 0, data: { historial: historial(p, p.estado, proveedor, `Monto pagado distinto del total (${ev.monto}): revisar`) } })
     return marcar('monto distinto')
@@ -508,7 +585,7 @@ export async function procesarEventoPago(payload: Payload, proveedor: string, ev
     data: {
       estado: ['cancelado', 'expirado'].includes(p.estado) ? p.estado : ['pago_pendiente', 'creado'].includes(p.estado) ? 'pagado' : p.estado,
       expiraEn: null,
-      pago: { ...(p.pago ?? {}), estado: 'pagado', pagadoEn: new Date().toISOString() },
+      pago: { ...(p.pago ?? {}), estado: 'pagado', pagadoEn: new Date().toISOString(), referencia: ev.referencia, idPago: ev.idPago ?? null },
       historial: historial(p, 'pagado', proveedor, tarde ? 'Pagado después de vencer o cancelar el apartado: revisar existencia o reembolsar' : `Referencia ${ev.referencia}`),
     },
   })
@@ -516,12 +593,13 @@ export async function procesarEventoPago(payload: Payload, proveedor: string, ev
   return marcar(tarde ? 'pagado tarde' : 'pagado')
 }
 
-export async function recibirAviso(payload: Payload, proveedor: string, cabeceras: Headers, cuerpo: string): Promise<{ resultado: string; duplicado: boolean }> {
+export async function recibirAviso(payload: Payload, proveedor: string, cabeceras: Headers, cuerpo: string, url: URL): Promise<{ resultado: string; duplicado: boolean }> {
   const prov = proveedorPago(proveedor)
   if (!prov || !prov.disponible()) throw new ErrorFarmacia(404, 'Proveedor de pago desconocido.')
-  const ev = prov.verificarAviso(cabeceras, cuerpo)
-  if (!ev) throw new ErrorFarmacia(401, 'Firma del aviso inválida.')
-  return procesarEventoPago(payload, prov.nombre, ev)
+  const v = await prov.verificarAviso(cabeceras, cuerpo, url)
+  if (!v.ok) throw new ErrorFarmacia(401, 'Firma del aviso inválida.')
+  if (!v.evento) return { resultado: v.nota ?? 'sin cambios', duplicado: false }
+  return procesarEventoPago(payload, prov.nombre, v.evento)
 }
 
 /* ───────────────────────────── portal del tutor ───────────────────────────── */
@@ -540,7 +618,7 @@ function exigirPedidos(ctx: Ctx): void {
 
 /** Marca «expirado» lo que venció sin pago (también lo hace el cron diario). */
 export async function expirarPedidos(payload: Payload): Promise<number> {
-  const r = await payload.find({ collection: 'far-pedidos', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ estado: { in: ESTADOS_QUE_APARTAN } }, { expiraEn: { less_than: new Date().toISOString() } }, { 'pago.estado': { not_equals: 'pagado' } }] } })
+  const r = await payload.find({ collection: 'far-pedidos', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ estado: { in: ESTADOS_QUE_APARTAN } }, { expiraEn: { less_than: new Date().toISOString() } }, { 'pago.estado': { not_equals: 'pagado' } }, { venta: { exists: false } }] } })
   for (const p of r.docs) await payload.update({ collection: 'far-pedidos', id: p.id, overrideAccess: true, depth: 0, data: { estado: 'expirado', historial: historial(p, 'expirado', 'Sistema', `Sin pago en ${Math.round((Date.parse(p.expiraEn!) - Date.parse(p.createdAt)) / 3600000)} h: se liberó lo apartado`) } })
   return r.docs.length
 }
@@ -563,14 +641,13 @@ export async function pedidosPanel(ctx: Ctx, grupo: string | null): Promise<Resu
     ...Object.values(GRUPO).map((es) => ctx.payload.count({ collection: 'far-pedidos', overrideAccess: true, where: { estado: { in: es } } })),
   ])
   const [nuevos, preparando, listos, cerrados] = conteos.map((c) => c.totalDocs)
-  return { pedidos: lista.docs.map((p) => vistaPedido(p)), conteo: { nuevos, preparando, listos, cerrados } }
+  const ev = await conEvidencia(ctx.payload, lista.docs.map((p) => p.id))
+  return { pedidos: lista.docs.map((p) => vistaPedido(p, false, ev)), conteo: { nuevos, preparando, listos, cerrados } }
 }
 
 export async function pedidoPanel(ctx: Ctx, id: number): Promise<PedidoVista> {
   exigirPedidos(ctx)
-  const p = await ctx.payload.findByID({ collection: 'far-pedidos', id, depth: 1, overrideAccess: true }).catch(() => null)
-  if (!p) throw noEncontrado('No encontramos ese pedido.')
-  return vistaPedido(p)
+  return vistaPanel(ctx, await cargarPedido(ctx, id))
 }
 
 const TRANSICION: Record<string, { de: EstadoPedido[]; a: EstadoPedido }> = {
@@ -578,76 +655,284 @@ const TRANSICION: Record<string, { de: EstadoPedido[]; a: EstadoPedido }> = {
   listo: { de: ['preparando'], a: 'listo_para_recoger' },
 }
 
+const quienEs = (ctx: Ctx) => ctx.user.name || ctx.user.email
+
+/** Ids de pedidos con foto de entrega (para `conFoto` en la vista del panel). */
+async function conEvidencia(payload: Payload, ids: number[]): Promise<Set<number>> {
+  if (!ids.length) return new Set()
+  const r = await payload.find({ collection: 'far-evidencias', depth: 0, pagination: false, overrideAccess: true, where: { pedido: { in: ids } }, select: { pedido: true } })
+  return new Set(r.docs.map((e) => idDe(e.pedido)!))
+}
+
+async function cargarPedido(ctx: Ctx, id: number): Promise<FarPedido> {
+  const p = await ctx.payload.findByID({ collection: 'far-pedidos', id, depth: 1, overrideAccess: true }).catch(() => null)
+  if (!p) throw noEncontrado('No encontramos ese pedido.')
+  return p
+}
+
+async function vistaPanel(ctx: Ctx, p: FarPedido): Promise<PedidoVista> {
+  return vistaPedido(p, false, await conEvidencia(ctx.payload, [p.id]))
+}
+
 export async function avanzarPedido(ctx: Ctx, id: number, entrada: unknown): Promise<PedidoVista> {
   exigirPedidos(ctx)
   if (!ctx.p.farmacia.vender) throw prohibido('Preparar pedidos es del equipo de mostrador.')
   const d = z.object({ accion: z.enum(['preparar', 'listo', 'cancelar']), motivo: z.string().trim().max(300).nullable().optional() }).safeParse(entrada)
   if (!d.success) throw invalido('Acción no válida.')
-  const p = await ctx.payload.findByID({ collection: 'far-pedidos', id, depth: 1, overrideAccess: true }).catch(() => null)
-  if (!p) throw noEncontrado('No encontramos ese pedido.')
-  const quien = ctx.user.name || ctx.user.email
+  const p = await cargarPedido(ctx, id)
+  const quien = quienEs(ctx)
   if (d.data.accion === 'cancelar') {
     if (FINALES.includes(p.estado as EstadoPedido)) throw invalido('Ese pedido ya está cerrado.')
+    if (p.estado === 'en_ruta') throw invalido('El pedido ya salió con el repartidor: espera a que regrese («No se pudo entregar») para cancelarlo.')
+    if (idDe(p.venta)) throw invalido(`Este pedido ya tiene la venta ${folioParaId('VTA', idDe(p.venta)!)}: anúlala en Ventas (regresa el inventario) y luego cancela el pedido.`)
     if (!d.data.motivo || d.data.motivo.length < 3) throw invalido('Escribe el motivo de la cancelación (lo recibe el cliente).')
     const pagado = p.pago?.estado === 'pagado'
-    const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { estado: 'cancelado', motivoCancelacion: d.data.motivo, expiraEn: null, pago: pagado ? { ...(p.pago ?? {}), estado: 'reembolso_pendiente' } : p.pago, historial: historial(p, 'cancelado', quien, pagado ? `${d.data.motivo} · reembolso pendiente en la pasarela` : d.data.motivo) } })
+    const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { estado: 'cancelado', motivoCancelacion: d.data.motivo, expiraEn: null, pago: pagado ? { ...(p.pago ?? {}), estado: 'reembolso_pendiente' } : p.pago, historial: historial(p, 'cancelado', quien, pagado ? `${d.data.motivo} · reembolso pendiente` : d.data.motivo) } })
     await avisarPedido(ctx.payload, n, 'cancelado').catch(() => undefined)
-    return vistaPedido(n)
+    return vistaPanel(ctx, n)
   }
   const tr = TRANSICION[d.data.accion]
   if (estadoVisible(p) === 'expirado') throw invalido('El apartado ya venció: lo apartado se liberó. Pide al cliente un pedido nuevo.')
   if (!tr.de.includes(p.estado as EstadoPedido)) throw invalido(`Un pedido «${ESTADO_PEDIDO_LABEL[p.estado as EstadoPedido]}» no puede pasar a «${ESTADO_PEDIDO_LABEL[tr.a]}».`)
   if (p.pago?.forma === 'en_linea' && p.pago.estado !== 'pagado') throw invalido('Este pedido es de pago en línea y todavía no se paga.')
   const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { estado: tr.a, historial: historial(p, tr.a, quien) } })
-  if (tr.a === 'listo_para_recoger') await avisarPedido(ctx.payload, n, 'listo').catch(() => undefined)
-  return vistaPedido(n)
+  /* A domicilio el aviso sale cuando el repartidor se lo lleva («va en camino»). */
+  if (tr.a === 'listo_para_recoger' && n.entrega !== 'domicilio') await avisarPedido(ctx.payload, n, 'listo').catch(() => undefined)
+  return vistaPanel(ctx, n)
+}
+
+const esquemaVentaPedido = z.object({
+  clave: z.string().trim().min(8).max(80),
+  pesoConfirmadoKg: z.coerce.number().positive().max(500).nullable().optional(),
+  pagos: z.array(z.object({ metodo: z.string().trim().min(1), monto: z.coerce.number().positive(), recibido: z.coerce.number().positive().nullable().optional(), referencia: z.string().trim().max(120).nullable().optional() })).max(4).optional(),
+  autorizacion: z.object({ correo: z.string().trim().email(), contrasena: z.string().min(1) }).nullable().optional(),
+})
+
+/** Venta del pedido (canal «tienda»), con las mismas reglas del mostrador; el envío entra al total. */
+async function ventaDePedido(ctx: Ctx, p: FarPedido, v: z.infer<typeof esquemaVentaPedido>, pagos: { metodo: string; monto: number; recibido?: number | null; referencia?: string | null }[]) {
+  return registrarVenta(
+    ctx,
+    {
+      clave: `ped-${p.id}-${v.clave}`,
+      mascotaId: idDe(p.mascota),
+      clienteId: idDe(p.cliente),
+      pesoConfirmadoKg: v.pesoConfirmadoKg ?? null,
+      renglones: (p.renglones ?? []).map((r) => ({ presentacionId: idDe(r.presentacion)!, cantidad: r.cantidad, descuentoPorciento: 0, recetaId: idDe(r.receta) })),
+      pagos,
+      autorizacion: v.autorizacion ?? null,
+      correoTicket: p.contacto?.correo ?? null,
+      notas: `Pedido de la tienda ${folioParaId('PED', p.id)}${p.entrega === 'domicilio' ? ' · a domicilio' : ''}`,
+    },
+    { canal: 'tienda', pedidoId: p.id, envio: n0(p.costoEnvio) },
+  )
+}
+
+function metodoConCuenta(cfg: ConfiguracionVista, clave: string, para: string) {
+  const m = cfg.metodosPago.find((x) => x.clave === clave && x.activo)
+  if (!m || !m.cuentaId) throw invalido(`Falta el método de pago «${clave}» (${para}) con su cuenta de Finanzas: agrégalo en Farmacia → Configuración → Métodos de pago.`)
+  return m
 }
 
 /**
- * Entregar: convierte el pedido en una venta (canal «tienda») con las mismas
- * reglas del mostrador. Pagado en línea → el pago entra con el método de la
- * configuración (`tienda.metodoPagoEnLinea`); al recoger → los pagos que
- * registra el mostrador. Con la misma `clave`, un doble clic no vende dos veces.
+ * Entregar en mostrador (pedidos para recoger): convierte el pedido en una venta
+ * (canal «tienda»). Pagado en línea → el pago entra con `tienda.metodoPagoEnLinea`;
+ * al recoger → los pagos que registra el mostrador. La misma `clave` no vende dos veces.
  */
 export async function entregarPedido(ctx: Ctx, id: number, entrada: unknown): Promise<{ pedido: PedidoVista; ventaFolio: string; finanzas: string; avisos: string[] }> {
   exigirPedidos(ctx)
-  const d = z
-    .object({
-      clave: z.string().trim().min(8).max(80),
-      pesoConfirmadoKg: z.coerce.number().positive().max(500).nullable().optional(),
-      pagos: z.array(z.object({ metodo: z.string().trim().min(1), monto: z.coerce.number().positive(), recibido: z.coerce.number().positive().nullable().optional(), referencia: z.string().trim().max(120).nullable().optional() })).max(4).optional(),
-      autorizacion: z.object({ correo: z.string().trim().email(), contrasena: z.string().min(1) }).nullable().optional(),
-    })
-    .safeParse(entrada)
+  const d = esquemaVentaPedido.safeParse(entrada)
   if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Datos no válidos.')
-  const p = await ctx.payload.findByID({ collection: 'far-pedidos', id, depth: 1, overrideAccess: true }).catch(() => null)
-  if (!p) throw noEncontrado('No encontramos ese pedido.')
-  if (idDe(p.venta)) return { pedido: vistaPedido(p), ventaFolio: folioParaId('VTA', idDe(p.venta)!), finanzas: 'registrado', avisos: [] }
+  const p = await cargarPedido(ctx, id)
+  if (idDe(p.venta)) return { pedido: await vistaPanel(ctx, p), ventaFolio: folioParaId('VTA', idDe(p.venta)!), finanzas: 'registrado', avisos: [] }
+  if (p.entrega === 'domicilio') throw invalido('Este pedido es a domicilio: usa «Enviar con repartidor».')
   if (!['listo_para_recoger', 'preparando', 'pagado', 'creado'].includes(p.estado) || estadoVisible(p) === 'expirado') throw invalido(`Un pedido «${ESTADO_PEDIDO_LABEL[estadoVisible(p)]}» no se entrega.`)
   const cfg = await leerConfiguracion(ctx.payload)
   let pagos = d.data.pagos ?? []
   if (p.pago?.estado === 'pagado') {
-    const m = cfg.metodosPago.find((x) => x.clave === cfg.tienda.metodoPagoEnLinea && x.activo)
-    if (!m || !m.cuentaId) throw invalido(`Falta el método de pago «${cfg.tienda.metodoPagoEnLinea}» con su cuenta de Finanzas: agrégalo en Farmacia → Configuración → Métodos de pago.`)
-    pagos = [{ metodo: m.clave, monto: p.total, referencia: t(p.pago.referencia) ?? folioParaId('PED', p.id), recibido: null }]
+    const m = metodoConCuenta(cfg, cfg.tienda.metodoPagoEnLinea, 'pagos en línea')
+    pagos = [{ metodo: m.clave, monto: p.total, referencia: t(p.pago.idPago) ?? t(p.pago.referencia) ?? folioParaId('PED', p.id), recibido: null }]
   } else if (p.pago?.forma === 'en_linea') throw invalido('Este pedido es de pago en línea y todavía no se paga.')
-  const venta = await registrarVenta(
-    ctx,
-    {
-      clave: `ped-${p.id}-${d.data.clave}`,
-      mascotaId: idDe(p.mascota),
-      clienteId: idDe(p.cliente),
-      pesoConfirmadoKg: d.data.pesoConfirmadoKg ?? null,
-      renglones: (p.renglones ?? []).map((r) => ({ presentacionId: idDe(r.presentacion)!, cantidad: r.cantidad, descuentoPorciento: 0, recetaId: idDe(r.receta) })),
-      pagos,
-      autorizacion: d.data.autorizacion ?? null,
-      correoTicket: p.contacto?.correo ?? null,
-      notas: `Pedido de la tienda ${folioParaId('PED', p.id)}`,
+  const venta = await ventaDePedido(ctx, p, d.data, pagos)
+  const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { estado: 'entregado', venta: venta.id, historial: historial(p, 'entregado', quienEs(ctx), `Venta ${venta.folio}`) } })
+  return { pedido: await vistaPanel(ctx, n), ventaFolio: venta.folio, finanzas: venta.finanzas, avisos: venta.avisos }
+}
+
+/* ───────────────────────────── a domicilio: repartidor (fase 5b) ───────────────────────────── */
+
+/** Personas con «Mis entregas» (rol con `entregas`), para elegir repartidor. */
+export async function repartidores(ctx: Ctx): Promise<{ id: number; nombre: string }[]> {
+  exigirPedidos(ctx)
+  const roles = await ctx.payload.find({ collection: 'roles', depth: 0, pagination: false, overrideAccess: true })
+  const conEntregas = roles.docs.filter((r) => Boolean((r as { farmacia?: { entregas?: boolean | null } }).farmacia?.entregas)).map((r) => r.id)
+  const or: Where[] = [{ esSuperadmin: { equals: true } }]
+  if (conEntregas.length) or.push({ rolDeAcceso: { in: conEntregas } })
+  const us = await ctx.payload.find({ collection: 'users', depth: 0, pagination: false, overrideAccess: true, sort: 'name', where: { or } })
+  return us.docs.map((u) => ({ id: u.id, nombre: u.name?.trim() || u.email }))
+}
+
+/**
+ * Enviar con repartidor: el pedido sale de la farmacia. Aquí se registra la
+ * venta (la mercancía sale del inventario en este momento): pagado en línea →
+ * método `metodoPagoEnLinea`; pagar al recibir → método `metodoContraEntrega`
+ * («por confirmar»: el cobro entra a Finanzas cuando el repartidor entrega).
+ * Lo hace quien vende (con receta, la misma autorización del mostrador).
+ */
+export async function enviarPedido(ctx: Ctx, id: number, entrada: unknown): Promise<{ pedido: PedidoVista; ventaFolio: string; avisos: string[] }> {
+  exigirPedidos(ctx)
+  if (!ctx.p.farmacia.vender) throw prohibido('Enviar pedidos es del equipo de mostrador.')
+  if (!(entrada as { repartidorId?: unknown } | null)?.repartidorId) throw invalido('Elige quién lo lleva.')
+  const d = esquemaVentaPedido.extend({ repartidorId: z.coerce.number().int().positive('Elige quién lo lleva.') }).safeParse(entrada)
+  if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Datos no válidos.')
+  const p = await cargarPedido(ctx, id)
+  if (p.entrega !== 'domicilio') throw invalido('Este pedido es para recoger en la farmacia.')
+  if (p.estado === 'en_ruta' && idDe(p.venta)) return { pedido: await vistaPanel(ctx, p), ventaFolio: folioParaId('VTA', idDe(p.venta)!), avisos: [] }
+  if (!['listo_para_recoger', 'preparando', 'pagado', 'creado'].includes(p.estado) || estadoVisible(p) === 'expirado') throw invalido(`Un pedido «${ESTADO_PEDIDO_LABEL[estadoVisible(p)]}» no se envía.`)
+  if (p.pago?.forma === 'en_linea' && p.pago.estado !== 'pagado') throw invalido('Este pedido es de pago en línea y todavía no se paga.')
+  const lista = await repartidores(ctx)
+  const rep = lista.find((r) => r.id === d.data.repartidorId)
+  if (!rep) throw invalido('Esa persona no tiene «Mis entregas» en su rol.')
+  const cfg = await leerConfiguracion(ctx.payload)
+  let ventaId = idDe(p.venta)
+  let ventaFolio = ventaId ? folioParaId('VTA', ventaId) : ''
+  let avisos: string[] = []
+  if (!ventaId) {
+    const m = p.pago?.estado === 'pagado' ? metodoConCuenta(cfg, cfg.tienda.metodoPagoEnLinea, 'pagos en línea') : metodoConCuenta(cfg, cfg.tienda.metodoContraEntrega, 'cobros del repartidor')
+    if (p.pago?.estado !== 'pagado' && !m.porConfirmar) throw invalido(`El método «${m.nombre}» debe ser «por confirmar»: el cobro se confirma cuando el repartidor entrega.`)
+    const venta = await ventaDePedido(ctx, p, d.data, [{ metodo: m.clave, monto: p.total, referencia: p.pago?.estado === 'pagado' ? (t(p.pago.idPago) ?? t(p.pago.referencia)) : `${folioParaId('PED', p.id)} · cobra ${rep.nombre}`, recibido: null }])
+    ventaId = venta.id
+    ventaFolio = venta.folio
+    avisos = venta.avisos
+  }
+  const n = await ctx.payload.update({
+    collection: 'far-pedidos',
+    id,
+    overrideAccess: true,
+    depth: 1,
+    data: { estado: 'en_ruta', venta: ventaId, repartidor: rep.id, expiraEn: null, entregaDomicilio: { ...(p.entregaDomicilio ?? {}), salioEn: new Date().toISOString() }, historial: historial(p, 'en_ruta', quienEs(ctx), `Sale con ${rep.nombre} · venta ${ventaFolio}`) },
+  })
+  await avisarPedido(ctx.payload, n, 'en_camino').catch(() => undefined)
+  return { pedido: await vistaPanel(ctx, n), ventaFolio, avisos }
+}
+
+function exigirEntregas(ctx: Ctx): void {
+  if (!ctx.modulos.farmacia) throw new ErrorFarmacia(404, 'El módulo de Farmacia está apagado.')
+  if (!ctx.p.farmacia.entregas) throw prohibido('Tu rol no incluye «Mis entregas».')
+}
+
+/** «Mis entregas»: lo que lleva este repartidor (en ruta) y lo que entregó hoy. */
+export async function misEntregas(ctx: Ctx): Promise<{ enRuta: PedidoVista[]; entregadosHoy: PedidoVista[] }> {
+  exigirEntregas(ctx)
+  /* «Hoy» en la zona del negocio: desde 36 h atrás y se filtra por día local. */
+  const desde = new Date(Date.now() - 36 * 3600000).toISOString()
+  const [ruta, hechos] = await Promise.all([
+    ctx.payload.find({ collection: 'far-pedidos', depth: 1, pagination: false, overrideAccess: true, sort: 'updatedAt', where: { and: [{ estado: { equals: 'en_ruta' } }, { repartidor: { equals: ctx.user.id } }] } }),
+    ctx.payload.find({ collection: 'far-pedidos', depth: 1, limit: 30, overrideAccess: true, sort: '-updatedAt', where: { and: [{ estado: { equals: 'entregado' } }, { entrega: { equals: 'domicilio' } }, { repartidor: { equals: ctx.user.id } }, { 'entregaDomicilio.entregadoEn': { greater_than: desde } }] } }),
+  ])
+  const ev = await conEvidencia(ctx.payload, [...ruta.docs, ...hechos.docs].map((p) => p.id))
+  return { enRuta: ruta.docs.map((p) => vistaPedido(p, false, ev)), entregadosHoy: hechos.docs.filter((p) => p.entregaDomicilio?.entregadoEn && diaLocal(new Date(p.entregaDomicilio.entregadoEn)) === ctx.hoy).map((p) => vistaPedido(p, false, ev)) }
+}
+
+/** Puede actuar sobre una entrega: el repartidor asignado, o quien asigna repartidores. */
+function puedeEntrega(ctx: Ctx, p: FarPedido) {
+  if (idDe(p.repartidor) === ctx.user.id && ctx.p.farmacia.entregas) return
+  if (ctx.p.farmacia.asignarRepartidor) return
+  throw prohibido('Esta entrega es de otro repartidor.')
+}
+
+/**
+ * Entregado (repartidor): nombre de quien recibió, nota y foto opcional. Si se
+ * paga al recibir, aquí se confirma el cobro (`confirmarPagoSinPermiso`) y entra
+ * a Finanzas.
+ */
+export async function entregarDomicilio(ctx: Ctx, id: number, entrada: { recibio?: unknown; nota?: unknown; cobrado?: unknown }, foto: File | null): Promise<PedidoVista> {
+  if (!ctx.modulos.farmacia) throw new ErrorFarmacia(404, 'El módulo de Farmacia está apagado.')
+  const d = z.object({ recibio: z.string().trim().min(2, 'Escribe quién recibió.').max(120), nota: z.string().trim().max(300).nullable().optional(), cobrado: z.union([z.boolean(), z.enum(['true', 'false'])]).optional() }).safeParse(entrada)
+  if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Datos no válidos.')
+  const p = await cargarPedido(ctx, id)
+  puedeEntrega(ctx, p)
+  if (p.estado === 'entregado') return vistaPanel(ctx, p)
+  if (p.estado !== 'en_ruta') throw invalido('Ese pedido no va en camino.')
+  const alRecibir = p.pago?.estado !== 'pagado'
+  if (alRecibir && !(d.data.cobrado === true || d.data.cobrado === 'true')) throw invalido(`Cobra ${p.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} y marca «Cobrado» antes de entregar.`)
+  if (foto) await guardarEvidencia(ctx, p.id, foto)
+  if (alRecibir && idDe(p.venta)) {
+    const v = await ctx.payload.findByID({ collection: 'far-ventas', id: idDe(p.venta)!, depth: 0, overrideAccess: true })
+    const i = (v.pagos ?? []).findIndex((x) => x.estado === 'por_confirmar')
+    if (i >= 0) await confirmarPagoSinPermiso(ctx, v.id, i, { referencia: `Cobró ${quienEs(ctx)} · ${folioParaId('PED', p.id)}` })
+  }
+  const n = await ctx.payload.update({
+    collection: 'far-pedidos',
+    id,
+    overrideAccess: true,
+    depth: 1,
+    data: {
+      estado: 'entregado',
+      pago: alRecibir ? { ...(p.pago ?? {}), estado: 'pagado', pagadoEn: new Date().toISOString() } : p.pago,
+      entregaDomicilio: { ...(p.entregaDomicilio ?? {}), entregadoEn: new Date().toISOString(), recibio: d.data.recibio, nota: t(d.data.nota) },
+      historial: historial(p, 'entregado', quienEs(ctx), `Recibió ${d.data.recibio}${alRecibir ? ' · cobrado' : ''}${foto ? ' · con foto' : ''}`),
     },
-    { canal: 'tienda', pedidoId: p.id },
-  )
-  const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { estado: 'entregado', venta: venta.id, historial: historial(p, 'entregado', ctx.user.name || ctx.user.email, `Venta ${venta.folio}`) } })
-  return { pedido: vistaPedido(n), ventaFolio: venta.folio, finanzas: venta.finanzas, avisos: venta.avisos }
+  })
+  await avisarPedido(ctx.payload, n, 'entregado').catch(() => undefined)
+  return vistaPanel(ctx, n)
+}
+
+/** No se pudo entregar: regresa a la farmacia (sigue vendido; se reintenta o se cancela con devolución). */
+export async function noEntregado(ctx: Ctx, id: number, entrada: unknown): Promise<PedidoVista> {
+  if (!ctx.modulos.farmacia) throw new ErrorFarmacia(404, 'El módulo de Farmacia está apagado.')
+  const d = z.object({ motivo: z.string().trim().min(3, 'Escribe qué pasó.').max(300) }).safeParse(entrada)
+  if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Escribe qué pasó.')
+  const p = await cargarPedido(ctx, id)
+  puedeEntrega(ctx, p)
+  if (p.estado !== 'en_ruta') throw invalido('Ese pedido no va en camino.')
+  const n = await ctx.payload.update({
+    collection: 'far-pedidos',
+    id,
+    overrideAccess: true,
+    depth: 1,
+    data: { estado: 'listo_para_recoger', entregaDomicilio: { ...(p.entregaDomicilio ?? {}), intentos: n0(p.entregaDomicilio?.intentos) + 1, nota: d.data.motivo }, historial: historial(p, 'listo_para_recoger', quienEs(ctx), `No se pudo entregar: ${d.data.motivo}`) },
+  })
+  return vistaPanel(ctx, n)
+}
+
+const TOPE_FOTO = 600 * 1024
+
+async function guardarEvidencia(ctx: Ctx, pedidoId: number, foto: File) {
+  if (!/^image\/(jpeg|png|webp)$/.test(foto.type)) throw invalido('La foto debe ser JPG, PNG o WebP.')
+  if (foto.size > TOPE_FOTO) throw invalido('La foto pesa demasiado (máximo 600 KB). Tómala otra vez.')
+  const datos = Buffer.from(await foto.arrayBuffer()).toString('base64')
+  const ya = await ctx.payload.find({ collection: 'far-evidencias', depth: 0, limit: 1, overrideAccess: true, where: { pedido: { equals: pedidoId } } })
+  const data = { pedido: pedidoId, tipo: foto.type, datos, bytes: foto.size, subidaPor: quienEs(ctx) }
+  if (ya.docs[0]) await ctx.payload.update({ collection: 'far-evidencias', id: ya.docs[0].id, overrideAccess: true, depth: 0, data })
+  else await ctx.payload.create({ collection: 'far-evidencias', overrideAccess: true, depth: 0, data })
+}
+
+/** Foto de la entrega: quien ve pedidos o el repartidor asignado. */
+export async function evidencia(ctx: Ctx, id: number): Promise<{ tipo: string; bytes: Buffer }> {
+  const p = await cargarPedido(ctx, id)
+  if (!(ctx.p.farmacia.vender || ctx.p.farmacia.asignarRepartidor || (ctx.p.farmacia.entregas && idDe(p.repartidor) === ctx.user.id))) throw prohibido('No puedes ver esta evidencia.')
+  const r = await ctx.payload.find({ collection: 'far-evidencias', depth: 0, limit: 1, overrideAccess: true, where: { pedido: { equals: id } } })
+  if (!r.docs[0]) throw noEncontrado('Este pedido no tiene foto de entrega.')
+  return { tipo: r.docs[0].tipo, bytes: Buffer.from(r.docs[0].datos, 'base64') }
+}
+
+/** Reembolso total en la pasarela de un pedido cancelado ya pagado (encargado). */
+export async function reembolsarPedido(ctx: Ctx, id: number): Promise<PedidoVista> {
+  exigirPedidos(ctx)
+  if (!ctx.p.farmacia.aprobar) throw prohibido('Los reembolsos los hace el encargado o el dueño.')
+  const p = await cargarPedido(ctx, id)
+  if (p.pago?.estado === 'reembolsado') return vistaPanel(ctx, p)
+  if (p.pago?.estado !== 'reembolso_pendiente') throw invalido('Solo se reembolsa un pedido cancelado que ya estaba pagado en línea.')
+  const prov = proveedorPago(p.pago.proveedor)
+  if (!prov || !prov.disponible()) throw invalido('La pasarela de ese pago no está configurada: haz el reembolso desde su panel y avísale al cliente.')
+  let idReembolso: string
+  try {
+    idReembolso = await prov.reembolsar({ idPago: t(p.pago.idPago), pedidoId: p.id, monto: p.total })
+  } catch (e) {
+    throw new ErrorFarmacia(502, `No se pudo reembolsar en la pasarela (${String((e as Error)?.message ?? e)}). Inténtalo de nuevo o hazlo desde su panel.`)
+  }
+  const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { pago: { ...(p.pago ?? {}), estado: 'reembolsado' }, historial: historial(p, p.estado, quienEs(ctx), `Reembolso ${idReembolso} en ${prov.nombre}`) } })
+  await avisarPedido(ctx.payload, n, 'reembolsado').catch(() => undefined)
+  return vistaPanel(ctx, n)
 }
 
 /** Para el inicio de Farmacia y el tablero: pedidos que piden acción. */
@@ -658,7 +943,7 @@ export async function pedidosPorAtender(payload: Payload): Promise<number> {
 
 /* ───────────────────────────── avisos por correo (best-effort) ───────────────────────────── */
 
-type EventoAviso = 'nuevo' | 'pagado' | 'listo' | 'cancelado'
+type EventoAviso = 'nuevo' | 'pagado' | 'listo' | 'cancelado' | 'en_camino' | 'entregado' | 'reembolsado'
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
@@ -672,14 +957,20 @@ async function avisarPedido(payload: Payload, p: FarPedido, evento: EventoAviso)
     pagado: 'Tu pago quedó confirmado',
     listo: 'Tu pedido está listo para recoger',
     cancelado: 'Tu pedido se canceló',
+    en_camino: 'Tu pedido va en camino',
+    entregado: 'Entregamos tu pedido',
+    reembolsado: 'Te reembolsamos tu pago',
   }
   const detalle: Record<EventoAviso, string> = {
-    nuevo: p.pago?.forma === 'en_linea' ? 'Termina el pago desde la liga de abajo. Si no se paga, el apartado vence solo.' : 'Te avisamos cuando esté listo. Pagas al recoger.',
-    pagado: 'Te avisamos cuando esté listo para recoger.',
+    nuevo: p.pago?.forma === 'en_linea' ? 'Termina el pago desde la liga de abajo. Si no se paga, el apartado vence solo.' : p.entrega === 'domicilio' ? 'Te avisamos cuando salga. Pagas al recibir.' : 'Te avisamos cuando esté listo. Pagas al recoger.',
+    pagado: p.entrega === 'domicilio' ? 'Te avisamos cuando salga a tu domicilio.' : 'Te avisamos cuando esté listo para recoger.',
+    en_camino: `${p.pago?.estado === 'pagado' ? 'Ya está pagado.' : `Ten listo el pago de $${p.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}.`} Lo lleva nuestro repartidor a ${p.direccion?.calle ?? 'tu domicilio'}.`,
+    entregado: `Recibió: ${p.entregaDomicilio?.recibio ?? ''}. ¡Gracias por tu compra!`,
+    reembolsado: 'El reembolso puede tardar unos días en verse en tu estado de cuenta, según tu banco.',
     listo: 'Pasa por él a la farmacia. Si es con receta, trae a la mano el nombre de tu mascota.',
     cancelado: t(p.motivoCancelacion) ?? '',
   }
-  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#0f2f2a"><h2 style="margin:0 0 6px">${esc(titulo[evento])}</h2><p style="margin:0 0 12px;color:#4b5b56">${esc(site.brand.name)} · ${folio}</p><p>${esc(detalle[evento])}</p><table style="width:100%;border-collapse:collapse;font-size:14px">${lineas}<tr><td style="padding-top:8px;border-top:1px solid #d9e4e0"><b>Total</b></td><td style="padding-top:8px;border-top:1px solid #d9e4e0;text-align:right"><b>$${p.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</b></td></tr></table><p style="margin-top:18px"><a href="${liga}" style="background:${site.brand.accent};color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Ver mi pedido</a></p></div>`
+  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#0f2f2a"><h2 style="margin:0 0 6px">${esc(titulo[evento])}</h2><p style="margin:0 0 12px;color:#4b5b56">${esc(site.brand.name)} · ${folio}</p><p>${esc(detalle[evento])}</p><table style="width:100%;border-collapse:collapse;font-size:14px">${lineas}${n0(p.costoEnvio) ? `<tr><td style="padding:4px 0">Envío</td><td style="padding:4px 0;text-align:right">$${n0(p.costoEnvio).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td></tr>` : ''}<tr><td style="padding-top:8px;border-top:1px solid #d9e4e0"><b>Total</b></td><td style="padding-top:8px;border-top:1px solid #d9e4e0;text-align:right"><b>$${p.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</b></td></tr></table><p style="margin-top:18px"><a href="${liga}" style="background:${site.brand.accent};color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Ver mi pedido</a></p></div>`
   if (p.contacto?.correo) await payload.sendEmail({ to: p.contacto.correo, subject: `${titulo[evento]} · ${folio}`, html })
   if (evento === 'nuevo' || evento === 'pagado') {
     const cfg = await leerConfiguracion(payload)

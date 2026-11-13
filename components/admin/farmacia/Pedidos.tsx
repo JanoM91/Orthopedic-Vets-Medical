@@ -107,9 +107,11 @@ export function Pedidos({ grupo: grupoInicial }: { grupo: string | null }) {
                   <span className="fz-fila__t1">
                     {p.folio} <Pastilla tono={TONO[p.estado]}>{ESTADO_PEDIDO_LABEL[p.estado]}</Pastilla>
                     {p.renglones.some((x) => x.recetaId) && <Pastilla tono="info">Con receta</Pastilla>}
+                    {p.entrega === 'domicilio' && <Pastilla tono="info">A domicilio</Pastilla>}
                   </span>
                   <span className="fz-fila__t2">
-                    {p.contacto.nombre} · {momento(p.creadoEn)} · {p.renglones.length} producto{p.renglones.length === 1 ? '' : 's'} · {p.pago.estado === 'pagado' ? 'pagado en línea' : p.pago.forma === 'en_linea' ? 'pago en línea pendiente' : 'paga al recoger'}
+                    {p.contacto.nombre} · {momento(p.creadoEn)} · {p.renglones.length} producto{p.renglones.length === 1 ? '' : 's'} · {p.pago.estado === 'pagado' ? 'pagado' : p.pago.forma === 'en_linea' ? 'pago en línea pendiente' : p.pago.forma === 'al_recibir' ? 'paga al recibir' : 'paga al recoger'}
+                    {p.repartidor ? ` · ${p.repartidor.nombre}` : ''}
                     {p.mascota ? ` · ${p.mascota.nombre}` : ''}
                     {v ? ` · ${v}` : ''}
                   </span>
@@ -146,10 +148,22 @@ export function FichaPedido({ id }: { id: number }) {
   const [p, setP] = useState<PedidoVista | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
-  const [modal, setModal] = useState<null | 'cancelar' | 'entregar' | { tipo: 'autorizacion' | 'peso'; mensaje: string }>(null)
+  const [modal, setModal] = useState<null | 'cancelar' | 'entregar' | 'enviar' | 'entregado' | 'noEntregado' | { tipo: 'autorizacion' | 'peso'; mensaje: string }>(null)
+  const ruta = useRef<'entregar' | 'enviar'>('entregar')
   const [hecho, setHecho] = useState<{ venta: string; finanzas: string; avisos: string[] } | null>(null)
   const [clave] = useState(nuevaClaveEntrega)
-  const extra = useRef<{ pesoConfirmadoKg?: number; autorizacion?: { correo: string; contrasena: string }; pagos?: unknown[] }>({})
+  const extra = useRef<{ pesoConfirmadoKg?: number; autorizacion?: { correo: string; contrasena: string }; pagos?: unknown[]; repartidorId?: number }>({})
+
+  const reembolsar = async () => {
+    setOcupado(true)
+    setError(null)
+    try {
+      setP(await enviar<PedidoVista>(`pedidos/${id}/reembolsar`, {}))
+    } catch (e) {
+      setError((e as Error).message)
+    }
+    setOcupado(false)
+  }
 
   const cargar = useCallback(() => {
     api.get<PedidoVista>(`pedidos/${id}`).then(setP, (e) => setError(e instanceof Error ? e.message : 'No se pudo cargar.'))
@@ -173,9 +187,9 @@ export function FichaPedido({ id }: { id: number }) {
     setOcupado(true)
     setError(null)
     try {
-      const r = await enviar<{ pedido: PedidoVista; ventaFolio: string; finanzas: string; avisos: string[] }>(`pedidos/${id}/entregar`, { clave, ...extra.current })
+      const r = await enviar<{ pedido: PedidoVista; ventaFolio: string; finanzas?: string; avisos: string[] }>(`pedidos/${id}/${ruta.current}`, { clave, ...extra.current })
       setP(r.pedido)
-      setHecho({ venta: r.ventaFolio, finanzas: r.finanzas, avisos: r.avisos })
+      setHecho({ venta: r.ventaFolio, finanzas: r.finanzas ?? 'registrado', avisos: r.avisos })
       setModal(null)
       recargarCatalogo()
     } catch (e) {
@@ -197,6 +211,9 @@ export function FichaPedido({ id }: { id: number }) {
   const puedeVender = catalogo.permisos.vender
   const cerrado = ['entregado', 'cancelado', 'expirado'].includes(p.estado)
   const mensajeWa = `Hola ${p.contacto.nombre.split(' ')[0]}, te escribimos de la farmacia por tu pedido ${p.folio}.`
+  const domicilio = p.entrega === 'domicilio'
+  const formaTexto = pagado ? (p.pago.forma === 'en_linea' ? 'pagado en línea' : 'pagado') : p.pago.forma === 'en_linea' ? 'pago en línea pendiente' : p.pago.forma === 'al_recibir' ? 'paga al recibir' : 'paga al recoger'
+  const puedeEntregaDom = catalogo.permisos.asignarRepartidor || (catalogo.permisos.entregas && p.repartidor?.id === catalogo.usuario.id)
   return (
     <div className="fz-stack fz-stack--grande fa-pedido">
       <Volver a={`${base}/pedidos`} etiqueta="Pedidos" />
@@ -207,13 +224,13 @@ export function FichaPedido({ id }: { id: number }) {
             {p.folio} <Pastilla tono={TONO[p.estado]}>{ESTADO_PEDIDO_LABEL[p.estado]}</Pastilla>
           </h1>
           <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
-            {momento(p.creadoEn)} · {pagado ? 'pagado en línea' : p.pago.forma === 'en_linea' ? 'pago en línea pendiente' : 'paga al recoger'} · recoger en farmacia
+            {momento(p.creadoEn)} · {formaTexto} · {domicilio ? `a domicilio${p.direccion?.zona ? ` (${p.direccion.zona})` : ''}` : 'recoger en farmacia'}
           </p>
         </div>
       </div>
       {hecho && (
         <Aviso tono="ok">
-          Entregado. Venta {hecho.venta}
+          {p.estado === 'en_ruta' ? 'Salió con el repartidor.' : 'Entregado.'} Venta {hecho.venta}
           {hecho.finanzas === 'pendiente' ? ' · Finanzas quedó pendiente (reintenta desde la venta)' : ''}.{hecho.avisos.length ? ` ${hecho.avisos.join(' ')}` : ''}
           {p.ventaId && (
             <>
@@ -223,7 +240,17 @@ export function FichaPedido({ id }: { id: number }) {
           )}
         </Aviso>
       )}
-      {p.pago.estado === 'reembolso_pendiente' && <Aviso tono="aviso">Se canceló con el pago hecho: haz el reembolso en la pasarela ({p.pago.proveedor}, referencia {p.pago.referencia}).</Aviso>}
+      {p.pago.estado === 'reembolso_pendiente' && (
+        <Aviso tono="aviso">
+          Se canceló con el pago hecho: falta reembolsarlo ({p.pago.proveedor}).{' '}
+          {catalogo.permisos.aprobar && (
+            <Boton chico tono="navy" disabled={ocupado} onClick={() => void reembolsar()}>
+              Reembolsar {dinero(p.total, true)}
+            </Boton>
+          )}
+        </Aviso>
+      )}
+      {p.pago.estado === 'reembolsado' && <Aviso tono="ok">Pago reembolsado al cliente.</Aviso>}
       {p.estado === 'pago_pendiente' && <Aviso tono="aviso">Esperando el pago en línea del cliente. No lo prepares todavía.</Aviso>}
       <ErrorForm error={error} />
 
@@ -244,6 +271,12 @@ export function FichaPedido({ id }: { id: number }) {
               <b className="fz-num">{dinero(r.importe, true)}</b>
             </div>
           ))}
+          {domicilio && (
+            <div className="fz-fila">
+              <span className="fz-fila__main">Envío</span>
+              <b className="fz-num">{p.envio ? dinero(p.envio, true) : 'Gratis'}</b>
+            </div>
+          )}
           <div className="fz-fila">
             <span className="fz-fila__main">
               <b>Total</b>
@@ -262,12 +295,29 @@ export function FichaPedido({ id }: { id: number }) {
             {p.mascota && <span className="fz-chico">Para {p.mascota.nombre}</span>}
             {p.perfil?.especie && <span className="fz-chico fz-tenue">Perfil: {p.perfil.especie}{p.perfil.pesoKg ? ` · ${p.perfil.pesoKg} kg` : ''}</span>}
             {p.notasCliente && <span className="fz-chico">Nota: {p.notasCliente}</span>}
+            {p.direccion && <Direccion d={p.direccion} />}
+            {p.repartidor && <span className="fz-chico">Repartidor: {p.repartidor.nombre}</span>}
+            {p.entregaDomicilio?.recibio && (
+              <span className="fz-chico">
+                Recibió {p.entregaDomicilio.recibio}
+                {p.entregaDomicilio.entregadoEn ? ` · ${momento(p.entregaDomicilio.entregadoEn)}` : ''}
+                {p.entregaDomicilio.conFoto && (
+                  <>
+                    {' · '}
+                    <a href={`/api/farmacia/pedidos/${p.id}/evidencia`} target="_blank" rel="noreferrer">
+                      Ver foto
+                    </a>
+                  </>
+                )}
+              </span>
+            )}
+            {(p.entregaDomicilio?.intentos ?? 0) > 0 && p.estado !== 'entregado' && <span className="fz-chico fz-rojo">Intentos fallidos: {p.entregaDomicilio!.intentos} · {p.entregaDomicilio!.nota}</span>}
             <div>
               <BotonWhatsApp telefono={p.contacto.telefono} mensaje={mensajeWa} />
             </div>
           </section>
 
-          {!cerrado && puedeVender && (
+          {!cerrado && puedeVender && p.estado !== 'en_ruta' && (
             <section className="fz-tarjeta fz-stack fz-stack--chico" style={{ padding: 14 }}>
               {(p.estado === 'creado' || p.estado === 'pagado') && (
                 <Boton tono="navy" disabled={ocupado} onClick={() => accion('preparar')}>
@@ -276,16 +326,36 @@ export function FichaPedido({ id }: { id: number }) {
               )}
               {p.estado === 'preparando' && (
                 <Boton tono="navy" disabled={ocupado} onClick={() => accion('listo')}>
-                  Listo para recoger (avisa al cliente)
+                  {domicilio ? 'Listo para salir' : 'Listo para recoger (avisa al cliente)'}
                 </Boton>
               )}
-              {['creado', 'pagado', 'preparando', 'listo_para_recoger'].includes(p.estado) && !enLineaSinPago && (
-                <Boton tono={p.estado === 'listo_para_recoger' ? 'teal' : 'claro'} disabled={ocupado} onClick={() => (pagado ? void entregar() : setModal('entregar'))}>
+              {domicilio && ['creado', 'pagado', 'preparando', 'listo_para_recoger'].includes(p.estado) && !enLineaSinPago && (
+                <Boton tono={p.estado === 'listo_para_recoger' ? 'teal' : 'claro'} disabled={ocupado} onClick={() => setModal('enviar')}>
+                  Enviar con repartidor
+                </Boton>
+              )}
+              {!domicilio && ['creado', 'pagado', 'preparando', 'listo_para_recoger'].includes(p.estado) && !enLineaSinPago && (
+                <Boton tono={p.estado === 'listo_para_recoger' ? 'teal' : 'claro'} disabled={ocupado} onClick={() => {
+                    ruta.current = 'entregar'
+                    if (pagado) void entregar()
+                    else setModal('entregar')
+                  }}
+                >
                   {pagado ? 'Entregar (ya pagado)' : `Entregar y cobrar ${dinero(p.total, true)}`}
                 </Boton>
               )}
               <Boton tono="peligro" chico disabled={ocupado} onClick={() => setModal('cancelar')}>
                 Cancelar pedido
+              </Boton>
+            </section>
+          )}
+          {p.estado === 'en_ruta' && puedeEntregaDom && (
+            <section className="fz-tarjeta fz-stack fz-stack--chico" style={{ padding: 14 }}>
+              <Boton tono="teal" disabled={ocupado} onClick={() => setModal('entregado')}>
+                Marcar entregado{pagado ? '' : ` (cobrar ${dinero(p.total, true)})`}
+              </Boton>
+              <Boton chico disabled={ocupado} onClick={() => setModal('noEntregado')}>
+                No se pudo entregar
               </Boton>
             </section>
           )}
@@ -310,6 +380,29 @@ export function FichaPedido({ id }: { id: number }) {
         </div>
       </div>
 
+      {modal === 'enviar' && (
+        <ModalEnviar
+          ocupado={ocupado}
+          onCerrar={() => setModal(null)}
+          alEnviar={(repartidorId) => {
+            ruta.current = 'enviar'
+            extra.current = { ...extra.current, repartidorId }
+            void entregar()
+          }}
+        />
+      )}
+      {(modal === 'entregado' || modal === 'noEntregado') && (
+        <ModalEntrega
+          pedido={p}
+          modo={modal}
+          onCerrar={() => setModal(null)}
+          alTerminar={(n) => {
+            setP(n)
+            setModal(null)
+            recargarCatalogo()
+          }}
+        />
+      )}
       {modal === 'cancelar' && <ModalCancelar pagado={pagado} ocupado={ocupado} onCerrar={() => setModal(null)} alCancelar={(m) => accion('cancelar', m)} />}
       {modal === 'entregar' && (
         <ModalCobro
@@ -317,6 +410,7 @@ export function FichaPedido({ id }: { id: number }) {
           ocupado={ocupado}
           onCerrar={() => setModal(null)}
           alCobrar={(pagos) => {
+            ruta.current = 'entregar'
             extra.current = { ...extra.current, pagos }
             void entregar()
           }}
@@ -418,5 +512,236 @@ function ModalCobro({ total, ocupado, onCerrar, alCobrar }: { total: number; ocu
         </div>
       </form>
     </Modal>
+  )
+}
+
+
+/* ═══════════════════════════ a domicilio (fase 5b) ═══════════════════════════ */
+
+function Direccion({ d }: { d: NonNullable<PedidoVista['direccion']> }) {
+  const texto = [d.calle, d.colonia, d.codigoPostal].filter(Boolean).join(', ')
+  return (
+    <span className="fz-chico">
+      Entregar en{' '}
+      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(texto)}`} target="_blank" rel="noreferrer">
+        {texto}
+      </a>
+      {d.referencias ? ` · ${d.referencias}` : ''}
+    </span>
+  )
+}
+
+function ModalEnviar({ ocupado, onCerrar, alEnviar }: { ocupado: boolean; onCerrar: () => void; alEnviar: (repartidorId: number) => void }) {
+  const [lista, setLista] = useState<{ id: number; nombre: string }[] | null>(null)
+  const [elegido, setElegido] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    let vivo = true
+    api.get<{ id: number; nombre: string }[]>('repartidores').then(
+      (r) => vivo && setLista(r),
+      (e) => vivo && setError(e instanceof Error ? e.message : 'No se pudo cargar.'),
+    )
+    return () => {
+      vivo = false
+    }
+  }, [])
+  const rep = elegido ?? (lista?.length === 1 ? lista[0].id : null)
+  return (
+    <Modal titulo="Enviar con repartidor" onCerrar={onCerrar}>
+      <div className="fz-stack fz-stack--chico">
+        <p className="fz-chico">Al enviarlo se registra la venta y sale del inventario. Si paga al recibir, el cobro queda por confirmar hasta que el repartidor lo entregue.</p>
+        {error && <Aviso tono="malo">{error}</Aviso>}
+        {lista && !lista.length && <Aviso tono="aviso">Nadie tiene «Mis entregas» en su rol. Dalo de alta en Usuarios con el rol «Repartidor».</Aviso>}
+        {lista && lista.length > 0 && (
+          <div className="fz-seg" role="radiogroup" aria-label="Repartidor">
+            {lista.map((r) => (
+              <button key={r.id} type="button" className={rep === r.id ? 'is-on' : ''} aria-pressed={rep === r.id} onClick={() => setElegido(r.id)}>
+                {r.nombre}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="fz-acciones-fin">
+          <Boton onClick={onCerrar}>Cancelar</Boton>
+          <button type="button" className="fz-btn fz-btn--teal" disabled={ocupado || !rep} onClick={() => rep && alEnviar(rep)}>
+            Enviar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/** Entregado (con quién recibió, cobro y foto opcional) o «No se pudo entregar». Lo usan la ficha y «Mis entregas». */
+export function ModalEntrega({ pedido, modo, onCerrar, alTerminar }: { pedido: PedidoVista; modo: 'entregado' | 'noEntregado'; onCerrar: () => void; alTerminar: (p: PedidoVista) => void }) {
+  const [recibio, setRecibio] = useState(modo === 'entregado' ? pedido.contacto.nombre : '')
+  const [nota, setNota] = useState('')
+  const [cobrado, setCobrado] = useState(false)
+  const [foto, setFoto] = useState<Blob | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const porCobrar = pedido.pago.estado !== 'pagado'
+  const elegirFoto = async (f: File | undefined) => {
+    if (!f) return
+    try {
+      const { reducirImagen } = await import('../../../lib/reducirImagen')
+      setFoto(await reducirImagen(f, { lado: 1024, calidad: 0.8 }))
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  const guardar = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setOcupado(true)
+    setError(null)
+    try {
+      let r: Response
+      if (modo === 'noEntregado') {
+        r = await fetch(`/api/farmacia/pedidos/${pedido.id}/no-entregado`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motivo: nota }) })
+      } else {
+        const fd = new FormData()
+        fd.append('recibio', recibio)
+        if (nota) fd.append('nota', nota)
+        fd.append('cobrado', String(cobrado))
+        if (foto) fd.append('foto', foto, 'entrega.jpg')
+        r = await fetch(`/api/farmacia/pedidos/${pedido.id}/entregado`, { method: 'POST', credentials: 'same-origin', body: fd })
+      }
+      const d = await r.json().catch(() => null)
+      if (!r.ok) throw new Error((d as { error?: string } | null)?.error || 'No se pudo guardar.')
+      alTerminar(d as PedidoVista)
+    } catch (err) {
+      setError((err as Error).message)
+      setOcupado(false)
+    }
+  }
+  return (
+    <Modal titulo={modo === 'entregado' ? `Entregar ${pedido.folio}` : 'No se pudo entregar'} onCerrar={onCerrar}>
+      <form className="fz-stack fz-stack--chico" onSubmit={(e) => void guardar(e)}>
+        {modo === 'entregado' ? (
+          <>
+            <Campo etiqueta="¿Quién recibió?">
+              <input className="fz-input" value={recibio} onChange={(e) => setRecibio(e.target.value)} required minLength={2} />
+            </Campo>
+            {porCobrar && (
+              <label className="fa-cobrado">
+                <input type="checkbox" checked={cobrado} onChange={(e) => setCobrado(e.target.checked)} />
+                <span>
+                  Cobré <b>{dinero(pedido.total, true)}</b>
+                </span>
+              </label>
+            )}
+            <Campo etiqueta="Foto de la entrega (opcional)">
+              <input className="fz-input" type="file" accept="image/*" capture="environment" onChange={(e) => void elegirFoto(e.target.files?.[0])} />
+            </Campo>
+            {foto && <span className="fz-chico fz-tenue">Foto lista ({Math.round(foto.size / 1024)} KB)</span>}
+            <Campo etiqueta="Nota (opcional)">
+              <input className="fz-input" value={nota} onChange={(e) => setNota(e.target.value)} />
+            </Campo>
+          </>
+        ) : (
+          <Campo etiqueta="¿Qué pasó?">
+            <input className="fz-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ej. no había nadie, dirección incorrecta" required minLength={3} autoFocus />
+          </Campo>
+        )}
+        <ErrorForm error={error} />
+        <div className="fz-acciones-fin">
+          <Boton onClick={onCerrar}>Cancelar</Boton>
+          <button type="submit" className={`fz-btn ${modo === 'entregado' ? 'fz-btn--teal' : 'fz-btn--navy'}`} disabled={ocupado || (modo === 'entregado' && porCobrar && !cobrado)}>
+            {modo === 'entregado' ? 'Entregado' : 'Regresa a la farmacia'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/** «Mis entregas» del repartidor (rol con `entregas`): lo que lleva y lo entregado hoy. */
+export function Entregas() {
+  const [datos, setDatos] = useState<{ enRuta: PedidoVista[]; entregadosHoy: PedidoVista[] } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [vuelta, setVuelta] = useState(0)
+  const [modal, setModal] = useState<{ p: PedidoVista; modo: 'entregado' | 'noEntregado' } | null>(null)
+  useEffect(() => {
+    let vivo = true
+    api.get<{ enRuta: PedidoVista[]; entregadosHoy: PedidoVista[] }>('entregas').then(
+      (r) => vivo && setDatos(r),
+      (e) => vivo && setError(e instanceof Error ? e.message : 'No se pudo cargar.'),
+    )
+    return () => {
+      vivo = false
+    }
+  }, [vuelta])
+  return (
+    <div className="fz-stack fz-stack--grande">
+      <div>
+        <p className="fz-eyebrow">Farmacia</p>
+        <h1 className="fz-h1">Mis entregas</h1>
+        {datos && (
+          <p className="fz-tenue fz-chico" style={{ marginTop: 4 }}>
+            {datos.enRuta.length} por entregar · {datos.entregadosHoy.length} entregadas hoy
+          </p>
+        )}
+      </div>
+      {error && <Aviso tono="malo">{error}</Aviso>}
+      {!datos && !error && <p className="fz-tenue">Cargando…</p>}
+      {datos && datos.enRuta.length === 0 && <Aviso tono="ok">No llevas pedidos por ahora.</Aviso>}
+      {datos?.enRuta.map((p) => (
+        <section key={p.id} className="fz-tarjeta fz-stack fz-stack--chico fa-entrega">
+          <div className="fz-entre">
+            <b>
+              {p.folio} · {p.contacto.nombre}
+            </b>
+            <b className="fz-num">{p.pago.estado === 'pagado' ? 'Pagado' : `Cobrar ${dinero(p.total, true)}`}</b>
+          </div>
+          {p.direccion && <Direccion d={p.direccion} />}
+          <span className="fz-chico fz-tenue">
+            {p.renglones.map((r) => `${r.cantidad} × ${r.descripcion}`).join(' · ')}
+          </span>
+          {p.notasCliente && <span className="fz-chico">Nota: {p.notasCliente}</span>}
+          <div className="fa-entrega__acciones">
+            {p.contacto.telefono && (
+              <a className="fz-btn fz-btn--claro fz-btn--chico" href={`tel:${p.contacto.telefono.replace(/[^0-9+]/g, '')}`}>
+                Llamar
+              </a>
+            )}
+            <BotonWhatsApp telefono={p.contacto.telefono} mensaje={`Hola ${p.contacto.nombre.split(' ')[0]}, voy en camino con tu pedido ${p.folio} de la farmacia.`} />
+            <Boton chico onClick={() => setModal({ p, modo: 'noEntregado' })}>
+              No se pudo
+            </Boton>
+            <Boton chico tono="teal" onClick={() => setModal({ p, modo: 'entregado' })}>
+              Entregado
+            </Boton>
+          </div>
+        </section>
+      ))}
+      {datos && datos.entregadosHoy.length > 0 && (
+        <div className="fz-tarjeta fz-lista">
+          {datos.entregadosHoy.map((p) => (
+            <div key={p.id} className="fz-fila">
+              <span className="fz-fila__main">
+                <span className="fz-fila__t1">
+                  {p.folio} · {p.contacto.nombre}
+                </span>
+                <span className="fz-fila__t2">
+                  Recibió {p.entregaDomicilio?.recibio} · {p.entregaDomicilio?.entregadoEn ? momento(p.entregaDomicilio.entregadoEn) : ''}
+                </span>
+              </span>
+              <b className="fz-num">{dinero(p.total, true)}</b>
+            </div>
+          ))}
+        </div>
+      )}
+      {modal && (
+        <ModalEntrega
+          pedido={modal.p}
+          modo={modal.modo}
+          onCerrar={() => setModal(null)}
+          alTerminar={() => {
+            setModal(null)
+            setVuelta((v) => v + 1)
+          }}
+        />
+      )}
+    </div>
   )
 }

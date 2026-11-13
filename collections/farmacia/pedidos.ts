@@ -35,6 +35,26 @@ const leePedidos = async ({ req }: { req: Parameters<typeof esPersonal>[0] }) =>
   return p.farmacia.vender || p.farmacia.asignarRepartidor
 }
 
+/**
+ * Evidencia de entrega a domicilio (fase 5b): una foto por pedido, JPEG
+ * reducido en el navegador y guardado en base64 (como `mas-fotos`). Solo se
+ * sirve por /api/farmacia/pedidos/:id/evidencia; la API genérica responde 403.
+ */
+export const FarEvidencias: CollectionConfig = {
+  slug: 'far-evidencias',
+  typescript: { interface: 'FarEvidencia' },
+  labels: { singular: 'Evidencia de entrega', plural: 'Evidencias de entrega' },
+  admin: { group: 'Farmacia', hidden: true },
+  access: { read: nadie, create: nadie, update: nadie, delete: nadie },
+  fields: [
+    { name: 'pedido', type: 'relationship', relationTo: 'far-pedidos', required: true, unique: true, index: true },
+    { name: 'tipo', type: 'text', required: true },
+    { name: 'datos', type: 'textarea', required: true },
+    { name: 'bytes', type: 'number' },
+    { name: 'subidaPor', type: 'text' },
+  ],
+}
+
 export const FarPedidos: CollectionConfig = {
   slug: 'far-pedidos',
   typescript: { interface: 'FarPedido' },
@@ -91,17 +111,45 @@ export const FarPedidos: CollectionConfig = {
         { name: 'receta', type: 'relationship', relationTo: 'far-recetas' },
       ],
     },
+    { name: 'subtotal', label: 'Productos (MXN)', type: 'number' },
+    { name: 'costoEnvio', label: 'Envío (MXN)', type: 'number', defaultValue: 0 },
     { name: 'total', label: 'Total (MXN)', type: 'number', required: true },
     { name: 'entrega', label: 'Entrega', type: 'select', required: true, defaultValue: 'recoger', options: [{ label: 'Recoger en farmacia', value: 'recoger' }, { label: 'A domicilio', value: 'domicilio' }] },
     {
       name: 'pago',
       type: 'group',
       fields: [
-        { name: 'forma', label: 'Forma de pago', type: 'select', required: true, defaultValue: 'al_recoger', options: [{ label: 'Al recoger', value: 'al_recoger' }, { label: 'En línea', value: 'en_linea' }] },
-        { name: 'estado', type: 'select', required: true, defaultValue: 'pendiente', options: [{ label: 'Pendiente', value: 'pendiente' }, { label: 'Pagado', value: 'pagado' }, { label: 'Reembolso pendiente', value: 'reembolso_pendiente' }] },
+        { name: 'forma', label: 'Forma de pago', type: 'select', required: true, defaultValue: 'al_recoger', options: [{ label: 'Al recoger', value: 'al_recoger' }, { label: 'En línea', value: 'en_linea' }, { label: 'Al recibir (a domicilio)', value: 'al_recibir' }] },
+        { name: 'estado', type: 'select', required: true, defaultValue: 'pendiente', options: [{ label: 'Pendiente', value: 'pendiente' }, { label: 'Pagado', value: 'pagado' }, { label: 'Reembolso pendiente', value: 'reembolso_pendiente' }, { label: 'Reembolsado', value: 'reembolsado' }] },
         { name: 'proveedor', type: 'text' },
+        { name: 'idPago', label: 'Id del pago en la pasarela', type: 'text' },
         { name: 'referencia', label: 'Referencia de la pasarela', type: 'text', index: true },
         { name: 'pagadoEn', type: 'date' },
+      ],
+    },
+    {
+      name: 'direccion',
+      label: 'Dirección de entrega',
+      type: 'group',
+      fields: [
+        { name: 'calle', type: 'text' },
+        { name: 'colonia', type: 'text' },
+        { name: 'codigoPostal', type: 'text' },
+        { name: 'referencias', type: 'text' },
+        { name: 'zona', label: 'Zona', type: 'text' },
+      ],
+    },
+    { name: 'repartidor', type: 'relationship', relationTo: 'users', index: true },
+    {
+      name: 'entregaDomicilio',
+      label: 'Entrega a domicilio',
+      type: 'group',
+      fields: [
+        { name: 'salioEn', type: 'date' },
+        { name: 'entregadoEn', type: 'date' },
+        { name: 'recibio', label: 'Recibió', type: 'text' },
+        { name: 'nota', type: 'text' },
+        { name: 'intentos', label: 'Intentos fallidos', type: 'number', defaultValue: 0 },
       ],
     },
     { name: 'expiraEn', label: 'El apartado vence', type: 'date', index: true },

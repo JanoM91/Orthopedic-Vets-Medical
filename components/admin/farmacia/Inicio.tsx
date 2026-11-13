@@ -145,6 +145,12 @@ export default function Inicio() {
               </b>
             </Link>
           )}
+          {catalogo.modulos.tienda && p.entregas && (
+            <Link href={`${base}/entregas`} className="fa-hoy fa-hoy--aviso">
+              <span>Mis entregas</span>
+              <b className="fz-num">Abrir</b>
+            </Link>
+          )}
           {catalogo.modulos.tienda && (p.vender || p.asignarRepartidor) && (
             <Link href={`${base}/pedidos`} className={`fa-hoy${catalogo.hoy.pedidosTienda ? ' fa-hoy--aviso' : ''}`}>
               <span>Pedidos de la tienda por atender</span>

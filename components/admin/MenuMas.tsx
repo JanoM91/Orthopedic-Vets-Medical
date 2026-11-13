@@ -8,7 +8,7 @@ import React, { useEffect, useRef } from 'react'
  * poco para que la barra quepa sin desplazarse. Si la pantalla activa está
  * aquí adentro, el botón muestra su nombre.
  */
-export function MenuMas({ opciones }: { opciones: { href: string; on: boolean; texto: string; extra?: React.ReactNode }[] }) {
+export function MenuMas({ opciones, arriba, icono }: { opciones: { href: string; on: boolean; texto: string; extra?: React.ReactNode }[]; /** En una barra inferior: el menú abre hacia arriba. */ arriba?: boolean; /** Icono encima del texto (barra inferior). */ icono?: React.ReactNode }) {
   const ref = useRef<HTMLDetailsElement>(null)
   const activa = opciones.find((o) => o.on)
   useEffect(() => {
@@ -25,8 +25,11 @@ export function MenuMas({ opciones }: { opciones: { href: string; on: boolean; t
     }
   }, [])
   return (
-    <details ref={ref} className={`fz-mas${activa ? ' is-on' : ''}`}>
-      <summary>{activa ? activa.texto : 'Más'}</summary>
+    <details ref={ref} className={`fz-mas${activa ? ' is-on' : ''}${arriba ? ' fz-mas--arriba' : ''}`}>
+      <summary>
+        {icono}
+        {arriba ? <span>{activa ? activa.texto : 'Más'}</span> : activa ? activa.texto : 'Más'}
+      </summary>
       <div className="fz-mas__menu" role="menu">
         {opciones.map((o) => (
           <Link

@@ -297,3 +297,14 @@ Criterios de aceptación de la fase 4:
 - **Variables en Vercel:** `CRON_SECRET` (nueva, Sensitive) para que corra el cron; `RESEND_API_KEY` y `LEADS_FROM_EMAIL` para que salga el correo.
 - «Avísame cuando llegue» y la aplicación de promociones en la tienda: fase 5. «Plan por renovar»: fase 6.
 - **Clínica (22-oct, por reconstruir):** correos de citas, recordatorio diario (se sumará como segundo cron en `vercel.json`), cartilla imprimible, botones de WhatsApp y manuales.
+
+## 13. Versión A, fase 4 · Mostrador en dos columnas (12-nov-2026)
+
+Solo pantalla: no cambia `lib/farmacia/*`, la API ni el modelo de datos.
+
+- **Mostrador** (`components/admin/farmacia/Vender.tsx`): desde 1000 px, ticket a la izquierda y cobro fijo a la derecha (`.fa-vender__der`, `position: sticky`): total grande, método, recibido con billetes sugeridos (monto redondeado a 50, 100, 200, 500 o 1,000) y «Exacto», cambio, «Cobrar $…» y «Vaciar». Con un solo pago, el monto sigue al total y no se muestra; «Pago mixto» agrega métodos y entonces sí aparece el monto de cada uno. En teléfono y tableta se conserva la barra fija `.fa-cobrar`.
+- Ticket: mascota como chip (cambiar o quitar), recetas ligadas y alergias como chips; renglones compactos (producto, − cantidad +, importe, quitar). El descuento por renglón se abre con «descuento». Clases `fa-tk*` y `fa-chip*` en `farmacia.css` (no confundir con `fa-renglon*` de compras y recetas).
+- Farmacia → Inicio: «Vender» es el botón principal (navy); «Nuevo producto» pasa a secundario.
+- Modo solo (sin panel): barra inferior con 4 opciones fijas + «Más» (`MenuMas` con `arriba` e `icono`) en vez de cortar a 5; las secciones que no cabían (Productos, Inventario, Compras, Ajustes) ya son alcanzables.
+- Inventario: si no hay lotes con existencia (instalación nueva), arranca en «Todos los productos».
+- Verificado a 1280 × 800: una venta en efectivo de 4 renglones se cobra sin desplazar (VTA cobrada, cambio $20). `test:farmacia` 299/299.

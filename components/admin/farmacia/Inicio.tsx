@@ -44,7 +44,7 @@ export default function Inicio() {
             {t.productosActivos} productos activos · {t.publicados} publicados en la tienda · {t.lotesConExistencia} lotes con existencia
           </p>
         </div>
-        {(p.catalogo || p.recibirCompras) && (
+        {(p.catalogo || p.recibirCompras || p.vender) && (
           <div className="fz-acciones-fin">
             {p.recibirCompras && (
               <Link href={`${base}/compras/nueva`} className="fz-btn fz-btn--claro">
@@ -57,8 +57,13 @@ export default function Inicio() {
               </Link>
             )}
             {p.catalogo && (
-              <Link href={`${base}/productos/nuevo`} className="fz-btn fz-btn--navy">
+              <Link href={`${base}/productos/nuevo`} className="fz-btn fz-btn--claro">
                 <Icono n="mas" chico /> Nuevo producto
+              </Link>
+            )}
+            {p.vender && (
+              <Link href={`${base}/vender`} className="fz-btn fz-btn--navy">
+                <Icono n="cartera" chico /> Vender
               </Link>
             )}
           </div>
@@ -127,8 +132,8 @@ export default function Inicio() {
           <div className="fz-entre">
             <h2 className="fz-h2">Hoy</h2>
             {p.vender && (
-              <Link href={`${base}/vender`} className="fz-btn fz-btn--navy fz-btn--chico">
-                Vender
+              <Link href={`${base}/vender`} className="fz-btn fz-btn--claro fz-btn--chico">
+                Ir al mostrador
               </Link>
             )}
           </div>

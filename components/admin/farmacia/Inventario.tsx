@@ -15,7 +15,8 @@ export default function Inventario({ solo: soloInicial, q: qInicial }: { solo: s
   const { catalogo, base, recargarCatalogo } = useFarmacia()
   const p = catalogo.permisos
   const [q, setQ] = useState(qInicial)
-  const [solo, setSolo] = useState(soloInicial ?? 'con_existencia')
+  /* Sin nada en existencia (instalación nueva), arranca en «todos»: si no, la lista sale vacía y parece que no hay catálogo. */
+  const [solo, setSolo] = useState(soloInicial ?? (catalogo.totales.lotesConExistencia > 0 ? 'con_existencia' : 'todos'))
   const [datos, setDatos] = useState<InventarioVista | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)

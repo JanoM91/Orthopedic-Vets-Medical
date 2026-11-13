@@ -160,9 +160,10 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
           </header>
         )}
         <main className="fz-contenido">{pantalla}</main>
-        {!p.panel && (
-          <nav className="fz-barra" aria-label="Secciones">
-            {(
+        {!p.panel &&
+          (() => {
+            /* Modo solo (sin panel): 4 opciones fijas y el resto en «Más» (Versión A, fase 4), en vez de cortar a 5. */
+            const barra = (
               [
                 [true, base, !seccion, 'inicio', 'Inicio'],
                 [p.vender, `${base}/vender`, seccion === 'vender', 'cartera', 'Mostrador'],
@@ -174,17 +175,21 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
                 [p.recibirCompras, `${base}/compras`, seccion === 'compras', 'archivo', 'Compras'],
                 [p.configurar, `${base}/configuracion`, seccion === 'configuracion', 'ajustes', 'Ajustes'],
               ] as [boolean, string, boolean, Parameters<typeof Icono>[0]['n'], string][]
+            ).filter(([v]) => v)
+            const fijas = barra.length > 5 ? barra.slice(0, 4) : barra
+            const resto = barra.length > 5 ? barra.slice(4) : []
+            return (
+              <nav className="fz-barra" aria-label="Secciones">
+                {fijas.map(([, href, on, icono, texto]) => (
+                  <Link key={href} href={href} className={on ? 'is-on' : ''}>
+                    <Icono n={icono} />
+                    <span>{texto}</span>
+                  </Link>
+                ))}
+                {resto.length > 0 && <MenuMas arriba icono={<Icono n="mas" />} opciones={resto.map(([, href, on, , texto]) => ({ href, on, texto }))} />}
+              </nav>
             )
-              .filter(([v]) => v)
-              .slice(0, 5)
-              .map(([, href, on, icono, texto]) => (
-                <Link key={href} href={href} className={on ? 'is-on' : ''}>
-                  <Icono n={icono} />
-                  <span>{texto}</span>
-                </Link>
-              ))}
-          </nav>
-        )}
+          })()}
       </div>
     </FarmaciaCtx.Provider>
   )

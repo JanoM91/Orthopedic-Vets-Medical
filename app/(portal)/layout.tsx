@@ -4,6 +4,9 @@ import { site } from '../../lib/site'
 import { Carriles } from '../../components/Carriles'
 import { IndicadorNavegacion } from '../../components/Cargando'
 import { metadatosInstalables } from '../../lib/appInstalable'
+import { getPayload } from 'payload'
+import config from '@payload-config'
+import { leerModulos } from '../../lib/modulos'
 import './portal.css'
 
 /**
@@ -21,14 +24,16 @@ export const metadata: Metadata = {
 }
 export const viewport: Viewport = { themeColor: site.brand.primary, width: 'device-width', initialScale: 1, viewportFit: 'cover' }
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default async function PortalLayout({ children }: { children: React.ReactNode }) {
+  const modulos = await leerModulos(await getPayload({ config })).catch(() => null)
+  const tienda = Boolean(modulos?.farmacia && modulos?.tienda)
   const estilo = `:root{--pt-primary:${site.brand.primary};--pt-accent:${site.brand.accent};}`
   return (
     <html lang="es-MX">
       <head>
         <style dangerouslySetInnerHTML={{ __html: estilo }} />
       </head>
-      <body className="pt-body">
+      <body className="pt-body" data-tienda={tienda ? '1' : undefined}>
         {children}
         <Carriles />
         <IndicadorNavegacion />

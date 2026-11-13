@@ -97,6 +97,8 @@ export interface Config {
     'far-cierres-dia': FarCierreDia;
     'far-alertas': FarAlerta;
     'far-promociones': FarPromocion;
+    'far-pedidos': FarPedido;
+    'far-pagos-eventos': FarPagoEvento;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -140,6 +142,8 @@ export interface Config {
     'far-cierres-dia': FarCierresDiaSelect<false> | FarCierresDiaSelect<true>;
     'far-alertas': FarAlertasSelect<false> | FarAlertasSelect<true>;
     'far-promociones': FarPromocionesSelect<false> | FarPromocionesSelect<true>;
+    'far-pedidos': FarPedidosSelect<false> | FarPedidosSelect<true>;
+    'far-pagos-eventos': FarPagosEventosSelect<false> | FarPagosEventosSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -1322,6 +1326,88 @@ export interface FarPromocion {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-pedidos".
+ */
+export interface FarPedido {
+  id: number;
+  folio?: string | null;
+  estado:
+    | 'pago_pendiente'
+    | 'creado'
+    | 'pagado'
+    | 'receta_por_validar'
+    | 'preparando'
+    | 'listo_para_recoger'
+    | 'en_ruta'
+    | 'entregado'
+    | 'cancelado'
+    | 'expirado';
+  claveIdempotencia: string;
+  token: string;
+  tutor?: (number | null) | Tutor;
+  cliente?: (number | null) | Cliente;
+  mascota?: (number | null) | Mascota;
+  contacto: {
+    nombre: string;
+    correo: string;
+    telefono?: string | null;
+  };
+  perfil?: {
+    especie?: string | null;
+    pesoKg?: number | null;
+  };
+  renglones: {
+    presentacion: number | FarPresentacion;
+    producto: number | FarProducto;
+    descripcion: string;
+    grupo?: string | null;
+    cantidad: number;
+    unidades: number;
+    precioUnitario: number;
+    importe: number;
+    receta?: (number | null) | FarReceta;
+    id?: string | null;
+  }[];
+  total: number;
+  entrega: 'recoger' | 'domicilio';
+  pago: {
+    forma: 'al_recoger' | 'en_linea';
+    estado: 'pendiente' | 'pagado' | 'reembolso_pendiente';
+    proveedor?: string | null;
+    referencia?: string | null;
+    pagadoEn?: string | null;
+  };
+  expiraEn?: string | null;
+  venta?: (number | null) | FarVenta;
+  notasCliente?: string | null;
+  motivoCancelacion?: string | null;
+  historial?:
+    | {
+        estado: string;
+        fecha: string;
+        por?: string | null;
+        detalle?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-pagos-eventos".
+ */
+export interface FarPagoEvento {
+  id: number;
+  clave: string;
+  pedido?: (number | null) | FarPedido;
+  tipo?: string | null;
+  resultado?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-movimientos".
  */
 export interface FinMovimiento {
@@ -1513,6 +1599,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'far-promociones';
         value: number | FarPromocion;
+      } | null)
+    | ({
+        relationTo: 'far-pedidos';
+        value: number | FarPedido;
+      } | null)
+    | ({
+        relationTo: 'far-pagos-eventos';
+        value: number | FarPagoEvento;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -2357,6 +2451,84 @@ export interface FarPromocionesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-pedidos_select".
+ */
+export interface FarPedidosSelect<T extends boolean = true> {
+  folio?: T;
+  estado?: T;
+  claveIdempotencia?: T;
+  token?: T;
+  tutor?: T;
+  cliente?: T;
+  mascota?: T;
+  contacto?:
+    | T
+    | {
+        nombre?: T;
+        correo?: T;
+        telefono?: T;
+      };
+  perfil?:
+    | T
+    | {
+        especie?: T;
+        pesoKg?: T;
+      };
+  renglones?:
+    | T
+    | {
+        presentacion?: T;
+        producto?: T;
+        descripcion?: T;
+        grupo?: T;
+        cantidad?: T;
+        unidades?: T;
+        precioUnitario?: T;
+        importe?: T;
+        receta?: T;
+        id?: T;
+      };
+  total?: T;
+  entrega?: T;
+  pago?:
+    | T
+    | {
+        forma?: T;
+        estado?: T;
+        proveedor?: T;
+        referencia?: T;
+        pagadoEn?: T;
+      };
+  expiraEn?: T;
+  venta?: T;
+  notasCliente?: T;
+  motivoCancelacion?: T;
+  historial?:
+    | T
+    | {
+        estado?: T;
+        fecha?: T;
+        por?: T;
+        detalle?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-pagos-eventos_select".
+ */
+export interface FarPagosEventosSelect<T extends boolean = true> {
+  clave?: T;
+  pedido?: T;
+  tipo?: T;
+  resultado?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-cuentas_select".
  */
 export interface FinCuentasSelect<T extends boolean = true> {
@@ -2692,7 +2864,18 @@ export interface FarmaciaConfiguracion {
    * Lo escribe el cron: un solo resumen por día.
    */
   ultimoResumen?: string | null;
-  pasarelaActiva?: ('ninguna' | 'mercadopago') | null;
+  pasarelaActiva?: ('ninguna' | 'mercadopago' | 'prueba') | null;
+  tienda?: {
+    pagarAlRecoger?: boolean | null;
+    /**
+     * Debe existir en «Métodos de pago» con su cuenta de Finanzas (p. ej. la cuenta de Mercado Pago).
+     */
+    metodoPagoEnLinea?: string | null;
+    /**
+     * Separados por coma. Además, el resumen diario.
+     */
+    correosPedidos?: string | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -2849,6 +3032,13 @@ export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
   correosAlertas?: T;
   ultimoResumen?: T;
   pasarelaActiva?: T;
+  tienda?:
+    | T
+    | {
+        pagarAlRecoger?: T;
+        metodoPagoEnLinea?: T;
+        correosPedidos?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

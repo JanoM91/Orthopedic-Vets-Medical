@@ -104,13 +104,15 @@ function exigirAlgo(ctx: Ctx): void {
  * movimientos simultáneos del mismo lote se ordenan y la existencia nunca se
  * calcula sobre datos a medias. Rango 8 000 000+ para no chocar con la agenda.
  */
-export async function enTransaccion<T>(ctx: Ctx, fn: (req: PayloadRequest) => Promise<T>, lotesACandar: number[] = []): Promise<T> {
+export async function enTransaccion<T>(ctx: Ctx, fn: (req: PayloadRequest) => Promise<T>, lotesACandar: number[] = [], productosACandar: number[] = []): Promise<T> {
   const req = await createLocalReq({ user: ctx.user as User & { collection: 'users' } }, ctx.payload)
   const propia = await initTransaction(req)
   try {
-    if (lotesACandar.length) {
+    if (lotesACandar.length || productosACandar.length) {
       const sesiones = (ctx.payload.db as unknown as { sessions?: Record<string, { db: { execute: (q: unknown) => Promise<unknown> } }> }).sessions
       const tx = req.transactionID ? sesiones?.[String(await req.transactionID)]?.db : null
+      /* Primero productos (9 000 000+, los mismos que toma la tienda) y luego lotes (8 000 000+), siempre en orden de id. */
+      if (tx) for (const id of [...new Set(productosACandar)].sort((a, b) => a - b)) await tx.execute(sql`select pg_advisory_xact_lock(${9000000 + id})`)
       if (tx) for (const id of [...new Set(lotesACandar)].sort((a, b) => a - b)) await tx.execute(sql`select pg_advisory_xact_lock(${8000000 + id})`)
     }
     const r = await fn(req)
@@ -189,11 +191,12 @@ const CONFIG_POR_OMISION: ConfiguracionVista = {
     { clave: 'transferencia', nombre: 'Transferencia', tipo: 'transferencia', cuentaId: null, porConfirmar: true, activo: true },
   ],
   pasarelaActiva: 'ninguna',
+  tienda: { pagarAlRecoger: true, metodoPagoEnLinea: 'en_linea', correosPedidos: null },
 }
 
 function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista {
   const d = CONFIG_POR_OMISION
-  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas }, metodosPago: d.metodosPago.map((m) => ({ ...m })) }
+  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas }, metodosPago: d.metodosPago.map((m) => ({ ...m })), tienda: { ...d.tienda } }
   const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : def)
   return {
     caducidad: {
@@ -216,7 +219,12 @@ function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista
     politicaDevoluciones: t(g.politicaDevoluciones),
     almacenPorOmisionId: idDe(g.almacenPorOmision),
     finanzas: { areaId: idDe(g.finanzas?.area), categoriaVentasId: idDe(g.finanzas?.categoriaVentas), categoriaComprasId: idDe(g.finanzas?.categoriaCompras) },
-    pasarelaActiva: g.pasarelaActiva === 'mercadopago' ? 'mercadopago' : 'ninguna',
+    pasarelaActiva: g.pasarelaActiva === 'mercadopago' || g.pasarelaActiva === 'prueba' ? g.pasarelaActiva : 'ninguna',
+    tienda: {
+      pagarAlRecoger: g.tienda?.pagarAlRecoger == null ? d.tienda.pagarAlRecoger : Boolean(g.tienda.pagarAlRecoger),
+      metodoPagoEnLinea: t(g.tienda?.metodoPagoEnLinea) ?? d.tienda.metodoPagoEnLinea,
+      correosPedidos: t(g.tienda?.correosPedidos),
+    },
     exigirOriginalGrupoII: Boolean(g.exigirOriginalGrupoII),
     metodosPago: g.metodosPago?.length
       ? g.metodosPago.map((m) => ({ clave: m.clave, nombre: m.nombre, tipo: m.tipo, cuentaId: idDe(m.cuenta), porConfirmar: Boolean(m.porConfirmar), activo: m.activo !== false }))
@@ -252,7 +260,8 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     politicaDevoluciones: z.string().max(4000).nullable().optional(),
     almacenPorOmisionId: z.coerce.number().int().positive().nullable().optional(),
     finanzas: z.object({ areaId: z.coerce.number().int().positive().nullable(), categoriaVentasId: z.coerce.number().int().positive().nullable(), categoriaComprasId: z.coerce.number().int().positive().nullable() }).partial().optional(),
-    pasarelaActiva: z.enum(['ninguna', 'mercadopago']).optional(),
+    pasarelaActiva: z.enum(['ninguna', 'mercadopago', 'prueba']).optional(),
+    tienda: z.object({ pagarAlRecoger: z.boolean(), metodoPagoEnLinea: z.string().trim().toLowerCase().regex(/^[a-z0-9_-]{2,30}$/, 'La clave del método va sin espacios ni acentos.'), correosPedidos: z.string().trim().max(500).nullable() }).partial().optional(),
     exigirOriginalGrupoII: z.boolean().optional(),
     metodosPago: z
       .array(
@@ -289,6 +298,7 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     }
   }
   if (v.pasarelaActiva) data.pasarelaActiva = v.pasarelaActiva
+  if (v.tienda) data.tienda = { ...(actual.tienda ?? {}), ...v.tienda }
   if (v.exigirOriginalGrupoII != null) data.exigirOriginalGrupoII = v.exigirOriginalGrupoII
   if (v.correosAlertas !== undefined) {
     const lista = (v.correosAlertas ?? '').split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean)
@@ -550,10 +560,16 @@ export async function catalogo(ctx: Ctx): Promise<CatalogoFarmacia> {
 
 /** Cifras de hoy para el inicio (fase 3). Cada cifra solo se calcula si el rol la puede ver. */
 async function resumenHoy(ctx: Ctx, cfg: ConfiguracionVista): Promise<CatalogoFarmacia['hoy']> {
-  const r: CatalogoFarmacia['hoy'] = { ventasHoy: 0, totalHoy: 0, pagosPorConfirmar: 0, recetasPorValidar: 0, originalesPendientes: 0, cierrePendiente: false, alertasAbiertas: 0, alertasCriticas: 0, promocionesPropuestas: 0, reordenPropuestos: 0 }
+  const r: CatalogoFarmacia['hoy'] = { ventasHoy: 0, totalHoy: 0, pagosPorConfirmar: 0, recetasPorValidar: 0, originalesPendientes: 0, cierrePendiente: false, alertasAbiertas: 0, alertasCriticas: 0, promocionesPropuestas: 0, reordenPropuestos: 0, pedidosTienda: 0 }
   r.alertasAbiertas = (await ctx.payload.count({ collection: 'far-alertas', overrideAccess: true, where: { estado: { equals: 'abierta' } } })).totalDocs
   r.alertasCriticas = (await ctx.payload.count({ collection: 'far-alertas', overrideAccess: true, where: { and: [{ estado: { equals: 'abierta' } }, { severidad: { equals: 'critica' } }] } })).totalDocs
   r.reordenPropuestos = (await ctx.payload.count({ collection: 'far-alertas', overrideAccess: true, where: { and: [{ estado: { equals: 'abierta' } }, { tipo: { equals: 'reorden_sugerido' } }] } })).totalDocs
+  if (ctx.modulos.tienda && (ctx.p.farmacia.vender || ctx.p.farmacia.asignarRepartidor)) {
+    /* Mismo criterio que apartaInventario() (lib/farmacia/apartados.ts): sin pago y vencido ya no cuenta. */
+    r.pedidosTienda = (
+      await ctx.payload.count({ collection: 'far-pedidos', overrideAccess: true, where: { and: [{ estado: { in: ['creado', 'pagado', 'receta_por_validar', 'preparando'] } }, { or: [{ 'pago.estado': { equals: 'pagado' } }, { expiraEn: { greater_than: new Date().toISOString() } }, { expiraEn: { exists: false } }] }] } })
+    ).totalDocs
+  }
   if (ctx.p.farmacia.vender) r.promocionesPropuestas = (await ctx.payload.count({ collection: 'far-promociones', overrideAccess: true, where: { estado: { equals: 'propuesta' } } })).totalDocs
   if (ctx.p.farmacia.vender) {
     const ventas = await ctx.payload.find({ collection: 'far-ventas', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ dia: { equals: ctx.hoy } }, { estado: { not_equals: 'anulada' } }] }, select: { total: true, estado: true } })

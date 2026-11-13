@@ -40,6 +40,7 @@ export function Cabecera({ c, activa }: { c: ContenidoSitio; activa?: 'inicio' |
           </Link>
           <Link href="/#horario">Horario</Link>
           <Link href="/#contacto">Contacto</Link>
+          {c.tienda && <Link href="/tienda">Tienda</Link>}
           <Link href="/portal" className="st-btn st-btn--claro st-btn--chico">
             Portal
           </Link>
@@ -64,6 +65,7 @@ export function Pie({ c }: { c: ContenidoSitio }) {
         </div>
         <div className="st-pie__ligas">
           <Link href="/servicios">Servicios</Link>
+          {c.tienda && <Link href="/tienda">Tienda</Link>}
           <Link href="/portal">Portal del tutor</Link>
           <Link href="/aviso-de-privacidad">Aviso de privacidad</Link>
           {wa && (

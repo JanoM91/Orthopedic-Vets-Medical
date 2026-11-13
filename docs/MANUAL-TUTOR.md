@@ -7,6 +7,7 @@
 - Ver a tus mascotas: datos, **cartilla** (vacunas y desparasitaciones), peso y documentos que la clínica te comparta.
 - **Imprimir o guardar en PDF la cartilla**.
 - **Pedir, cambiar o cancelar citas** en línea.
+- **Comprar en la farmacia en línea** y recogerlo en la clínica (si la clínica la tiene activa).
 - Escribirnos por **WhatsApp** o llamarnos desde la tarjeta «¿Duda o urgencia?».
 
 ## Crear tu cuenta (una sola vez)
@@ -30,6 +31,15 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 - **Un día antes, a las 6 de la tarde**, te mandamos un recordatorio por correo.
 - **Cambiar o cancelar**: desde la cita, con la anticipación que indique la clínica. Si ya es muy tarde, llámanos.
 - Algunos servicios (como cirugías) se piden y la clínica te contacta para valorarlos.
+
+## Farmacia en línea
+
+1. Entra a **Tienda** (en el sitio o en la pestaña **Farmacia** del portal).
+2. Arriba, elige **para quién compras**: tu mascota (si entraste con tu cuenta) o la especie y el peso. Te decimos qué le queda y qué no.
+3. Agrega al carrito y toca **Hacer pedido**. Lo recoges en la clínica: pagas ahí o en línea.
+4. Te llega un correo con la liga de tu pedido y otro cuando esté **listo para recoger**. Si pagas al recoger, te lo apartamos unas horas; después se libera solo.
+- Los medicamentos **con receta** solo se piden con tu cuenta y con una receta vigente de tu veterinario para esa mascota. Los controlados no se venden en línea.
+- En **Portal → Farmacia** ves tus pedidos y tus recetas; «Surtir» abre la tienda con tu mascota ya elegida.
 
 ## Cartilla
 

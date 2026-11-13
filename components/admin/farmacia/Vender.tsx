@@ -716,7 +716,7 @@ function ModalReceta({ linea, paciente, onCerrar, alElegir }: { linea: Linea; pa
   )
 }
 
-function ModalAutorizacion({ mensaje, onCerrar, alAutorizar }: { mensaje: string; onCerrar: () => void; alAutorizar: (c: { correo: string; contrasena: string }) => void }) {
+export function ModalAutorizacion({ mensaje, onCerrar, alAutorizar }: { mensaje: string; onCerrar: () => void; alAutorizar: (c: { correo: string; contrasena: string }) => void }) {
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   return (
@@ -739,7 +739,7 @@ function ModalAutorizacion({ mensaje, onCerrar, alAutorizar }: { mensaje: string
         <div className="fz-acciones-fin">
           <Boton onClick={onCerrar}>Cancelar</Boton>
           <button type="submit" className="fz-btn fz-btn--navy" disabled={!correo || !contrasena}>
-            Autorizar y cobrar
+            Autorizar y seguir
           </button>
         </div>
       </form>
@@ -747,7 +747,7 @@ function ModalAutorizacion({ mensaje, onCerrar, alAutorizar }: { mensaje: string
   )
 }
 
-function ModalPeso({ mensaje, inicial, onCerrar, alConfirmar }: { mensaje: string; inicial: number | null; onCerrar: () => void; alConfirmar: (kg: number) => void }) {
+export function ModalPeso({ mensaje, inicial, onCerrar, alConfirmar }: { mensaje: string; inicial: number | null; onCerrar: () => void; alConfirmar: (kg: number) => void }) {
   const [kg, setKg] = useState(inicial != null ? String(inicial) : '')
   return (
     <Modal titulo="Confirma el peso" onCerrar={onCerrar}>
@@ -766,7 +766,7 @@ function ModalPeso({ mensaje, inicial, onCerrar, alConfirmar }: { mensaje: strin
         <div className="fz-acciones-fin">
           <Boton onClick={onCerrar}>Cancelar</Boton>
           <button type="submit" className="fz-btn fz-btn--navy" disabled={!(Number(kg) > 0)}>
-            Confirmar y cobrar
+            Confirmar y seguir
           </button>
         </div>
       </form>

@@ -145,6 +145,12 @@ export default function Inicio() {
               </b>
             </Link>
           )}
+          {catalogo.modulos.tienda && (p.vender || p.asignarRepartidor) && (
+            <Link href={`${base}/pedidos`} className={`fa-hoy${catalogo.hoy.pedidosTienda ? ' fa-hoy--aviso' : ''}`}>
+              <span>Pedidos de la tienda por atender</span>
+              <b className="fz-num">{catalogo.hoy.pedidosTienda}</b>
+            </Link>
+          )}
           {p.vender && catalogo.hoy.pagosPorConfirmar > 0 && (
             <Link href={`${base}/ventas?estado=por_confirmar`} className="fa-hoy fa-hoy--aviso">
               <span>Transferencias por confirmar</span>

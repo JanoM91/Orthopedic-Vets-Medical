@@ -1,0 +1,125 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tienda en línea (Farmacia, fase 5a). Usa los tokens y piezas del portal
+   (pt-*); aquí solo lo propio con prefijo ti-. De 320 px a escritorio.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ti-main { max-width: 1080px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
+
+/* Cabecera: carrito con contador */
+.ti-carrito-btn { position: relative; width: 40px; justify-content: center; padding: 0 !important; }
+.ti-carrito-btn .pt-i { width: 22px; height: 22px; }
+.ti-carrito-btn__n { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--pt-menta); color: var(--pt-primary); font-size: 12px; font-weight: 800; display: grid; place-items: center; line-height: 1; }
+
+/* ¿Para quién compras? */
+.ti-catalogo { display: flex; flex-direction: column; gap: 14px; }
+.ti-quien { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--pt-surface); border: 1px solid var(--pt-line); box-shadow: var(--pt-sombra); }
+.ti-quien__cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.ti-chip-otra__i { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: #effaf6; color: var(--pt-accent); }
+.ti-quien__form { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: end; }
+@media (min-width: 560px) { .ti-quien__form { grid-template-columns: 1fr 1fr auto; } }
+
+/* Buscador */
+.ti-buscar { position: relative; display: block; }
+.ti-buscar > .pt-i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--pt-muted); pointer-events: none; }
+.ti-buscar .pt-input { padding-left: 42px; min-height: 48px; border-radius: 999px; }
+
+/* Secciones por necesidad (carril desplazable en el teléfono) */
+.ti-lineas { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 4px; scroll-padding-inline: 16px; }
+.ti-lineas::-webkit-scrollbar { display: none; }
+.ti-linea { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 14px 4px 5px; border-radius: 999px; border: 1.5px solid var(--pt-line); background: var(--pt-surface); font-weight: 650; font-size: 14px; color: var(--pt-ink); cursor: pointer; white-space: nowrap; }
+.ti-linea__i { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #effaf6; color: var(--pt-accent); }
+.ti-linea.is-on { border-color: var(--pt-accent); background: var(--pt-accent); color: #fff; }
+.ti-linea.is-on .ti-linea__i { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.ti-linea:focus-visible, .ti-pres:focus-visible, .ti-opcion:focus-within, .ti-cantidad button:focus-visible { outline: 3px solid var(--pt-menta); outline-offset: 2px; }
+@media (min-width: 900px) { .ti-lineas { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; } }
+
+/* Rejilla de productos */
+.ti-rejilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ti-rejilla.is-cargando { animation: pt-pulso 1.2s ease-in-out infinite; }
+@media (min-width: 720px) { .ti-rejilla { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
+@media (min-width: 1000px) { .ti-rejilla { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ti-prod { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 16px; background: var(--pt-surface); border: 1px solid var(--pt-line); box-shadow: var(--pt-sombra); min-width: 0; }
+.ti-prod.is-no-apto { opacity: 0.72; }
+.ti-prod__liga { display: flex; flex-direction: column; gap: 8px; color: inherit; text-decoration: none; min-width: 0; }
+.ti-prod__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ti-prod__linea { font-size: 12px; font-weight: 700; color: var(--pt-accent); text-transform: uppercase; letter-spacing: 0.04em; }
+.ti-prod__nombre { font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ti-prod__sellos { display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
+.ti-prod__sellos:empty { display: none; }
+.ti-prod__pie { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+.ti-prod__pie .pt-btn { padding: 8px 12px; }
+.ti-prod__nota { font-size: 12px; color: var(--pt-muted); line-height: 1.35; }
+.ti-precio { font-size: 17px; font-variant-numeric: tabular-nums; }
+.ti-precio small { font-size: 12px; font-weight: 600; color: var(--pt-muted); }
+
+/* Imagen o icono de la sección */
+.ti-img { aspect-ratio: 4 / 3; border-radius: 12px; display: grid; place-items: center; overflow: hidden; background: #effaf6; color: var(--pt-accent); }
+.ti-img img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.ti-img--grande { aspect-ratio: 16 / 9; max-height: 280px; }
+.ti-img--alimento, .ti-img--dieta_prescripcion { background: #fdf1dc; color: #8a5a0a; }
+.ti-img--higiene { background: #f3eaf6; color: #6d3a80; }
+.ti-img--accesorio { background: #e8eef6; color: #2c4a6e; }
+.ti-img--suplemento { background: #fbe9e3; color: #9a3412; }
+.ti-vacio { align-items: flex-start; }
+.ti-esqueleto { min-height: 240px; animation: pt-pulso 1.2s ease-in-out infinite; }
+
+/* Ficha */
+.ti-ficha { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.ti-ficha__cab { display: flex; flex-direction: column; gap: 4px; }
+.ti-presentaciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.ti-pres { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 72px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--pt-line); background: var(--pt-surface); text-align: left; cursor: pointer; color: var(--pt-ink); }
+.ti-pres span { font-size: 14px; font-weight: 600; }
+.ti-pres small { font-size: 12px; color: var(--pt-muted); }
+.ti-pres.is-on { border-color: var(--pt-accent); background: #effaf6; box-shadow: inset 0 0 0 1px var(--pt-accent); }
+.ti-pres[disabled] { opacity: 0.5; cursor: not-allowed; }
+.ti-ficha__comprar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ti-ficha__comprar .pt-btn { flex: 1; min-width: 180px; }
+.ti-texto { white-space: pre-line; }
+
+/* Cantidad */
+.ti-cantidad { display: inline-flex; align-items: center; border: 1px solid var(--pt-line); border-radius: 999px; background: var(--pt-surface); flex: none; }
+.ti-cantidad button { width: 40px; height: 40px; border: 0; background: transparent; border-radius: 999px; display: grid; place-items: center; cursor: pointer; color: var(--pt-ink); }
+.ti-cantidad button[disabled] { opacity: 0.35; cursor: not-allowed; }
+.ti-cantidad .pt-i { width: 18px; height: 18px; }
+.ti-cantidad span { min-width: 28px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Carrito y pedido */
+.ti-checkout { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.ti-renglon { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'txt imp' 'cant cant'; gap: 6px 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--pt-line); }
+.ti-renglon__txt { grid-area: txt; display: flex; flex-direction: column; min-width: 0; }
+.ti-renglon__txt b { overflow-wrap: anywhere; }
+.ti-renglon .ti-cantidad { grid-area: cant; justify-self: start; }
+.ti-renglon__imp { grid-area: imp; font-variant-numeric: tabular-nums; }
+.ti-seguimiento .ti-renglon { grid-template-areas: 'txt imp'; }
+@media (min-width: 560px) { .ti-renglon { grid-template-columns: minmax(0, 1fr) auto 96px; grid-template-areas: 'txt cant imp'; } .ti-renglon__imp { text-align: right; } }
+.ti-total { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 16px; font-size: 17px; }
+.ti-opciones { display: flex; flex-direction: column; gap: 8px; }
+.ti-opcion { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--pt-line); cursor: pointer; }
+.ti-opcion input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--pt-accent); flex: none; }
+.ti-opcion span { display: flex; flex-direction: column; gap: 2px; }
+.ti-opcion small { font-size: 13px; color: var(--pt-muted); }
+.ti-opcion.is-on { border-color: var(--pt-accent); background: #effaf6; }
+.ti-opcion.is-off { opacity: 0.55; cursor: not-allowed; }
+.ti-resumen { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 720px) { .ti-resumen { bottom: 16px; } }
+
+/* Seguimiento */
+.ti-seguimiento { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.ti-seg__cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ti-pasos { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.ti-pasos li { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; min-width: 0; color: var(--pt-muted); text-align: center; position: relative; }
+.ti-pasos li i { width: 14px; height: 14px; border-radius: 50%; background: var(--pt-line); position: relative; z-index: 1; }
+.ti-pasos li::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: var(--pt-line); }
+.ti-pasos li:first-child::before { display: none; }
+.ti-pasos li.is-hecho i, .ti-pasos li.is-hecho::before, .ti-pasos li.is-ahora::before { background: var(--pt-accent); }
+.ti-pasos li.is-ahora i { background: var(--pt-primary); box-shadow: 0 0 0 4px #c6ebdf; }
+.ti-pasos li.is-ahora span { color: var(--pt-ink); font-weight: 700; }
+.ti-acciones { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+@media (min-width: 560px) { .ti-acciones { flex-direction: row; flex-wrap: wrap; align-items: center; } }
+.ti-confirmar { display: flex; flex-direction: column; gap: 8px; }
+.ti-confirmar > div { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Pago de prueba */
+.ti-prueba { display: flex; flex-direction: column; gap: 14px; }
+.ti-prueba__banda { padding: 10px 14px; border-radius: 12px; background: repeating-linear-gradient(-45deg, #fdf1dc, #fdf1dc 10px, #fbe7c0 10px, #fbe7c0 20px); color: #6b4a07; font-weight: 800; font-size: 14px; letter-spacing: 0.03em; text-align: center; }
+
+@media (max-width: 440px) { .ti-pasos li span { font-size: 11px; letter-spacing: -0.01em; overflow-wrap: anywhere; line-height: 1.2; } }

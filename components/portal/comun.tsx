@@ -26,6 +26,14 @@ const TRAZOS: Record<string, React.ReactNode> = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   sol: (<><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4" /></>),
   luna: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />,
+  bolsa: (<><path d="M5 8h14l-1 12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20.5z" /><path d="M9 10V6.5a3 3 0 0 1 6 0V10" /></>),
+  frasco: (<><rect x="7" y="7" width="10" height="14" rx="2" /><path d="M8 3h8v4H8zM7 12h10M12 14.5v4M10 16.5h4" /></>),
+  carrito: (<><circle cx="9" cy="20" r="1.5" /><circle cx="17" cy="20" r="1.5" /><path d="M3 4h2.5l2.2 11h10.6l2-8H6.4" /></>),
+  buscar: (<><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>),
+  mas: <path d="M12 5v14M5 12h14" />,
+  menos: <path d="M5 12h14" />,
+  x: <path d="M6 6l12 12M18 6L6 18" />,
+  receta: (<><path d="M14 3H6v18h12V7z" /><path d="M14 3v4h4M9 11h3a2 2 0 0 1 0 4H9v-4zM9 15v3M12 15l3 3" /></>),
   wa: (<><path d="M4 20l1.3-3.9A8 8 0 1 1 8.2 19z" /><path d="M9.5 9.5c0 3 2 5 5 5l1.2-1.2-1.8-.9-.8.8c-1-.4-1.8-1.2-2.2-2.2l.8-.8-.9-1.8z" /></>),
 }
 export function Icono({ n }: { n: string }) {
@@ -92,17 +100,23 @@ export function Cabecera({ nombre }: { nombre?: string }) {
   )
 }
 
-export function Barra({ activa }: { activa: 'inicio' | 'mascotas' | 'citas' | 'cuenta' }) {
+/**
+ * Barra inferior. «Farmacia» siempre se dibuja, pero el CSS solo la muestra
+ * cuando el layout del portal marca `body[data-tienda="1"]` (módulos Farmacia
+ * y Tienda encendidos), así ninguna página tiene que pasar la bandera.
+ */
+export function Barra({ activa }: { activa: 'inicio' | 'mascotas' | 'citas' | 'farmacia' | 'cuenta' }) {
   const items: [typeof activa, string, string, string][] = [
     ['inicio', '/portal', 'inicio', 'Inicio'],
     ['mascotas', '/portal/mascotas', 'paw', 'Mascotas'],
     ['citas', '/portal/citas', 'cal', 'Citas'],
+    ['farmacia', '/portal/farmacia', 'bolsa', 'Farmacia'],
     ['cuenta', '/portal/cuenta', 'user', 'Mi cuenta'],
   ]
   return (
     <nav className="pt-barra" aria-label="Secciones">
       {items.map(([k, href, ic, l]) => (
-        <Link key={k} href={href} className={activa === k ? 'is-on' : ''} aria-current={activa === k ? 'page' : undefined}>
+        <Link key={k} href={href} className={`${activa === k ? 'is-on' : ''}${k === 'farmacia' ? ' pt-barra__tienda' : ''}`.trim() || undefined} aria-current={activa === k ? 'page' : undefined}>
           <Icono n={ic} />
           <span>{l}</span>
         </Link>

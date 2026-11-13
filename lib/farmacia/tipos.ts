@@ -131,7 +131,9 @@ export type ConfiguracionVista = {
   politicaDevoluciones: string | null
   almacenPorOmisionId: number | null
   finanzas: { areaId: number | null; categoriaVentasId: number | null; categoriaComprasId: number | null }
-  pasarelaActiva: 'ninguna' | 'mercadopago'
+  pasarelaActiva: 'ninguna' | 'mercadopago' | 'prueba'
+  /** Tienda en línea (fase 5a). */
+  tienda: { pagarAlRecoger: boolean; metodoPagoEnLinea: string; correosPedidos: string | null }
   exigirOriginalGrupoII: boolean
   metodosPago: MetodoPagoVista[]
 }
@@ -497,4 +499,6 @@ export type ResumenHoy = {
   alertasCriticas: number
   promocionesPropuestas: number
   reordenPropuestos: number
+  /** Fase 5a: pedidos de la tienda que piden acción (recibidos, pagados, preparando). 0 con la tienda apagada. */
+  pedidosTienda: number
 }

@@ -6,6 +6,7 @@ import type { SitioConfiguracion } from '../../payload-types'
 import { DIAS_SEMANA } from '../../collections/clinica/agenda'
 import { configuracion as configuracionAgenda } from '../clinica/agenda'
 import { idDe } from '../clinica/servicio'
+import { leerModulos } from '../modulos'
 import { site } from '../site'
 
 /**
@@ -29,17 +30,20 @@ export type ContenidoSitio = {
   avisoPrivacidad: string | null
   grupos: GrupoServicios[]
   horario: { dia: string; abierto: boolean; de: string; a: string }[]
+  /** Farmacia y Tienda encendidas: la cabecera muestra «Tienda» (fase 5a). */
+  tienda: boolean
 }
 
 const t = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
 
 export async function contenidoSitio(): Promise<ContenidoSitio> {
   const payload = await getPayload({ config })
-  const [g, servicios, areas, agenda] = await Promise.all([
+  const [g, servicios, areas, agenda, modulos] = await Promise.all([
     payload.findGlobal({ slug: 'sitio-configuracion', depth: 0, overrideAccess: true }) as Promise<SitioConfiguracion>,
     payload.find({ collection: 'servicios', depth: 0, pagination: false, sort: 'orden', overrideAccess: true, where: { activo: { equals: true } } }),
     payload.find({ collection: 'fin-actividades', depth: 0, pagination: false, overrideAccess: true }),
     configuracionAgenda(payload),
+    leerModulos(payload),
   ])
   const nombreArea = new Map(areas.docs.map((a) => [a.id, a.nombre]))
   const grupos = new Map<string, ServicioPublico[]>()
@@ -68,6 +72,7 @@ export async function contenidoSitio(): Promise<ContenidoSitio> {
     avisoPrivacidad: t(g.avisoPrivacidad),
     grupos: lista,
     horario,
+    tienda: modulos.farmacia && modulos.tienda,
   }
 }
 

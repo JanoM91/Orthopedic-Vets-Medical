@@ -129,6 +129,7 @@ const TRAZOS: Record<string, React.ReactNode> = {
   fondo: (<><path d="M4 11.5c0-1.4 1-2.5 2.4-2.5H15l3-3" /><path d="M4 11.5V17a2 2 0 0 0 2 2h9.5a2.5 2.5 0 0 0 2.4-1.8L20 11.5H9.5" /><path d="M8 15h3" /></>),
   stop: <rect x="6.5" y="6.5" width="11" height="11" rx="2" />,
   enviar: <path d="M4 12l16-8-4 16-4-6z" />,
+  calendario: (<><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4M12 13v5M9.5 15.5h5" /></>),
 }
 export function Icono({ n, chico }: { n: keyof typeof TRAZOS | string; chico?: boolean }) {
   return (

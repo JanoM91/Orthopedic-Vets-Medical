@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import React, { useEffect, useRef, useState } from 'react'
 import { reducirImagen } from '../../../lib/reducirImagen'
+import { estadosCartilla } from '../../../lib/clinica/estadoCartilla'
+import { motivosFrecuentes } from '../../../lib/clinica/motivosNota'
 import type { CartillaVista, CitaVista, ClienteVista, ConfiguracionAgenda, DocumentoVista, Expediente as Exp, MascotaVista, NotaVista, PesoVista, RecursoVista, ResultadoBusqueda, ServicioVista } from '../../../lib/clinica/tipos'
 import { DetalleCita, EstadoCita } from './Agenda'
 import { FormularioCliente } from './Cliente'
@@ -290,6 +292,7 @@ export function FormularioMascota({ existente, clienteInicial, onGuardado, onCan
 /* ═══════════════════════════ expediente ═══════════════════════════ */
 
 type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'recetas' | 'documentos' | 'citas'
+const PESTANAS: Pestana[] = ['resumen', 'cartilla', 'pesos', 'notas', 'recetas', 'documentos', 'citas']
 
 /**
  * Foto de la mascota en el expediente (nov-2026): la misma que ve el tutor en
@@ -365,8 +368,19 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
   const { base, catalogo, rutaAdmin } = useClinica()
   const p = catalogo.permisos
   const { datos, error, cargando, recargar, poner } = useCarga(() => api.get<Exp>(`mascotas/${id}`), [id])
-  const [tab, setTab] = useState<Pestana>((['resumen', 'cartilla', 'pesos', 'notas', 'recetas', 'documentos', 'citas'].includes(pestana ?? '') ? pestana : 'resumen') as Pestana)
+  /* La pestaña vive en la URL (?ver=): el clic la cambia sin recargar (history.pushState, que Next sincroniza con useSearchParams), y «Atrás» regresa a la anterior. */
+  const sp = useSearchParams()
+  const ver = sp?.get('ver') ?? pestana
+  const tab: Pestana = (PESTANAS.includes(ver as Pestana) ? ver : 'resumen') as Pestana
+  const irA = (k: Pestana) => {
+    const q = new URLSearchParams(window.location.search)
+    q.set('ver', k)
+    window.history.pushState(null, '', `${window.location.pathname}?${q.toString()}`)
+  }
   const [editando, setEditando] = useState(false)
+  /* «+ Nueva nota» de la cabecera abre el formulario en la pestaña Notas; el número cambia en cada clic para reabrirlo. */
+  const [notaNueva, setNotaNueva] = useState(0)
+  const citas = useCarga(() => (p.agenda ? api.get<CitaVista[]>(`mascotas/${id}/citas`) : Promise.resolve([] as CitaVista[])), [id, p.agenda])
 
   if (error) return <Aviso tono="malo">{error}</Aviso>
   if (cargando || !datos) return <p className="fz-tenue">Cargando…</p>
@@ -383,8 +397,16 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
       />
     )
 
-  const proxima = datos.cartilla.filter((c) => c.proximaFecha && c.proximaFecha >= hoyISO()).sort((a, b) => a.proximaFecha!.localeCompare(b.proximaFecha!))[0]
-  const vencidas = datos.cartilla.filter((c) => c.proximaFecha && c.proximaFecha < hoyISO())
+  const hoy = hoyISO()
+  const estados = estadosCartilla(datos.cartilla, hoy)
+  const vigentes = datos.cartilla.filter((c) => estados.get(c.id) !== 'historial')
+  const vencidas = vigentes.filter((c) => estados.get(c.id) === 'vencida')
+  const proxima = vigentes.filter((c) => c.proximaFecha && c.proximaFecha >= hoy).sort((a, b) => a.proximaFecha!.localeCompare(b.proximaFecha!))[0]
+  const ultimaNota = datos.notas ? [...datos.notas].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id)[0] ?? null : null
+  const proximaCita = (citas.datos ?? []).filter((c) => ['solicitada', 'confirmada', 'llegada', 'atencion'].includes(c.estado) && c.dia >= hoy).sort((a, b) => (a.dia + a.horaInicio).localeCompare(b.dia + b.horaInicio))[0] ?? null
+  const enCurso = (citas.datos ?? []).find((c) => c.dia === hoy && ['llegada', 'atencion'].includes(c.estado)) ?? null
+  const hrefCita = `${base}/agenda?mascota=${m.id}&nueva=1`
+  const tutorPrincipal = m.tutores.find((x) => x.principal) ?? m.tutores[0]
   const pestanas: [Pestana, string, number | null][] = [
     ['resumen', 'Resumen', null],
     ['cartilla', 'Cartilla', datos.cartilla.length],
@@ -423,18 +445,40 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
               ))}
               {m.medicoTratante ? ` · Médico: ${m.medicoTratante.nombre}` : ''}
             </p>
-            {(() => {
-              const t = m.tutores.find((x) => x.principal) ?? m.tutores[0]
-              return t ? (
-                <div style={{ marginTop: 6 }}>
-                  <BotonWhatsApp telefono={t.telefono} mensaje={mensajes.mascota(t.nombre.split(' ')[0], m.nombre, site.brand.name)} etiqueta={`WhatsApp a ${t.nombre.split(' ')[0]}`} />
-                </div>
-              ) : null
-            })()}
           </div>
         </div>
-        {p.editarPacientes && <Boton onClick={() => setEditando(true)}>Editar datos</Boton>}
+        {/* Acciones de la cabecera (Versión A, fase 5): lo que se hace con el paciente enfrente. */}
+        <div className="cl-exp-acciones">
+          {tutorPrincipal && <BotonWhatsApp telefono={tutorPrincipal.telefono} mensaje={mensajes.mascota(tutorPrincipal.nombre.split(' ')[0], m.nombre, site.brand.name)} etiqueta="WhatsApp" />}
+          {datos.notas && p.escribirExpediente && (
+            <Boton onClick={() => irA('recetas')}>
+              <Icono n="archivo" chico /> Receta
+            </Boton>
+          )}
+          {p.agenda && m.estado === 'activo' && (
+            <Link href={hrefCita} className="fz-btn fz-btn--claro">
+              <Icono n="calendario" chico /> Nueva cita
+            </Link>
+          )}
+          {p.editarPacientes && <Boton onClick={() => setEditando(true)}>Editar datos</Boton>}
+          {datos.notas && p.escribirExpediente && (
+            <Boton
+              tono="navy"
+              onClick={() => {
+                setNotaNueva((n) => n + 1)
+                irA('notas')
+              }}
+            >
+              <Icono n="mas" chico /> Nueva nota
+            </Boton>
+          )}
+        </div>
       </div>
+      {enCurso && (
+        <Aviso tono="info">
+          Hoy: {enCurso.servicio.nombre} a las {enCurso.horaInicio} · {enCurso.estado === 'atencion' ? 'en atención' : 'ya llegó'}.
+        </Aviso>
+      )}
 
       {(m.alertasManejo.length > 0 || m.alergias) && (
         <div className="cl-alerta">
@@ -456,7 +500,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
 
       <nav className="fz-subnav" aria-label="Secciones del expediente" style={{ margin: 0 }}>
         {pestanas.map(([k, l, n]) => (
-          <a key={k} href={`?ver=${k}`} className={tab === k ? 'is-on' : ''} onClick={(e) => { e.preventDefault(); setTab(k) }}>
+          <a key={k} href={`?ver=${k}`} className={tab === k ? 'is-on' : ''} aria-current={tab === k ? 'page' : undefined} onClick={(e) => { e.preventDefault(); irA(k) }}>
             {l}
             {n != null ? <span className="fz-tenue">&nbsp;{n}</span> : ''}
           </a>
@@ -464,39 +508,100 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
       </nav>
 
       {tab === 'resumen' && (
-        <div className="cl-dos">
-          <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-            <h2 className="fz-h2">Datos</h2>
-            <dl className="cl-dl">
-              <dt>Nacimiento</dt>
-              <dd>{m.fechaNacimiento ? `${fecha(m.fechaNacimiento)}${m.nacimientoEstimado ? ' (estimada)' : ''}` : '—'}</dd>
-              <dt>Color y señas</dt>
-              <dd>{m.color ?? '—'}</dd>
-              <dt>Microchip</dt>
-              <dd>{m.microchip ?? 'Sin microchip registrado'}</dd>
-              <dt>Origen</dt>
-              <dd>{m.origen === 'importacion' ? 'Importación de archivo' : m.origen === 'portal' ? 'Portal del tutor' : 'Captura manual'} · alta {fecha(m.creadoEn)}</dd>
-            </dl>
-            {m.notasInternas && (
-              <div className="fz-aviso fz-aviso--gris">
-                <div>
-                  <b>Nota interna</b> (el tutor no la ve): {m.notasInternas}
-                </div>
+        <div className="fz-stack">
+          <section className="fz-tarjeta cl-caja fz-stack fz-stack--chico" aria-labelledby="t-vistazo">
+            <h2 className="fz-h2" id="t-vistazo">
+              De un vistazo
+            </h2>
+            <div className="cl-vistazo">
+              <div className={`cl-vistazo__c${vencidas.length ? ' is-malo' : proxima && estados.get(proxima.id) === 'proxima' ? ' is-aviso' : ''}`}>
+                <span className="fz-eyebrow">Cartilla</span>
+                {vencidas.length ? (
+                  <b>
+                    {vencidas[0].producto} vencida{vencidas.length > 1 ? ` (+${vencidas.length - 1})` : ''}
+                  </b>
+                ) : proxima ? (
+                  <b>{proxima.producto}</b>
+                ) : (
+                  <b>Sin refuerzos indicados</b>
+                )}
+                <span className="fz-chico">{vencidas.length ? `Desde ${fecha(vencidas[0].proximaFecha)}` : proxima ? `Próximo: ${fecha(proxima.proximaFecha)}` : `${datos.cartilla.length} registro(s)`}</span>
+                {(vencidas.length > 0 || (proxima && estados.get(proxima.id) === 'proxima')) && p.agenda && m.estado === 'activo' ? (
+                  <Link href={hrefCita}>Programar refuerzo</Link>
+                ) : (
+                  <button type="button" className="fz-link" onClick={() => irA('cartilla')}>
+                    Ver cartilla
+                  </button>
+                )}
               </div>
-            )}
-          </div>
-          <div className="fz-stack fz-stack--chico">
+              <div className="cl-vistazo__c">
+                <span className="fz-eyebrow">Peso</span>
+                {m.ultimoPeso ? <b>{m.ultimoPeso.kg} kg</b> : <b>Sin registro</b>}
+                <span className="fz-chico">{m.ultimoPeso ? `${fecha(m.ultimoPeso.fecha)}${cambioPeso(datos.pesos)}` : 'Registra el primero en «Peso»'}</span>
+                <MiniPeso pesos={datos.pesos} />
+              </div>
+              <div className="cl-vistazo__c">
+                <span className="fz-eyebrow">Última nota</span>
+                {datos.notas === null ? (
+                  <span className="fz-chico fz-tenue">Tu rol no lee notas clínicas.</span>
+                ) : ultimaNota ? (
+                  <>
+                    <b>{ultimaNota.titulo}</b>
+                    <span className="fz-chico">
+                      {fecha(ultimaNota.fecha)} · {ultimaNota.estado === 'firmada' ? 'firmada' : 'borrador'}
+                      {ultimaNota.autor ? ` · ${ultimaNota.autor.nombre}` : ''}
+                    </span>
+                    <button type="button" className="fz-link" onClick={() => irA('notas')}>
+                      Ver notas
+                    </button>
+                  </>
+                ) : (
+                  <b>Sin notas</b>
+                )}
+              </div>
+              <div className="cl-vistazo__c">
+                <span className="fz-eyebrow">Próxima cita</span>
+                {!p.agenda ? (
+                  <span className="fz-chico fz-tenue">Tu rol no incluye la agenda.</span>
+                ) : proximaCita ? (
+                  <>
+                    <b>{proximaCita.servicio.nombre}</b>
+                    <span className="fz-chico">
+                      {fecha(proximaCita.dia)} · {proximaCita.horaInicio} · {proximaCita.recurso.nombre}
+                    </span>
+                    <button type="button" className="fz-link" onClick={() => irA('citas')}>
+                      Ver citas
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <b>Ninguna</b>
+                    {m.estado === 'activo' && <Link href={hrefCita}>Agendar seguimiento</Link>}
+                  </>
+                )}
+              </div>
+            </div>
+          </section>
+          <div className="cl-dos">
             <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
-              <h2 className="fz-h2">Cartilla</h2>
-              {vencidas.length > 0 && <Aviso tono="aviso">{vencidas.length === 1 ? 'Hay un refuerzo vencido' : `Hay ${vencidas.length} refuerzos vencidos`}: {vencidas.map((v) => `${v.producto} (${fecha(v.proximaFecha)})`).join(', ')}</Aviso>}
-              {proxima ? (
-                <p>
-                  Próxima fecha indicada: <b>{fecha(proxima.proximaFecha)}</b> · {proxima.producto}
-                </p>
-              ) : (
-                <p className="fz-tenue">Sin próximas fechas indicadas.</p>
+              <h2 className="fz-h2">Datos</h2>
+              <dl className="cl-dl">
+                <dt>Nacimiento</dt>
+                <dd>{m.fechaNacimiento ? `${fecha(m.fechaNacimiento)}${m.nacimientoEstimado ? ' (estimada)' : ''}` : '—'}</dd>
+                <dt>Color y señas</dt>
+                <dd>{m.color ?? '—'}</dd>
+                <dt>Microchip</dt>
+                <dd>{m.microchip ?? 'Sin microchip registrado'}</dd>
+                <dt>Origen</dt>
+                <dd>{m.origen === 'importacion' ? 'Importación de archivo' : m.origen === 'portal' ? 'Portal del tutor' : 'Captura manual'} · alta {fecha(m.creadoEn)}</dd>
+              </dl>
+              {m.notasInternas && (
+                <div className="fz-aviso fz-aviso--gris">
+                  <div>
+                    <b>Nota interna</b> (el tutor no la ve): {m.notasInternas}
+                  </div>
+                </div>
               )}
-              <p className="fz-chico fz-tenue">{datos.cartilla.length} registro(s). Último: {datos.cartilla[0] ? `${datos.cartilla[0].producto}, ${fecha(datos.cartilla[0].fechaAplicacion)}` : '—'}</p>
             </div>
             <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
               <h2 className="fz-h2">Peso</h2>
@@ -507,15 +612,43 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
       )}
       {tab === 'cartilla' && <Cartilla mascotaId={m.id} lista={datos.cartilla} onCambio={recargar} />}
       {tab === 'pesos' && <Pesos mascotaId={m.id} lista={datos.pesos} onCambio={recargar} />}
-      {tab === 'notas' && <Notas mascotaId={m.id} lista={datos.notas} onCambio={recargar} />}
+      {tab === 'notas' && <Notas key={notaNueva} mascotaId={m.id} lista={datos.notas} onCambio={recargar} nuevaInicial={notaNueva > 0} />}
       {tab === 'recetas' && datos.notas && <RecetasMascota mascotaId={m.id} puedeEmitir={p.escribirExpediente} notas={datos.notas.map((n) => ({ id: n.id, titulo: `${n.fecha} · ${n.titulo}` }))} rutaFarmacia={`${rutaAdmin}/farmacia`} />}
       {tab === 'documentos' && <Documentos mascotaId={m.id} lista={datos.documentos} onCambio={recargar} />}
-      {tab === 'citas' && <CitasMascota mascotaId={m.id} />}
+      {tab === 'citas' && <CitasMascota mascotaId={m.id} onCambio={citas.recargar} />}
     </div>
   )
 }
 
 /* ───────────────────────────── peso ───────────────────────────── */
+
+/** « · +0.6 kg en 30 días» contra el registro más cercano a 30 días antes del último (o nada). */
+function cambioPeso(pesos: PesoVista[]): string {
+  if (pesos.length < 2) return ''
+  const orden = [...pesos].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  const ult = orden[0]
+  const t = (f: string) => new Date(f + 'T12:00:00Z').getTime()
+  const previo = orden.slice(1).find((x) => t(ult.fecha) - t(x.fecha) >= 25 * 86400000) ?? orden[orden.length - 1]
+  const dias = Math.round((t(ult.fecha) - t(previo.fecha)) / 86400000)
+  if (dias <= 0) return ''
+  const d = Math.round((ult.kg - previo.kg) * 10) / 10
+  return ` · ${d > 0 ? '+' : ''}${d} kg en ${dias} días`
+}
+
+/** Línea mínima del peso para «De un vistazo» (sin ejes). */
+function MiniPeso({ pesos }: { pesos: PesoVista[] }) {
+  if (pesos.length < 2) return null
+  const serie = [...pesos].sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(-12)
+  const kgs = serie.map((x) => x.kg)
+  const min = Math.min(...kgs), max = Math.max(...kgs), r = max - min || 1
+  const W = 120, H = 26
+  const pts = serie.map((x, i) => `${2 + (i * (W - 4)) / (serie.length - 1)},${H - 3 - ((x.kg - min) / r) * (H - 6)}`).join(' ')
+  return (
+    <svg className="cl-vistazo__linea" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 function GraficaPeso({ pesos }: { pesos: PesoVista[] }) {
   if (!pesos.length) return <p className="fz-tenue">Sin registros de peso.</p>
@@ -773,7 +906,7 @@ function Cartilla({ mascotaId, lista, onCambio }: { mascotaId: number; lista: Ca
 type DatosNota = { fecha: string; tipo: string; titulo: string; subjetivo: string; objetivo: string; analisis: string; plan: string }
 const notaVacia = (): DatosNota => ({ fecha: hoyISO(), tipo: 'consulta', titulo: '', subjetivo: '', objetivo: '', analisis: '', plan: '' })
 
-function FormularioNota({ mascotaId, existente, onListo, onCancelar }: { mascotaId: number; existente?: NotaVista; onListo: () => void; onCancelar: () => void }) {
+function FormularioNota({ mascotaId, existente, previas = [], onListo, onCancelar }: { mascotaId: number; existente?: NotaVista; previas?: string[]; onListo: () => void; onCancelar: () => void }) {
   const { catalogo } = useClinica()
   const [d, setD] = useState<DatosNota>(existente ? { fecha: existente.fecha, tipo: existente.tipo, titulo: existente.titulo, subjetivo: existente.subjetivo ?? '', objetivo: existente.objetivo ?? '', analisis: existente.analisis ?? '', plan: existente.plan ?? '' } : notaVacia())
   const [error, setError] = useState<string | null>(null)
@@ -790,11 +923,20 @@ function FormularioNota({ mascotaId, existente, onListo, onCancelar }: { mascota
       setError(e instanceof Error ? e.message : 'No se pudo guardar.')
     }
   }
-  const area = (k: keyof DatosNota, l: string, ph: string) => (
-    <Campo etiqueta={l}>
+  /* Etiqueta S/O/A/P con una frase que dice qué va ahí (Versión A, fase 5); el guardado no cambia. */
+  const area = (k: keyof DatosNota, letra: string, l: string, ayuda: string, ph: string) => (
+    <label className="fz-campo cl-soap-campo">
+      <span className="fz-etiqueta">
+        <span className="cl-soap-letra" aria-hidden="true">
+          {letra}
+        </span>
+        {l}
+      </span>
+      <span className="fz-chico fz-tenue">{ayuda}</span>
       <textarea className="fz-input" rows={3} value={d[k]} onChange={(e) => set(k, e.target.value)} placeholder={ph} />
-    </Campo>
+    </label>
   )
+  const motivos = motivosFrecuentes(previas)
   return (
     <>
     <form
@@ -823,10 +965,21 @@ function FormularioNota({ mascotaId, existente, onListo, onCancelar }: { mascota
       <Campo etiqueta="Motivo o título *">
         <input className="fz-input" value={d.titulo} onChange={(e) => set('titulo', e.target.value)} required autoFocus />
       </Campo>
-      {area('subjetivo', 'S · Subjetivo', 'Lo que refiere el tutor')}
-      {area('objetivo', 'O · Objetivo', 'Hallazgos de la exploración, constantes, estudios')}
-      {area('analisis', 'A · Análisis', 'Diagnóstico o impresión diagnóstica')}
-      {area('plan', 'P · Plan', 'Tratamiento, dosis, estudios, indicaciones, siguiente cita')}
+      {!existente && (
+        <div className="cl-motivos" role="group" aria-label="Motivos frecuentes">
+          {motivos.map((x) => (
+            <button key={x} type="button" className={`fz-chip${d.titulo === x ? ' is-on' : ''}`} aria-pressed={d.titulo === x} onClick={() => set('titulo', x)}>
+              {x}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="cl-soap-grid">
+        {area('subjetivo', 'S', 'Subjetivo', 'Lo que cuenta el tutor: desde cuándo, cómo empezó, qué ha notado.', 'Ej. cojea del miembro posterior derecho desde hace 3 días')}
+        {area('objetivo', 'O', 'Objetivo', 'Lo que observas y mides: peso, temperatura, FC, FR, palpación, estudios.', 'Constantes, hallazgos de la exploración, estudios')}
+        {area('analisis', 'A', 'Análisis', 'Tu interpretación: diagnóstico presuntivo y diferenciales.', 'Diagnóstico o impresión diagnóstica')}
+        {area('plan', 'P', 'Plan', 'Qué sigue: tratamiento, estudios, indicaciones al tutor y próxima cita.', 'Tratamiento, estudios, indicaciones, seguimiento')}
+      </div>
       <ErrorForm error={error} />
       <div className="fz-acciones-fin">
         <button type="submit" className="fz-btn fz-btn--claro">
@@ -856,10 +1009,10 @@ function FormularioNota({ mascotaId, existente, onListo, onCancelar }: { mascota
   )
 }
 
-function Notas({ mascotaId, lista, onCambio }: { mascotaId: number; lista: NotaVista[] | null; onCambio: () => void }) {
+function Notas({ mascotaId, lista, onCambio, nuevaInicial }: { mascotaId: number; lista: NotaVista[] | null; onCambio: () => void; nuevaInicial?: boolean }) {
   const { catalogo } = useClinica()
   const p = catalogo.permisos
-  const [modo, setModo] = useState<'lista' | 'nueva' | number>('lista')
+  const [modo, setModo] = useState<'lista' | 'nueva' | number>(nuevaInicial && p.escribirExpediente ? 'nueva' : 'lista')
   const [adenda, setAdenda] = useState<NotaVista | null>(null)
   const [porFirmar, setPorFirmar] = useState<NotaVista | null>(null)
   const [porBorrar, setPorBorrar] = useState<NotaVista | null>(null)
@@ -886,7 +1039,7 @@ function Notas({ mascotaId, lista, onCambio }: { mascotaId: number; lista: NotaV
           </Boton>
         </div>
       )}
-      {(modo === 'nueva' || editando) && <FormularioNota mascotaId={mascotaId} existente={editando} onListo={() => { setModo('lista'); onCambio() }} onCancelar={() => setModo('lista')} />}
+      {(modo === 'nueva' || editando) && <FormularioNota mascotaId={mascotaId} existente={editando} previas={lista.map((n) => n.titulo)} onListo={() => { setModo('lista'); onCambio() }} onCancelar={() => setModo('lista')} />}
       {lista.length === 0 && modo === 'lista' && <p className="fz-tenue">Sin notas clínicas.</p>}
       {lista.map((n) => (
         <article key={n.id} className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
@@ -1125,7 +1278,7 @@ function Documentos({ mascotaId, lista, onCambio }: { mascotaId: number; lista: 
 
 /* ───────────────────────────── citas de la mascota ───────────────────────────── */
 
-function CitasMascota({ mascotaId }: { mascotaId: number }) {
+function CitasMascota({ mascotaId, onCambio }: { mascotaId: number; onCambio?: () => void }) {
   const { base } = useClinica()
   const citas = useCarga(() => api.get<CitaVista[]>(`mascotas/${mascotaId}/citas`), [mascotaId])
   const cat = useCarga(() => api.get<{ recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda }>('agenda/catalogo'), [])
@@ -1137,7 +1290,7 @@ function CitasMascota({ mascotaId }: { mascotaId: number }) {
     <div className="cl-dos">
       <div className="fz-stack fz-stack--chico">
         <div>
-          <Link href={`${base}/agenda?mascota=${mascotaId}`} className="fz-btn fz-btn--navy fz-btn--chico">
+          <Link href={`${base}/agenda?mascota=${mascotaId}&nueva=1`} className="fz-btn fz-btn--navy fz-btn--chico">
             <Icono n="mas" chico /> Nueva cita
           </Link>
         </div>
@@ -1159,7 +1312,7 @@ function CitasMascota({ mascotaId }: { mascotaId: number }) {
           ))}
         </div>
       </div>
-      <div className="fz-tarjeta cl-caja">{elegida ? <DetalleCita cita={elegida} catalogo={cat.datos} onCambio={citas.recargar} /> : <p className="fz-chico fz-tenue">Elige una cita para ver el detalle y cambiar su estado.</p>}</div>
+      <div className="fz-tarjeta cl-caja">{elegida ? <DetalleCita cita={elegida} catalogo={cat.datos} onCambio={() => { citas.recargar(); onCambio?.() }} /> : <p className="fz-chico fz-tenue">Elige una cita para ver el detalle y cambiar su estado.</p>}</div>
     </div>
   )
 }

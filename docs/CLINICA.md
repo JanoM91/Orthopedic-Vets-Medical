@@ -151,3 +151,12 @@ El panel toma sus colores de `app/(payload)/custom.css`; si se definen las dos v
 - **Pedir refuerzo:** en el resumen (refuerzos vencidos) y en la cartilla (vencidos y próximos). Abre «Pedir cita» con la mascota, el servicio cuyo icono es vacuna o desparasitación y la nota «Refuerzo: <producto>».
 - **Sin callejones:** el sitio muestra «¿Primera vez? Escríbenos por WhatsApp» junto a «Pedir cita» (general y por servicio, con el servicio en el mensaje); en el portal, «¿Aún no eres cliente?» en Entrar y Crear cuenta, y «¿No tienes tu código?» en Vincular y en el inicio sin ficha. Usan el WhatsApp de «Sitio público → Contacto»; sin él no aparecen.
 - Sin migraciones ni variables nuevas.
+
+## Expediente (Versión A, fase 5, 12-nov-2026)
+
+Solo pantalla (`components/admin/clinica/Mascota.tsx`, `clinica.css`); no cambia API, guardado ni firma.
+
+- **Pestañas en la URL:** la pestaña sale de `?ver=` con `useSearchParams`; el clic hace `history.pushState` (Next lo sincroniza) y no pide nada al servidor. «Atrás» regresa a la pestaña anterior; «Abrir nota» de una cita (Agenda → detalle) en el mismo expediente cambia de pestaña sin recargar.
+- **Acciones en la cabecera:** WhatsApp (tutor principal), Receta (pestaña Recetas, con «escribir expediente»), Nueva cita (`agenda?mascota=<id>&nueva=1`, con «agenda» y mascota activa), Editar datos y **+ Nueva nota** (abre el formulario en Notas).
+- **«De un vistazo»** (Resumen): cartilla con `estadosCartilla()` (vencida en rojo con «Programar refuerzo», próxima a 30 días en ámbar), peso con cambio en ~30 días y línea mínima, última nota (fecha, estado, autor) y próxima cita (`GET mascotas/:id/citas`, solo con «agenda»). Aviso «Hoy: … en atención / ya llegó» si la mascota está en clínica.
+- **Nota guiada:** chips de motivos frecuentes (`lib/clinica/motivosNota.ts`: títulos previos de esa mascota + lista general) y etiquetas S/O/A/P con una frase de ayuda cada una, en dos columnas desde 900 px.

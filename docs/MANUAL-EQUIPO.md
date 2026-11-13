@@ -29,8 +29,8 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia 
 
 ## Médicos
 
-- **Expediente** (Clínica → mascota): resumen, cartilla, peso, notas, recetas, documentos, citas.
-- **Notas SOAP**: escribe y **firma**. Firmada ya no cambia; para corregir, agrega una adenda.
+- **Expediente** (Clínica → mascota): arriba, los botones de lo que haces con el paciente enfrente: **WhatsApp** al tutor, **Receta**, **Nueva cita**, **Editar datos** y **+ Nueva nota**. «De un vistazo» resume cartilla (en rojo si hay un refuerzo vencido, con «Programar refuerzo»), último peso y cómo cambió, última nota y próxima cita. Las pestañas (resumen, cartilla, peso, notas, recetas, documentos, citas) cambian sin recargar y la dirección guarda dónde estás: «Atrás» regresa a la pestaña anterior y puedes compartir la liga a una pestaña.
+- **Notas SOAP**: el motivo se elige con un toque entre los frecuentes (primero los que ya usaste con esa mascota) o se escribe. Cada sección dice qué va ahí: **S** lo que cuenta el tutor, **O** lo que observas y mides, **A** tu análisis, **P** el plan. Escribe y **firma**. Firmada ya no cambia; para corregir, agrega una adenda.
 - **Recetas** (pestaña Recetas → «Emitir receta»): elige el producto o escribe el principio activo, la dosis, la frecuencia, la duración, los surtidos y la vigencia. El peso vigente se pone solo; **la dosis la escribes tú** (el sistema nunca la sugiere). Grupo I exige el folio de receta cuantificada. «Firmar y emitir» exige tu cédula en tu usuario. Firmada ya no cambia.
 - **Documentos**: sube estudios o publícalos al tutor.
 

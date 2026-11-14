@@ -16,6 +16,7 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 - Comprobantes en un almacén **privado** de Vercel Blob (`FINANZAS_BLOB_READ_WRITE_TOKEN`).
 - Nota de voz: el **dictado del navegador** (Web Speech API) convierte la voz en texto en el teléfono y **Claude** (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, por omisión `claude-haiku-5-5`, salida JSON con `output_config.format`) lo interpreta. No se sube audio. Sin llave, responde 503 y lo demás funciona. Decisión de Jano (11-oct-2026): Anthropic en vez de OpenAI.
 - Deploy: Vercel (producción = rama `main`).
+- **CI compila sin base de datos** (`.github/workflows/ci.yml`: `next build` sin Postgres). Un layout o una página que Next genera fija en el build (las que no son `force-dynamic` ni leen cookies) **no puede depender de la base**: o la lectura va en `try/catch` con un valor por omisión (como `tiendaEncendida()` en `app/(portal)/layout.tsx`), o la página se marca `export const dynamic = 'force-dynamic'`. Para probarlo: detén Postgres y corre `npm run build`.
 
 ## Reglas heredadas de MacAuto Finanzas (no romper)
 

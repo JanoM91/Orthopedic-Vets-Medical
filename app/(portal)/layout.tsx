@@ -24,9 +24,23 @@ export const metadata: Metadata = {
 }
 export const viewport: Viewport = { themeColor: site.brand.primary, width: 'device-width', initialScale: 1, viewportFit: 'cover' }
 
+/**
+ * ¿Mostrar «Farmacia» en la barra? Nunca debe tumbar la página: en el build de
+ * CI no hay base de datos y algunas páginas del portal (entrar, olvidé…) se
+ * generan fijas; ahí simplemente queda apagado. Las páginas con barra son
+ * dinámicas y lo leen en cada visita.
+ */
+async function tiendaEncendida(): Promise<boolean> {
+  try {
+    const m = await leerModulos(await getPayload({ config }))
+    return Boolean(m.farmacia && m.tienda)
+  } catch {
+    return false
+  }
+}
+
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const modulos = await leerModulos(await getPayload({ config })).catch(() => null)
-  const tienda = Boolean(modulos?.farmacia && modulos?.tienda)
+  const tienda = await tiendaEncendida()
   const estilo = `:root{--pt-primary:${site.brand.primary};--pt-accent:${site.brand.accent};}`
   return (
     <html lang="es-MX">

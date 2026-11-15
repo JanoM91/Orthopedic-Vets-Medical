@@ -10,6 +10,8 @@
 - **Comprar en la farmacia en línea** y recogerlo en la clínica (si la clínica la tiene activa).
 - Escribirnos por **WhatsApp** o llamarnos desde la tarjeta «¿Duda o urgencia?».
 
+**Inicio:** arriba ves tu cita más cercana y tus pedidos en curso; debajo, **Pendientes**: vacunas vencidas o por vencer («Pedir refuerzo») y recetas listas para surtir. En **Perfil** están tus datos, tu ficha en la clínica y el contacto. En cada mascota, la pestaña **Compras** junta sus recetas y pedidos.
+
 **Cómo moverte:** abajo siempre está la misma barra: **Inicio · Mascotas · Citas · Tienda · Perfil**. Si todavía no entras a tu cuenta, la barra dice **Inicio · Servicios · Citas · Tienda · Entrar**.
 
 ## Crear tu cuenta (una sola vez)

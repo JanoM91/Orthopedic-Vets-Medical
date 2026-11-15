@@ -42,19 +42,22 @@ const VISITANTE: Item[] = [
   { clave: 'cuenta', href: '/portal/entrar', icono: 'cuenta', texto: 'Entrar' },
 ]
 
-export function BarraApp({ activa, modo, tienda, soloTelefono }: { activa: PestanaApp; modo: 'tutor' | 'visitante'; tienda?: boolean; soloTelefono?: boolean }) {
+/** `avisoTienda`: pedidos en curso del tutor (punto con número sobre «Tienda»); solo lo pasan las páginas que ya los leen (inicio y Mis pedidos). */
+export function BarraApp({ activa, modo, tienda, soloTelefono, avisoTienda }: { activa: PestanaApp; modo: 'tutor' | 'visitante'; tienda?: boolean; soloTelefono?: boolean; avisoTienda?: number }) {
   const items = (modo === 'tutor' ? TUTOR : VISITANTE).filter((i) => i.clave !== 'tienda' || tienda !== false)
   return (
     <nav className={`ap-barra${soloTelefono ? ' ap-barra--telefono' : ''}`} aria-label="Secciones">
       {items.map((i) => {
         const on = activa === i.clave
+        const aviso = i.clave === 'tienda' && avisoTienda ? avisoTienda : 0
         const clase = [on ? 'is-on' : '', i.clave === 'tienda' && tienda === undefined ? 'ap-barra__tienda' : ''].filter(Boolean).join(' ')
         return (
-          <Link key={i.clave} href={i.href} className={clase || undefined} aria-current={on ? 'page' : undefined}>
+          <Link key={i.clave} href={i.href} className={clase || undefined} aria-current={on ? 'page' : undefined} aria-label={aviso ? `${i.texto}: ${aviso} pedido${aviso === 1 ? '' : 's'} en curso` : undefined}>
             <span className="ap-barra__i">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 {TRAZOS[i.icono]}
               </svg>
+              {aviso > 0 && <b className="ap-barra__aviso">{aviso > 9 ? '9+' : aviso}</b>}
             </span>
             <span>{i.texto}</span>
           </Link>

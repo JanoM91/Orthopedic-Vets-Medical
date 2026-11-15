@@ -2,7 +2,7 @@
    Versión B: 72 px, icono activo sobre una píldora menta clara, texto de 12 px. */
 .ap-barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: #fff; border-top: 1px solid #dce5e2; padding-bottom: env(safe-area-inset-bottom, 0px); font-family: inherit; }
 .ap-barra a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 64px; padding: 8px 2px 8px; font-size: 12px; font-weight: 700; color: #4b5b56; text-decoration: none; -webkit-tap-highlight-color: transparent; }
-.ap-barra__i { width: 52px; height: 30px; border-radius: 999px; display: grid; place-items: center; transition: background-color 0.15s ease; }
+.ap-barra__i { position: relative; width: 52px; height: 30px; border-radius: 999px; display: grid; place-items: center; transition: background-color 0.15s ease; }
 .ap-barra svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .ap-barra a.is-on { color: var(--pt-accent, var(--st-accent, #0b6b59)); }
 .ap-barra a.is-on .ap-barra__i { background: #e3f8f2; }
@@ -19,3 +19,6 @@ body[data-tienda='1'] .ap-barra a.ap-barra__tienda { display: flex; }
 }
 /* En el sitio público solo en el teléfono: en computadora manda la cabecera. */
 @media (min-width: 720px) { .ap-barra--telefono { display: none; } }
+
+/* Pedidos en curso sobre «Tienda» (avisoTienda). */
+.ap-barra__aviso { position: absolute; top: -3px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--pt-accent, #0b6b59); color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #fff; }

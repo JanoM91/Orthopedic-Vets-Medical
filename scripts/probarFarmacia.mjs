@@ -23,6 +23,9 @@
  * Fase 5b: domicilio y repartidor; Mercado Pago contra un simulador local que
  * levanta esta prueba (MERCADOPAGO_API_URL=http://127.0.0.1:4555,
  * MERCADOPAGO_ACCESS_TOKEN y MERCADOPAGO_WEBHOOK_SECRET falsos en .env).
+ *
+ * Fase 6b (planes): mueve `proxima_entrega` en la base local para que «toque»
+ * una entrega; la suscripción de Mercado Pago va contra el mismo simulador.
  */
 import fs from 'node:fs'
 import pg from 'pg'
@@ -1377,6 +1380,195 @@ async function main() {
     r = await admin.post('/api/farmacia/configuracion', { tienda: { recompraDiasAntes: 0 } })
     ok(r.status === 400, 'Días de aviso fuera de rango: no', r.data)
     await admin.post('/api/farmacia/configuracion', { tienda: { recompraActiva: true, recompraDiasAntes: 5 } })
+  }
+
+  /* ── planes de compra (fase 6b) ── */
+  console.log('\nPlanes de compra (fase 6b)')
+  {
+    const bd3 = new pg.Client({ connectionString: urlBase })
+    await bd3.connect()
+    const cronP = () => fetch(`${BASE}/api/farmacia/cron/diario`, { headers: { authorization: `Bearer ${ENV.CRON_SECRET}` } }).then(async (x) => ({ status: x.status, data: await x.json() }))
+    const masDiasP = (n) => { const d = new Date(hoyTxt + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+    const toca = (id) => bd3.query(`update far_planes set proxima_entrega = $2 where id = $1`, [id, hoyTxt])
+    const planDe = async (id) => (await vendedor.get('/api/farmacia/planes?grupo=activos')).data?.planes?.find((p) => p.id === id) ?? (await vendedor.get('/api/farmacia/planes?grupo=detenidos')).data?.planes?.find((p) => p.id === id) ?? (await vendedor.get('/api/farmacia/planes?grupo=cerrados')).data?.planes?.find((p) => p.id === id)
+
+    r = await invitado.get('/api/tienda/sesion')
+    ok(r.data?.planes?.activo === false, 'Planes apagados por omisión', r.data?.planes)
+    r = await admin.post('/api/farmacia/configuracion', { planes: { activo: true, descuentoAnual: 10, entregasAnual: 3, diasAntes: 3 } })
+    ok(r.status === 200 && r.data.planes.activo && r.data.planes.descuentoAnual === 10 && r.data.planes.entregasAnual === 3 && r.data.planes.diasAntes === 3, 'Configuración: planes encendidos, 10% anual, 3 entregas, 3 días antes', r.data?.planes)
+    r = await admin.post('/api/farmacia/configuracion', { planes: { entregasAnual: 1 } })
+    ok(r.status === 400, 'Entregas del plan anual fuera de rango: no', r.data)
+
+    const pln = await crearProd({ nombre: `Pipeta plan ${sufijo}`, linea: 'antiparasitario', grupo: 'III', unidadBase: 'pipeta', especies: ['perro'], pesoMinKg: 10, pesoMaxKg: 25, duracionDias: 30, publicadoTienda: true }, { nombre: 'Pipeta', factor: 1, precio: 200 }, [{ numero: `PL-${sufijo}`, caducidad: '2028-06-30', costo: 60, cantidad: 20 }])
+    r = await invitado.get(`/api/tienda/plan-oferta?presentacion=${pln.pres.id}&mascota=${max.id}`)
+    ok(r.status === 200 && r.data.disponible === false, 'Sin sesión no hay plan', r.data)
+    r = await portal.get('/api/tienda/sesion')
+    ok(r.data?.planes?.activo === true, 'Tutor vinculado: la tienda ofrece planes', r.data?.planes)
+    r = await portal.get(`/api/tienda/plan-oferta?presentacion=${pln.pres.id}&mascota=${max.id}&cantidad=1`)
+    ok(r.status === 200 && r.data.disponible && r.data.cadaDias === 30 && r.data.recurrente.precioEntrega === 200 && r.data.anual.precioEntrega === 180 && r.data.anual.total === 540 && r.data.anual.entregas === 3, 'Oferta: cada 30 días; $200 por entrega o $540 por 3 (10% menos)', r.data)
+    r = await portal.get(`/api/tienda/plan-oferta?presentacion=${pln.pres.id}&mascota=${mishi.id}`)
+    ok(r.status === 200 && r.data.disponible === false && /Mishi/.test(r.data.motivo ?? ''), 'Para la gata no se ofrece (especie): dice por qué', r.data)
+    r = await portal.get(`/api/tienda/plan-oferta?presentacion=${tiPub.pres.id}&mascota=${max.id}`)
+    ok(r.status === 200 && r.data.disponible === false && /duración/.test(r.data.motivo ?? ''), 'Producto sin duración habitual: sin plan', r.data)
+
+    /* anual prepagado */
+    r = await portal.post('/api/tienda/planes', { modalidad: 'anual', presentacionId: pln.pres.id, mascotaId: max.id, cantidad: 1 })
+    const pa = r.data?.plan
+    ok(r.status === 201 && pa?.estado === 'por_pagar' && pa.total === 540 && /^PLN-\d{5}$/.test(pa.folio) && pa.token?.length === 48 && /\/tienda\/plan\/\d+\?t=.+&ref=prueba-pln-/.test(r.data.url ?? ''), 'Plan anual: queda «por pagar» con la liga de pago (prueba)', r.data)
+    const refA = new URL(r.data.url).searchParams.get('ref')
+    r = await portal.post('/api/tienda/planes', { modalidad: 'anual', presentacionId: pln.pres.id, mascotaId: max.id, cantidad: 1 })
+    ok(r.status === 201 && r.data.plan.id === pa.id, 'Otro intento sin pagar: reutiliza el mismo plan', r.data?.plan?.id)
+    const refA2 = new URL(r.data.url).searchParams.get('ref')
+    r = await admin.get(`/api/far-planes?depth=0&where[id][equals]=${pa.id}`)
+    ok(r.status === 200 && r.data.docs[0]?.estado === 'por_pagar' && r.data.docs[0].token === undefined, 'API genérica: el equipo lee el plan, sin el token', r.data?.docs?.[0])
+    r = await admin.post('/api/far-planes', { estado: 'activo' })
+    ok(r.status === 403, 'Nadie crea planes por la API genérica', r.status)
+    r = await portal.get('/api/far-planes?depth=0')
+    ok(r.status === 403 || (r.status === 200 && r.data.docs.length === 0), 'El tutor no lee planes por la API genérica', r.status)
+    r = await invitado.get(`/api/tienda/plan/${pa.id}?t=${'0'.repeat(48)}`)
+    ok(r.status === 404, 'Liga con otro token: no existe', r.status)
+    r = await invitado.post(`/api/tienda/pago-prueba-plan/${pa.id}`, { t: pa.token, ref: refA, resultado: 'aprobado' })
+    ok(r.status === 409, 'Pagar con el cobro anterior (ya hay otro): no', r.data)
+    r = await invitado.post(`/api/tienda/pago-prueba-plan/${pa.id}`, { t: pa.token, ref: refA2, resultado: 'aprobado' })
+    ok(r.status === 200 && r.data.resultado === 'pagado', 'Pago anual aprobado (aviso firmado)', r.data)
+    r = await invitado.post(`/api/tienda/pago-prueba-plan/${pa.id}`, { t: pa.token, ref: refA2, resultado: 'aprobado' })
+    ok(r.status === 200 && r.data?.resultado === 'ya procesado', 'El mismo aviso otra vez: no hace nada', r.data)
+    r = await invitado.get(`/api/tienda/plan/${pa.id}?t=${pa.token}`)
+    const pa1 = r.data
+    ok(pa1?.estado === 'activo' && pa1.entregasHechas === 1 && pa1.pedidos.length === 1 && pa1.proximaEntrega === masDiasP(30), 'Activo: la primera entrega sale de inmediato y la próxima es en 30 días', pa1)
+    const pedA1 = (await vendedor.get('/api/farmacia/pedidos?grupo=nuevos')).data?.pedidos?.find((p) => p.plan?.id === pa.id)
+    ok(pedA1?.estado === 'pagado' && pedA1.pago.forma === 'plan' && pedA1.total === 180 && pedA1.plan.ciclo === 1 && pedA1.mascota?.id === max.id, 'Pedidos: entrega 1 «cubierta por el plan», $180, para Max', pedA1)
+    r = await vendedor.post(`/api/farmacia/pedidos/${pedA1.id}/entregar`, { clave: clave(), pagos: [{ metodo: 'efectivo', monto: 180 }] })
+    ok(r.status === 400 && /plan anual/.test(r.data.error), 'Una entrega del plan anual no se cobra otra vez', r.data)
+    r = await vendedor.post(`/api/farmacia/pedidos/${pedA1.id}/entregar`, { clave: clave() })
+    ok(r.status === 200 && r.data.pedido.estado === 'entregado' && r.data.finanzas === 'registrado', 'Entregar: venta sin cobro, Finanzas «registrado»', r.data)
+    r = await encargado.get(`/api/farmacia/ventas/${r.data.pedido.ventaId}`)
+    ok(r.status === 200 && r.data.total === 180 && r.data.pagos.length === 0 && !r.data.ingresoFinanzasId, 'La venta vale $180, sin pagos ni otro ingreso en Finanzas', r.data && { total: r.data.total, pagos: r.data.pagos, ing: r.data.ingresoFinanzasId })
+    const fila = (await admin.get(`/api/far-planes?depth=0&where[id][equals]=${pa.id}`)).data?.docs?.[0]
+    r = await admin.get(`/api/finanzas/operaciones/${fila?.anticipo?.operacionFinanzas}`)
+    ok(r.status === 200 && r.data.operacion?.tipo === 'entrada' && r.data.operacion.totalCentavos === 54000 && r.data.operacion.estadoPago === 'liquidado', 'Finanzas: anticipo de $540 liquidado (una sola vez)', r.data?.operacion && { t: r.data.operacion.tipo, c: r.data.operacion.totalCentavos, e: r.data.operacion.estadoPago })
+    let pp = await planDe(pa.id)
+    ok(pp?.anticipo?.registrado && pp.anticipo.reconocido === 180 && pp.anticipo.porReconocer === 360, 'Panel: entregado $180, por entregar $360', pp?.anticipo)
+    r = await vendedor.get('/api/farmacia/planes?grupo=activos')
+    ok(r.status === 200 && r.data.anticipos.cobrado >= 540 && r.data.anticipos.porReconocer >= 360 && trazasDeCosto(r.data).length === 0, 'Resumen de anticipos (cobrado y por entregar), sin costos', r.data?.anticipos)
+    r = await vendedor.post(`/api/farmacia/planes/${pa.id}/accion`, { accion: 'cancelar', motivo: 'Prueba' })
+    ok(r.status === 403, 'Cancelar un anual pagado es del encargado', r.data)
+    r = await portal.post(`/api/tienda/plan/${pa.id}/cancelar`, { t: pa.token })
+    ok(r.status === 400 && /escríbenos/.test(r.data.error), 'El tutor no cancela solo un anual pagado', r.data)
+    r = await cronP()
+    pp = await planDe(pa.id)
+    ok(pp?.entregasHechas === 1, 'Cron sin que toque: no genera otra entrega', pp?.entregasHechas)
+    await toca(pa.id)
+    r = await cronP()
+    pp = await planDe(pa.id)
+    ok(r.data.entregasPlan >= 1 && pp?.entregasHechas === 2 && pp.proximaEntrega === masDiasP(30), 'Cron cuando toca: entrega 2 y la próxima en 30 días', { cron: r.data.entregasPlan, pp: pp && { h: pp.entregasHechas, p: pp.proximaEntrega } })
+    r = await cronP()
+    ok((await planDe(pa.id))?.entregasHechas === 2, 'Otro cron el mismo día: no repite', null)
+    await toca(pa.id)
+    await cronP()
+    pp = await planDe(pa.id)
+    ok(pp?.estado === 'terminado' && pp.entregasHechas === 3 && pp.pedidos.length === 3, 'La tercera entrega termina el plan', pp && { e: pp.estado, h: pp.entregasHechas })
+
+    /* recurrente con receta (Grupo II): se detiene sin receta */
+    const plg2 = await crearProd({ nombre: `Antiinflamatorio plan ${sufijo}`, principioActivo: `Meloxi ${sufijo}`, linea: 'medicamento', grupo: 'II', registroSenasica: `Q-${sufijo}-PL`, unidadBase: 'tableta', especies: ['perro'], duracionDias: 1, publicadoTienda: true }, { nombre: 'Caja 10', factor: 10, precio: 300 }, [{ numero: `PL2-${sufijo}`, caducidad: '2028-06-30', costo: 100, cantidad: 100 }])
+    r = await portal.get(`/api/tienda/plan-oferta?presentacion=${plg2.pres.id}&mascota=${rocky.id}`)
+    ok(r.data?.disponible === false && /receta/.test(r.data.motivo ?? ''), 'Grupo II sin receta: sin plan', r.data)
+    r = await admin.post('/api/farmacia/recetas', { mascotaId: rocky.id, vigenciaDias: 60, firmar: true, renglones: [{ productoId: plg2.prod.id, dosis: 'según indicación', frecuencia: 'diaria', duracion: '20 días', surtidosPermitidos: 2 }] })
+    ok(r.status === 201, 'Receta de Rocky con 2 surtidos', r.data)
+    r = await portal.post('/api/tienda/planes', { modalidad: 'recurrente', presentacionId: plg2.pres.id, mascotaId: rocky.id })
+    const pr = r.data?.plan
+    ok(r.status === 201 && pr?.cadaDias === 10 && pr.precioEntrega === 300 && /&sus=prueba-sus-/.test(r.data.url ?? ''), 'Plan recurrente: cada 10 días, $300, suscripción (prueba)', r.data)
+    r = await invitado.post(`/api/tienda/pago-prueba-plan/${pr.id}`, { t: pr.token, ref: new URL(r.data.url).searchParams.get('ref'), resultado: 'aprobado' })
+    ok(r.status === 200 && r.data.resultado === 'entrega generada', 'Autorizar la suscripción: primer cobro y entrega 1', r.data)
+    const pedR1 = (await vendedor.get('/api/farmacia/pedidos?grupo=nuevos')).data?.pedidos?.find((p) => p.plan?.id === pr.id)
+    ok(pedR1?.pago.forma === 'en_linea' && pedR1.pago.estado === 'pagado' && pedR1.renglones[0].recetaId && pedR1.total === 300, 'La entrega va pagada en línea y con la receta ligada', pedR1)
+    r = await encargado.post(`/api/farmacia/pedidos/${pedR1.id}/entregar`, { clave: clave() })
+    ok(r.status === 200 && r.data.pedido.estado === 'entregado', 'El encargado entrega la caja 1 (cobro en línea a Finanzas)', r.data)
+    await toca(pr.id)
+    r = await cronP()
+    pp = await planDe(pr.id)
+    ok(pp?.entregasHechas === 2 && pp.estado === 'activo', 'Cron: simula el segundo cobro (prueba) y genera la entrega 2', pp && { h: pp.entregasHechas, e: pp.estado })
+    await toca(pr.id)
+    r = await cronP()
+    pp = await planDe(pr.id)
+    ok(r.data.planesDetenidos >= 1 && pp?.estado === 'detenido' && /receta/.test(pp.motivo ?? '') && pp.entregasHechas === 2, 'Sin surtidos: el plan se detiene y no cobra', pp && { e: pp.estado, m: pp.motivo })
+    r = await vendedor.post(`/api/farmacia/planes/${pr.id}/accion`, { accion: 'reanudar' })
+    ok(r.status === 400 && /Todavía no/.test(r.data.error), 'Reanudar sin receta nueva: todavía no', r.data)
+    await admin.post('/api/farmacia/recetas', { mascotaId: rocky.id, vigenciaDias: 60, firmar: true, renglones: [{ productoId: plg2.prod.id, dosis: 'según indicación', frecuencia: 'diaria', duracion: '20 días', surtidosPermitidos: 1 }] })
+    r = await vendedor.post(`/api/farmacia/planes/${pr.id}/accion`, { accion: 'reanudar' })
+    ok(r.status === 200 && r.data.estado === 'activo', 'Con receta nueva: se reanuda', r.data?.estado)
+    r = await portal.post(`/api/tienda/plan/${pr.id}/cancelar`, { t: pr.token })
+    ok(r.status === 200 && r.data.estado === 'cancelado', 'El tutor cancela su plan recurrente', r.data?.estado)
+
+    /* peso: se detiene, nunca cambia de producto */
+    r = await portal.post('/api/tienda/planes', { modalidad: 'recurrente', presentacionId: pln.pres.id, mascotaId: max.id })
+    const pw = r.data?.plan
+    await invitado.post(`/api/tienda/pago-prueba-plan/${pw.id}`, { t: pw.token, ref: new URL(r.data.url).searchParams.get('ref'), resultado: 'aprobado' })
+    r = await portal.get('/portal/farmacia')
+    ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('Mis planes') && r.data.includes(`/tienda/plan/${pw.id}`), 'Portal → Mis pedidos: «Mis planes» con la liga del plan', r.status)
+    await admin.post(`/api/clinica/mascotas/${max.id}/pesos`, { kg: 30, fecha: hoyTxt })
+    await toca(pw.id)
+    await cronP()
+    pp = await planDe(pw.id)
+    ok(pp?.estado === 'detenido' && /ya no le corresponde/.test(pp.motivo ?? '') && pp.producto.id === pln.prod.id, 'Max ahora pesa 30 kg: el plan se detiene (no cambia de producto)', pp && { e: pp.estado, m: pp.motivo })
+    await admin.post(`/api/clinica/mascotas/${max.id}/pesos`, { kg: 12, fecha: hoyTxt })
+    r = await vendedor.post(`/api/farmacia/planes/${pw.id}/accion`, { accion: 'cancelar', motivo: 'Prueba terminada' })
+    ok(r.status === 200 && r.data.estado === 'cancelado', 'El equipo cancela el plan con motivo', r.data?.estado)
+
+    /* Mercado Pago: suscripción (preapproval) contra el simulador */
+    if (ENV.MERCADOPAGO_API_URL && ENV.MERCADOPAGO_WEBHOOK_SECRET) {
+      const http = await import('node:http')
+      const crypto = await import('node:crypto')
+      const mp = { alta: null, cambios: [], ref: null }
+      const srv = http.createServer((req, res) => {
+        let cuerpo = ''
+        req.on('data', (c) => (cuerpo += c))
+        req.on('end', () => {
+          const env = (st, d) => {
+            res.writeHead(st, { 'content-type': 'application/json' })
+            res.end(JSON.stringify(d))
+          }
+          if (req.method === 'POST' && req.url === '/preapproval') {
+            mp.alta = JSON.parse(cuerpo)
+            mp.ref = mp.alta.external_reference
+            return env(201, { id: 'sus1', init_point: 'https://mp.local/subscriptions/checkout?preapproval_id=sus1', status: 'pending' })
+          }
+          if (req.method === 'GET' && req.url === '/preapproval/sus1') return env(200, { id: 'sus1', status: 'authorized', external_reference: mp.ref, auto_recurring: { transaction_amount: 200 } })
+          if (req.method === 'PUT' && req.url === '/preapproval/sus1') {
+            mp.cambios.push(JSON.parse(cuerpo).status)
+            return env(200, { id: 'sus1' })
+          }
+          if (req.method === 'GET' && req.url === '/authorized_payments/9001') return env(200, { id: 9001, preapproval_id: 'sus1', external_reference: mp.ref, status: 'processed', transaction_amount: 200, currency_id: 'MXN', payment: { id: 4242, status: 'approved' } })
+          env(404, {})
+        })
+      })
+      await new Promise((ok2) => srv.listen(Number(new URL(ENV.MERCADOPAGO_API_URL).port), '127.0.0.1', ok2))
+      await admin.post('/api/farmacia/configuracion', { pasarelaActiva: 'mercadopago' })
+      r = await portal.post('/api/tienda/planes', { modalidad: 'recurrente', presentacionId: pln.pres.id, mascotaId: max.id })
+      const pm = r.data?.plan
+      ok(r.status === 201 && r.data.url?.startsWith('https://mp.local/subscriptions') && mp.alta?.auto_recurring?.frequency === 30 && mp.alta.auto_recurring.frequency_type === 'days' && mp.alta.auto_recurring.transaction_amount === 200 && mp.alta.auto_recurring.currency_id === 'MXN' && mp.alta.external_reference?.startsWith(`pln-${pm?.id}-`) && /\/tienda\/plan\//.test(mp.alta.back_url) && mp.alta.status === 'pending', 'Mercado Pago: suscripción cada 30 días por $200 MXN con la referencia del plan', mp.alta)
+      const ts = String(Math.floor(Date.now() / 1000))
+      const firmaMP = (id) => `ts=${ts},v1=${crypto.createHmac('sha256', ENV.MERCADOPAGO_WEBHOOK_SECRET).update(`id:${id};request-id:req-pln;ts:${ts};`).digest('hex')}`
+      const avisoMP = (id, tipo) => fetch(`${BASE}/api/tienda/webhook/mercadopago?data.id=${id}&type=${tipo}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': firmaMP(id), 'x-request-id': 'req-pln' }, body: JSON.stringify({ type: tipo, data: { id } }) }).then(async (x) => ({ status: x.status, data: await x.json() }))
+      r = await avisoMP('sus1', 'subscription_preapproval')
+      ok(r.status === 200 && r.data.resultado === 'activado', 'Aviso de suscripción autorizada: el plan queda activo', r.data)
+      r = await avisoMP('9001', 'subscription_authorized_payment')
+      ok(r.status === 200 && r.data.resultado === 'entrega generada', 'Aviso del cobro aprobado: genera la entrega', r.data)
+      r = await avisoMP('9001', 'subscription_authorized_payment')
+      ok(r.data?.duplicado === true, 'El mismo cobro otra vez: no hace otra entrega', r.data)
+      r = await portal.post(`/api/tienda/plan/${pm.id}/cancelar`, { t: pm.token })
+      ok(r.status === 200 && r.data.estado === 'cancelado' && mp.cambios.includes('cancelled'), 'Cancelar: cancela la suscripción en Mercado Pago', { e: r.data?.estado, c: mp.cambios })
+      srv.close()
+      await admin.post('/api/farmacia/configuracion', { pasarelaActiva: 'prueba' })
+    }
+
+    r = await portal.get('/portal/farmacia')
+    ok(r.status === 200 && typeof r.data === 'string' && !r.data.includes('Mis planes'), '«Mis planes» solo muestra planes vigentes (aquí ya todos cerrados)', r.status)
+    r = await invitado.get(`/tienda/plan/${pa.id}?t=${pa.token}`)
+    ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('ti-main'), 'Página del plan renderiza', r.status)
+    r = await admin.get('/admin/farmacia/planes')
+    ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('fa-app'), 'Panel: Farmacia → Planes renderiza', r.status)
+    await bd3.end()
   }
 
   /* ── panel ── */

@@ -137,6 +137,12 @@ function htmlAviso(r: FarRecompra, prod: FarProducto, mascota: string | null, en
   return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#0f2f2a"><h2 style="margin:0 0 6px">¿Ya toca${quien}?</h2><p style="margin:0 0 12px;color:#4b5b56">${esc(site.brand.name)}</p><p>El <b>${esc(prod.nombre)}</b>${quien} que compraste el ${new Date(r.ultimaCompra + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })} ${cuando}.</p>${boton}<p style="font-size:12px;color:#4b5b56">Es un cálculo con la duración habitual del producto; si tu veterinario indicó otra cosa, sigue su indicación. <a href="${ligaRecompra(r, true)}" style="color:#4b5b56">No me avises más de este producto</a>.</p></div>`
 }
 
+/** Cliente:mascota:producto con un plan de compra vigente (fase 6b): de eso no se manda «¿Ya toca?». */
+async function enPlan(payload: Payload): Promise<Set<string>> {
+  const r = await payload.find({ collection: 'far-planes', depth: 0, pagination: false, overrideAccess: true, where: { estado: { in: ['por_pagar', 'activo', 'detenido'] } }, select: { cliente: true, mascota: true, producto: true } })
+  return new Set(r.docs.map((p) => `${idDe(p.cliente) ?? 0}:${idDe(p.mascota) ?? 0}:${idDe(p.producto)}`))
+}
+
 /** Manda los avisos que tocan hoy. Un aviso por fecha estimada; best-effort (un correo que falla no detiene a los demás). */
 export async function enviarAvisosRecompra(payload: Payload, hoy = hoyNegocio()): Promise<number> {
   const cfg = await leerConfiguracion(payload)
@@ -156,13 +162,14 @@ export async function enviarAvisosRecompra(payload: Payload, hoy = hoyNegocio())
   const idsMascota = [...new Set(pendientes.map((x) => idDe(x.mascota)).filter((x): x is number => Boolean(x)))]
   const mascotas = idsMascota.length ? await payload.find({ collection: 'mascotas', depth: 0, pagination: false, overrideAccess: true, where: { id: { in: idsMascota } }, select: { nombre: true, estado: true } }) : { docs: [] }
   const mascota = new Map(mascotas.docs.map((m) => [m.id, m]))
+  const conPlan = await enPlan(payload)
   let enviados = 0
   for (const x of pendientes) {
     try {
       const p = prod.get(idDe(x.producto)!)
       const m = idDe(x.mascota) ? mascota.get(idDe(x.mascota)!) : null
-      /* Producto dado de baja o mascota fallecida: no se avisa (y no vuelve a intentarse para esa fecha). */
-      const omitir = !p || p.activo === false || p.grupo === 'I' || m?.estado === 'fallecido'
+      /* Producto dado de baja, mascota fallecida o ya en un plan de compra (6b): no se avisa (y no vuelve a intentarse para esa fecha). */
+      const omitir = !p || p.activo === false || p.grupo === 'I' || m?.estado === 'fallecido' || conPlan.has(`${idDe(x.cliente) ?? 0}:${idDe(x.mascota) ?? 0}:${idDe(x.producto)}`)
       const para = omitir ? [] : await destinatarios(payload, x)
       if (para.length) {
         const enTienda = Boolean(p!.publicadoTienda && p!.grupo !== 'II')
@@ -270,6 +277,8 @@ export async function recomprasDelCliente(payload: Payload, headers: Headers, cl
     sort: 'fechaEstimada',
     where: { and: [{ cliente: { equals: clienteId } }, { activa: { equals: true } }, { fechaEstimada: { less_than_equal: sumarDias(hoy, dias) } }, { fechaEstimada: { greater_than_equal: sumarDias(hoy, -30) } }] },
   })
-  return (await vistas(payload, headers, r.docs)).filter((v) => v.producto.enTienda || v.producto.requiereReceta)
+  const conPlan = await enPlan(payload)
+  const sinPlan = r.docs.filter((x) => !conPlan.has(`${idDe(x.cliente) ?? 0}:${idDe(x.mascota) ?? 0}:${idDe(x.producto)}`))
+  return (await vistas(payload, headers, sinPlan)).filter((v) => v.producto.enTienda || v.producto.requiereReceta)
 }
 

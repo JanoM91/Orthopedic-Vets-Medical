@@ -24,6 +24,7 @@ import { FarCierresDia, FarLibroControl, FarRecetas, FarVentas } from './collect
 import { FarAlertas, FarPromociones } from './collections/farmacia/alertas'
 import { FarEvidencias, FarPagosEventos, FarPedidos } from './collections/farmacia/pedidos'
 import { FarRecompras } from './collections/farmacia/recompras'
+import { FarPlanes } from './collections/farmacia/planes'
 import { FarmaciaConfiguracion } from './collections/farmacia/configuracion'
 import { protegerColeccion, protegerGlobal } from './lib/permisos'
 import { conModuloColeccion, conModuloGlobal } from './lib/modulosAcceso'
@@ -124,6 +125,7 @@ export default buildConfig({
     FarPagosEventos,
     FarEvidencias,
     FarRecompras,
+    FarPlanes,
     FinCuentas,
     FinCategorias,
     FinActividades,

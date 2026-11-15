@@ -4,6 +4,7 @@ import config from '@payload-config'
 
 import { firmarPrueba, proveedorPago } from '@/lib/farmacia/pagos'
 import { ErrorFarmacia } from '@/lib/farmacia/servicio'
+import { cancelarPlanTutor, crearPlan, ofertaPlan, pagarPlan, pagoPruebaPlan, planesDelTutor, planPublico } from '@/lib/farmacia/planes'
 import { bajaRecompra, recompraPublica, recomprasDelCliente } from '@/lib/farmacia/recompra'
 import { sugerirProductos } from '@/lib/farmacia/sugerir'
 import { cancelarPorCliente, catalogoTienda, cotizarEnvio, crearPedido, pagarPedido, pedidosDelTutor, productoTienda, recibirAviso, seguimiento, sesionTienda } from '@/lib/farmacia/tienda'
@@ -30,6 +31,12 @@ import { rateLimit } from '@/lib/rateLimit'
  *   GET  recompra/:id?t=<token>         «Volver a pedir» desde el correo (6a)
  *   POST recompra/:id/baja              { t } «No me avises más» (6a)
  *   GET  mis-recompras                  tutor con sesión: lo que se le acaba pronto (6a)
+ *   GET  plan-oferta?presentacion=&mascota=&cantidad=   precios del plan (6b)
+ *   POST planes                         { modalidad, presentacionId, mascotaId, cantidad } → { plan, url }
+ *   GET  plan/:id?t=<token>             liga del plan (sin sesión)
+ *   POST plan/:id/pagar | cancelar      { t }
+ *   GET  mis-planes                     tutor con sesión
+ *   POST pago-prueba-plan/:id           { t, ref, resultado } SOLO con PAGOS_PRUEBA_SECRETO
  *   POST pago-prueba/:folio             { t, ref, resultado } SOLO con PAGOS_PRUEBA_SECRETO:
  *                                       firma el aviso y lo pasa por el mismo camino que uno real.
  */
@@ -92,6 +99,13 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     }
     if (a === 'pedidos' && b && !c) return json(await seguimiento(payload, b, q.get('t') ?? ''))
     if (a === 'recompra' && b && !c) return json(await recompraPublica(payload, req.headers, Number(b) || 0, q.get('t') ?? ''))
+    if (a === 'plan-oferta' && !b) return json(await ofertaPlan(payload, req.headers, Number(q.get('presentacion')) || 0, Number(q.get('mascota')) || 0, Number(q.get('cantidad')) || 1))
+    if (a === 'plan' && b && !c) return json(await planPublico(payload, Number(b) || 0, q.get('t') ?? ''))
+    if (a === 'mis-planes' && !b) {
+      const t = await contextoTutor(payload, req.headers)
+      if (!t) return json({ error: 'Entra al portal.' }, 401)
+      return json(await planesDelTutor(payload, t.tutor.id))
+    }
     if (a === 'mis-recompras' && !b) {
       const t = await contextoTutor(payload, req.headers)
       if (!t) return json({ error: 'Entra al portal.' }, 401)
@@ -109,6 +123,15 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     }
     if (a === 'recompra' && b && c === 'baja') return json(await bajaRecompra(payload, Number(b) || 0, String((await leerJson(req)).t ?? '')))
     if (a === 'pedidos' && b && c === 'pagar') return json(await pagarPedido(payload, b, String((await leerJson(req)).t ?? '')))
+    if (a === 'planes' && !b) return json(await crearPlan(payload, req.headers, await leerJson(req)), 201)
+    if (a === 'plan' && b && c === 'pagar') return json(await pagarPlan(payload, Number(b) || 0, String((await leerJson(req)).t ?? '')))
+    if (a === 'plan' && b && c === 'cancelar') return json(await cancelarPlanTutor(payload, Number(b) || 0, String((await leerJson(req)).t ?? '')))
+    if (a === 'pago-prueba-plan' && b && !c) {
+      const prov = proveedorPago('prueba')
+      if (!prov || !prov.disponible()) return json({ error: 'El pago de prueba no está activo en esta instalación.' }, 404)
+      const d = await leerJson(req)
+      return json(await pagoPruebaPlan(payload, Number(b) || 0, String(d.t ?? ''), String(d.ref ?? ''), d.resultado === 'rechazado' ? 'rechazado' : 'aprobado', req.nextUrl))
+    }
     if (a === 'pago-prueba' && b && !c) {
       const prov = proveedorPago('prueba')
       if (!prov || !prov.disponible()) return json({ error: 'El pago de prueba no está activo en esta instalación.' }, 404)

@@ -39,6 +39,7 @@ import { Alertas, Promociones, Reabasto } from './Alertas'
 import { FichaReceta, NuevaRecetaExterna, Recetas } from './Recetas'
 import Vender from './Vender'
 import { Entregas, FichaPedido, Pedidos } from './Pedidos'
+import { Planes } from './Planes'
 import { FichaVenta, Ventas } from './Ventas'
 import Importar from './Importar'
 import Inicio from './Inicio'
@@ -85,6 +86,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   else if (seccion === 'pedidos' && !(p.vender || p.asignarRepartidor)) pantalla = <Aviso>Tu rol no incluye los pedidos de la tienda.</Aviso>
   else if (seccion === 'pedidos' && !id) pantalla = <Pedidos grupo={query.grupo ?? null} />
   else if (seccion === 'pedidos' && numero(id)) pantalla = <FichaPedido key={id} id={numero(id)!} />
+  else if (seccion === 'planes') pantalla = catalogo.modulos.tienda && p.vender ? <Planes grupo={query.grupo ?? null} /> : <Aviso>Tu rol no incluye los planes de la tienda.</Aviso>
   else if (seccion === 'cierre') pantalla = <Cierre />
   else if (seccion === 'alertas') pantalla = <Alertas tipo={query.tipo ?? null} />
   else if (seccion === 'reabasto') pantalla = p.recibirCompras || p.aprobar || p.reportes ? <Reabasto /> : <Aviso>La lista de reabasto es del encargado o el dueño.</Aviso>
@@ -133,6 +135,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
       extra: catalogo.hoy.promocionesPropuestas && p.aprobar ? <span className="fa-contador">{catalogo.hoy.promocionesPropuestas}</span> : null,
       mas: true,
     },
+    { ver: catalogo.modulos.tienda && p.vender, href: `${base}/planes`, on: seccion === 'planes', texto: 'Planes de compra', mas: true },
     { ver: p.ajustes, href: `${base}/conteo`, on: seccion === 'conteo', texto: 'Conteo', mas: true },
     { ver: p.cierreDia && catalogo.configuracion.cierreDiaActivo, href: `${base}/cierre`, on: seccion === 'cierre', texto: 'Cierre del día', mas: true },
     { ver: p.catalogo, href: `${base}/importar`, on: seccion === 'importar', texto: 'Importar catálogo', mas: true },

@@ -261,3 +261,19 @@
 .ti-recompra h1 { font-size: 24px; }
 .ti-recompra__comprar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .ti-recompra__comprar .pt-btn { flex: 1; min-width: 200px; }
+
+/* Planes de compra (Farmacia, fase 6b) */
+.ti-plan { gap: 12px; }
+.ti-plan h1 { font-size: 24px; line-height: 1.15; }
+.ti-plan__cab { display: flex; gap: 12px; align-items: flex-start; }
+.ti-plan__cab > div { min-width: 0; }
+.ti-plan__opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.ti-plan__opciones .ti-pres b { font-size: 18px; }
+.ti-plan__cifras { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ti-plan-pag { display: flex; flex-direction: column; gap: 14px; max-width: 600px; }
+.ti-plan-pag .pt-chico .pt-i { width: 16px; height: 16px; vertical-align: -3px; }
+@media (max-width: 380px) {
+  .ti-plan__opciones { grid-template-columns: 1fr; }
+}
+.ti-plan-pag button.pt-enlace { align-self: flex-start; background: none; border: 0; padding: 6px 0; font-family: inherit; color: var(--pt-accent); cursor: pointer; text-align: left; }
+.ti-plan-pag .pt-card button.pt-enlace { align-self: center; }

@@ -3,10 +3,11 @@ import { notFound, redirect } from 'next/navigation'
 import React from 'react'
 import { leerModulos } from '../../../../lib/modulos'
 import { pedidosDelTutor } from '../../../../lib/farmacia/tienda'
+import { planesDelTutor } from '../../../../lib/farmacia/planes'
 import { sesionTutor } from '../../../../lib/portal/sesion'
 import { sesionDeTienda } from '../../../../lib/portal/sesionTienda'
 import { Barra, Cabecera, Icono } from '../../../../components/portal/comun'
-import { FilaPedido, FilaReceta, pedidoActivo } from '../../../../components/portal/Compras'
+import { FilaPedido, FilaPlan, FilaReceta, pedidoActivo } from '../../../../components/portal/Compras'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Mis pedidos' }
@@ -17,7 +18,8 @@ export default async function Farmacia() {
   if (!c) redirect('/portal/entrar?siguiente=/portal/farmacia')
   const m = await leerModulos(c.payload)
   if (!m.farmacia || !m.tienda) notFound()
-  const [pedidos, sesion] = await Promise.all([pedidosDelTutor(c.payload, c.tutor.id), sesionDeTienda()])
+  const [pedidos, sesion, planes] = await Promise.all([pedidosDelTutor(c.payload, c.tutor.id), sesionDeTienda(), planesDelTutor(c.payload, c.tutor.id)])
+  const planesVivos = planes.filter((p) => p.estado !== 'cancelado' && p.estado !== 'terminado')
   const activos = pedidos.filter(pedidoActivo)
   const pasados = pedidos.filter((p) => !activos.includes(p)).slice(0, 10)
   const fila = (p: (typeof pedidos)[number]) => <FilaPedido key={p.id} p={p} />
@@ -39,6 +41,17 @@ export default async function Farmacia() {
           <h2>En curso</h2>
           {activos.length ? <div className="pt-card pt-lista">{activos.map(fila)}</div> : <p className="pt-tenue pt-chico">No tienes pedidos en curso.</p>}
         </section>
+
+        {planesVivos.length > 0 && (
+          <section className="pt-seccion">
+            <h2>Mis planes</h2>
+            <div className="pt-card pt-lista">
+              {planesVivos.map((p) => (
+                <FilaPlan key={p.id} p={p} />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="pt-seccion">
           <h2>Recetas vigentes</h2>

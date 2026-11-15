@@ -101,6 +101,7 @@ export interface Config {
     'far-pagos-eventos': FarPagoEvento;
     'far-evidencias': FarEvidencia;
     'far-recompras': FarRecompra;
+    'far-planes': FarPlan;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -148,6 +149,7 @@ export interface Config {
     'far-pagos-eventos': FarPagosEventosSelect<false> | FarPagosEventosSelect<true>;
     'far-evidencias': FarEvidenciasSelect<false> | FarEvidenciasSelect<true>;
     'far-recompras': FarRecomprasSelect<false> | FarRecomprasSelect<true>;
+    'far-planes': FarPlanesSelect<false> | FarPlanesSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -1145,6 +1147,7 @@ export interface FarVenta {
   id: number;
   folio?: string | null;
   canal: 'mostrador' | 'tienda';
+  plan?: (number | null) | FarPlan;
   estado: 'pagada' | 'por_confirmar' | 'anulada';
   claveIdempotencia: string;
   dia: string;
@@ -1210,6 +1213,52 @@ export interface FarVenta {
   anuladaPor?: (number | null) | User;
   anuladaEn?: string | null;
   motivoAnulacion?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-planes".
+ */
+export interface FarPlan {
+  id: number;
+  folio?: string | null;
+  modalidad: 'recurrente' | 'anual';
+  estado: 'por_pagar' | 'activo' | 'detenido' | 'cancelado' | 'terminado';
+  tutor: number | Tutor;
+  cliente: number | Cliente;
+  mascota: number | Mascota;
+  producto: number | FarProducto;
+  presentacion: number | FarPresentacion;
+  cantidad: number;
+  cadaDias: number;
+  entregasTotales?: number | null;
+  entregasHechas?: number | null;
+  proximaEntrega?: string | null;
+  precioEntrega: number;
+  descuentoPorciento?: number | null;
+  total?: number | null;
+  pago?: {
+    proveedor?: string | null;
+    referencia?: string | null;
+    idSuscripcion?: string | null;
+    idPago?: string | null;
+    pagadoEn?: string | null;
+  };
+  anticipo?: {
+    operacionFinanzas?: (number | null) | FinOperacion;
+    reconocido?: number | null;
+  };
+  motivo?: string | null;
+  token: string;
+  historial?:
+    | {
+        fecha: string;
+        evento: string;
+        por?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1373,12 +1422,14 @@ export interface FarPedido {
     receta?: (number | null) | FarReceta;
     id?: string | null;
   }[];
+  plan?: (number | null) | FarPlan;
+  ciclo?: number | null;
   subtotal?: number | null;
   costoEnvio?: number | null;
   total: number;
   entrega: 'recoger' | 'domicilio';
   pago: {
-    forma: 'al_recoger' | 'en_linea' | 'al_recibir';
+    forma: 'al_recoger' | 'en_linea' | 'al_recibir' | 'plan';
     estado: 'pendiente' | 'pagado' | 'reembolso_pendiente' | 'reembolsado';
     proveedor?: string | null;
     idPago?: string | null;
@@ -1424,6 +1475,7 @@ export interface FarPagoEvento {
   id: number;
   clave: string;
   pedido?: (number | null) | FarPedido;
+  plan?: (number | null) | FarPlan;
   tipo?: string | null;
   resultado?: string | null;
   updatedAt: string;
@@ -1677,6 +1729,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'far-recompras';
         value: number | FarRecompra;
+      } | null)
+    | ({
+        relationTo: 'far-planes';
+        value: number | FarPlan;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -2362,6 +2418,7 @@ export interface FarRecetasSelect<T extends boolean = true> {
 export interface FarVentasSelect<T extends boolean = true> {
   folio?: T;
   canal?: T;
+  plan?: T;
   estado?: T;
   claveIdempotencia?: T;
   dia?: T;
@@ -2559,6 +2616,8 @@ export interface FarPedidosSelect<T extends boolean = true> {
         receta?: T;
         id?: T;
       };
+  plan?: T;
+  ciclo?: T;
   subtotal?: T;
   costoEnvio?: T;
   total?: T;
@@ -2615,6 +2674,7 @@ export interface FarPedidosSelect<T extends boolean = true> {
 export interface FarPagosEventosSelect<T extends boolean = true> {
   clave?: T;
   pedido?: T;
+  plan?: T;
   tipo?: T;
   resultado?: T;
   updatedAt?: T;
@@ -2654,6 +2714,55 @@ export interface FarRecomprasSelect<T extends boolean = true> {
   avisadoEn?: T;
   activa?: T;
   token?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-planes_select".
+ */
+export interface FarPlanesSelect<T extends boolean = true> {
+  folio?: T;
+  modalidad?: T;
+  estado?: T;
+  tutor?: T;
+  cliente?: T;
+  mascota?: T;
+  producto?: T;
+  presentacion?: T;
+  cantidad?: T;
+  cadaDias?: T;
+  entregasTotales?: T;
+  entregasHechas?: T;
+  proximaEntrega?: T;
+  precioEntrega?: T;
+  descuentoPorciento?: T;
+  total?: T;
+  pago?:
+    | T
+    | {
+        proveedor?: T;
+        referencia?: T;
+        idSuscripcion?: T;
+        idPago?: T;
+        pagadoEn?: T;
+      };
+  anticipo?:
+    | T
+    | {
+        operacionFinanzas?: T;
+        reconocido?: T;
+      };
+  motivo?: T;
+  token?: T;
+  historial?:
+    | T
+    | {
+        fecha?: T;
+        evento?: T;
+        por?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2995,6 +3104,13 @@ export interface FarmaciaConfiguracion {
    */
   ultimoResumen?: string | null;
   pasarelaActiva?: ('ninguna' | 'mercadopago' | 'prueba') | null;
+  planes?: {
+    activo?: boolean | null;
+    descuentoAnual?: number | null;
+    entregasAnual?: number | null;
+    diasAntes?: number | null;
+    categoriaAnticipos?: (number | null) | FinCategoria;
+  };
   tienda?: {
     pagarAlRecoger?: boolean | null;
     /**
@@ -3185,6 +3301,15 @@ export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
   correosAlertas?: T;
   ultimoResumen?: T;
   pasarelaActiva?: T;
+  planes?:
+    | T
+    | {
+        activo?: T;
+        descuentoAnual?: T;
+        entregasAnual?: T;
+        diasAntes?: T;
+        categoriaAnticipos?: T;
+      };
   tienda?:
     | T
     | {

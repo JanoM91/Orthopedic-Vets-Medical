@@ -108,6 +108,7 @@ export function Pedidos({ grupo: grupoInicial }: { grupo: string | null }) {
                     {p.folio} <Pastilla tono={TONO[p.estado]}>{ESTADO_PEDIDO_LABEL[p.estado]}</Pastilla>
                     {p.renglones.some((x) => x.recetaId) && <Pastilla tono="info">Con receta</Pastilla>}
                     {p.entrega === 'domicilio' && <Pastilla tono="info">A domicilio</Pastilla>}
+                    {p.plan && <Pastilla tono="info">Plan {p.plan.folio}</Pastilla>}
                   </span>
                   <span className="fz-fila__t2">
                     {p.contacto.nombre} · {momento(p.creadoEn)} · {p.renglones.length} producto{p.renglones.length === 1 ? '' : 's'} · {p.pago.estado === 'pagado' ? 'pagado' : p.pago.forma === 'en_linea' ? 'pago en línea pendiente' : p.pago.forma === 'al_recibir' ? 'paga al recibir' : 'paga al recoger'}
@@ -212,7 +213,7 @@ export function FichaPedido({ id }: { id: number }) {
   const cerrado = ['entregado', 'cancelado', 'expirado'].includes(p.estado)
   const mensajeWa = `Hola ${p.contacto.nombre.split(' ')[0]}, te escribimos de la farmacia por tu pedido ${p.folio}.`
   const domicilio = p.entrega === 'domicilio'
-  const formaTexto = pagado ? (p.pago.forma === 'en_linea' ? 'pagado en línea' : 'pagado') : p.pago.forma === 'en_linea' ? 'pago en línea pendiente' : p.pago.forma === 'al_recibir' ? 'paga al recibir' : 'paga al recoger'
+  const formaTexto = p.pago.forma === 'plan' ? `cubierto por el plan anual ${p.plan?.folio ?? ''}` : pagado ? (p.pago.forma === 'en_linea' ? `pagado en línea${p.plan ? ` · plan ${p.plan.folio}` : ''}` : 'pagado') : p.pago.forma === 'en_linea' ? 'pago en línea pendiente' : p.pago.forma === 'al_recibir' ? 'paga al recibir' : 'paga al recoger'
   const puedeEntregaDom = catalogo.permisos.asignarRepartidor || (catalogo.permisos.entregas && p.repartidor?.id === catalogo.usuario.id)
   return (
     <div className="fz-stack fz-stack--grande fa-pedido">
@@ -341,7 +342,7 @@ export function FichaPedido({ id }: { id: number }) {
                     else setModal('entregar')
                   }}
                 >
-                  {pagado ? 'Entregar (ya pagado)' : `Entregar y cobrar ${dinero(p.total, true)}`}
+                  {p.pago.forma === 'plan' ? 'Entregar (cubierto por el plan)' : pagado ? 'Entregar (ya pagado)' : `Entregar y cobrar ${dinero(p.total, true)}`}
                 </Boton>
               )}
               <Boton tono="peligro" chico disabled={ocupado} onClick={() => setModal('cancelar')}>
@@ -403,7 +404,7 @@ export function FichaPedido({ id }: { id: number }) {
           }}
         />
       )}
-      {modal === 'cancelar' && <ModalCancelar pagado={pagado} ocupado={ocupado} onCerrar={() => setModal(null)} alCancelar={(m) => accion('cancelar', m)} />}
+      {modal === 'cancelar' && <ModalCancelar pagado={pagado && p.pago.forma !== 'plan'} ocupado={ocupado} onCerrar={() => setModal(null)} alCancelar={(m) => accion('cancelar', m)} />}
       {modal === 'entregar' && (
         <ModalCobro
           total={p.total}

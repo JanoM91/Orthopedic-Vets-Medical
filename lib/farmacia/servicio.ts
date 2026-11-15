@@ -192,6 +192,7 @@ const CONFIG_POR_OMISION: ConfiguracionVista = {
   ],
   pasarelaActiva: 'ninguna',
   tienda: { pagarAlRecoger: true, metodoPagoEnLinea: 'en_linea', correosPedidos: null, domicilioActivo: false, pagarAlRecibir: true, metodoContraEntrega: 'contra_entrega', horarioEntrega: null, zonas: [], recompraActiva: true, recompraDiasAntes: 5 },
+  planes: { activo: false, descuentoAnual: 0, entregasAnual: 12, diasAntes: 3, categoriaAnticiposId: null },
 }
 
 /** «91000, 91010 91020» → ['91000','91010','91020'] (5 dígitos, sin repetidos). */
@@ -199,7 +200,7 @@ export const listaCP = (texto: string | null | undefined): string[] => [...new S
 
 function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista {
   const d = CONFIG_POR_OMISION
-  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas }, metodosPago: d.metodosPago.map((m) => ({ ...m })), tienda: { ...d.tienda, zonas: [] } }
+  if (!g) return { ...d, caducidad: { ...d.caducidad }, aprendizaje: { ...d.aprendizaje }, promociones: d.promociones.map((p) => ({ ...p })), finanzas: { ...d.finanzas }, metodosPago: d.metodosPago.map((m) => ({ ...m })), tienda: { ...d.tienda, zonas: [] }, planes: { ...d.planes } }
   const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : def)
   return {
     caducidad: {
@@ -223,6 +224,13 @@ function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista
     almacenPorOmisionId: idDe(g.almacenPorOmision),
     finanzas: { areaId: idDe(g.finanzas?.area), categoriaVentasId: idDe(g.finanzas?.categoriaVentas), categoriaComprasId: idDe(g.finanzas?.categoriaCompras) },
     pasarelaActiva: g.pasarelaActiva === 'mercadopago' || g.pasarelaActiva === 'prueba' ? g.pasarelaActiva : 'ninguna',
+    planes: {
+      activo: Boolean(g.planes?.activo),
+      descuentoAnual: num(g.planes?.descuentoAnual, d.planes.descuentoAnual),
+      entregasAnual: num(g.planes?.entregasAnual, d.planes.entregasAnual) || d.planes.entregasAnual,
+      diasAntes: num(g.planes?.diasAntes, d.planes.diasAntes) || d.planes.diasAntes,
+      categoriaAnticiposId: idDe(g.planes?.categoriaAnticipos),
+    },
     tienda: {
       pagarAlRecoger: g.tienda?.pagarAlRecoger == null ? d.tienda.pagarAlRecoger : Boolean(g.tienda.pagarAlRecoger),
       metodoPagoEnLinea: t(g.tienda?.metodoPagoEnLinea) ?? d.tienda.metodoPagoEnLinea,
@@ -278,6 +286,16 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     almacenPorOmisionId: z.coerce.number().int().positive().nullable().optional(),
     finanzas: z.object({ areaId: z.coerce.number().int().positive().nullable(), categoriaVentasId: z.coerce.number().int().positive().nullable(), categoriaComprasId: z.coerce.number().int().positive().nullable() }).partial().optional(),
     pasarelaActiva: z.enum(['ninguna', 'mercadopago', 'prueba']).optional(),
+    planes: z
+      .object({
+        activo: z.boolean(),
+        descuentoAnual: z.coerce.number().min(0, 'El descuento va de 0 a 50 %.').max(50, 'El descuento va de 0 a 50 %.'),
+        entregasAnual: z.coerce.number().int().min(2, 'El plan anual lleva de 2 a 24 entregas.').max(24, 'El plan anual lleva de 2 a 24 entregas.'),
+        diasAntes: z.coerce.number().int().min(1).max(10),
+        categoriaAnticiposId: z.coerce.number().int().positive().nullable(),
+      })
+      .partial()
+      .optional(),
     tienda: z
       .object({
         pagarAlRecoger: z.boolean(),
@@ -340,6 +358,10 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
     }
   }
   if (v.pasarelaActiva) data.pasarelaActiva = v.pasarelaActiva
+  if (v.planes) {
+    const { categoriaAnticiposId, ...resto } = v.planes
+    data.planes = { ...(actual.planes ?? {}), ...resto, ...(categoriaAnticiposId !== undefined ? { categoriaAnticipos: categoriaAnticiposId } : {}) }
+  }
   if (v.tienda) {
     const { zonas, ...resto } = v.tienda
     data.tienda = { ...(actual.tienda ?? {}), ...resto }

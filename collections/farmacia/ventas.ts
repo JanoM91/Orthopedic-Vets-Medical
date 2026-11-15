@@ -141,6 +141,8 @@ export const FarVentas: CollectionConfig = {
   fields: [
     folioVirtual('VTA'),
     { name: 'canal', label: 'Canal', type: 'select', required: true, defaultValue: 'mostrador', options: [{ label: 'Mostrador', value: 'mostrador' }, { label: 'Tienda', value: 'tienda' }] },
+    /* Fase 6b: entrega de un plan anual prepagado. El cobro entró a Finanzas como anticipo del plan: la venta no lleva pagos ni registra otro ingreso. */
+    { name: 'plan', label: 'Cubierta por el plan', type: 'relationship', relationTo: 'far-planes', index: true, admin: { readOnly: true } },
     {
       name: 'estado',
       label: 'Estado',

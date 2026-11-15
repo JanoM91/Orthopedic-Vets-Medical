@@ -25,6 +25,7 @@ import {
   producto,
 } from '@/lib/farmacia/servicio'
 import { importarProductos, plantillaProductosXlsx } from '@/lib/farmacia/importacion'
+import { accionPlan, planesPanel } from '@/lib/farmacia/planes'
 import { avanzarPedido, entregarDomicilio, entregarPedido, enviarPedido, evidencia, misEntregas, noEntregado, pedidoPanel, pedidosPanel, reembolsarPedido, repartidores } from '@/lib/farmacia/tienda'
 import {
   actualizarCompra,
@@ -247,6 +248,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'reabasto' && !b) return json(await reabasto(ctx))
     if (a === 'promociones' && !b) return json(await promociones(ctx, { estado: q.get('estado') }))
     if (a === 'pedidos' && !b) return json(await pedidosPanel(ctx, q.get('grupo')))
+    if (a === 'planes' && !b) return json(await planesPanel(ctx, q.get('grupo')))
     if (a === 'pedidos' && b && !c) return json(await pedidoPanel(ctx, idDeRuta(b)))
     if (a === 'pedidos' && b && c === 'evidencia') {
       const f = await evidencia(ctx, idDeRuta(b))
@@ -318,6 +320,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       if (c === 'cancelar') return json(await cancelarReceta(ctx, id, await leerJson(req)))
     }
     if (a === 'pedidos' && b && c === 'estado') return json(await avanzarPedido(ctx, idDeRuta(b), await leerJson(req)))
+    if (a === 'planes' && b && c === 'accion') return json(await accionPlan(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'pedidos' && b && c === 'entregar') return json(await entregarPedido(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'pedidos' && b && c === 'enviar') return json(await enviarPedido(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'pedidos' && b && c === 'no-entregado') return json(await noEntregado(ctx, idDeRuta(b), await leerJson(req)))

@@ -47,7 +47,7 @@ import { ErrorConCodigo, esFecha, invalido, n0, noEncontrado, nOpc, persona, pro
  */
 
 type CtxFin = CtxFinanzas
-function ctxFinanzas(ctx: Ctx): CtxFin {
+export function ctxFinanzas(ctx: Ctx): CtxFin {
   /* El sistema registra la entrada aunque quien vende no tenga permisos de Finanzas (igual que el cargo de una cita y el gasto de una compra). */
   return { payload: ctx.payload, req: ctx.req, user: ctx.user, p: calcularPermisos({ esSuperadmin: true }, null), hoy: ctx.hoy }
 }
@@ -246,13 +246,19 @@ type Plan = {
   autorizacionMascota: string | null
 }
 
-const MEDIO: Record<MetodoPagoVista['tipo'], 'efectivo' | 'tarjeta' | 'transferencia' | null> = { efectivo: 'efectivo', terminal: 'tarjeta', transferencia: 'transferencia', otro: null }
+export const MEDIO: Record<MetodoPagoVista['tipo'], 'efectivo' | 'tarjeta' | 'transferencia' | null> = { efectivo: 'efectivo', terminal: 'tarjeta', transferencia: 'transferencia', otro: null }
 
 /**
  * `opciones.canal = 'tienda'` y `pedidoId`: la usa `entregarPedido()` de la
  * tienda; lo apartado por ese pedido no cuenta contra él (sí lo de los demás).
+ *
+ * Fase 6b (planes): `planId` liga la venta al plan; `preciosPactados`
+ * (presentación → precio) respeta el precio con el que se contrató el plan
+ * aunque el de lista cambie; `cubiertoPorPlan` (anual prepagado) permite una
+ * venta con importe y SIN pagos: el dinero ya entró a Finanzas como anticipo
+ * del plan, así que esta venta no registra otro ingreso.
  */
-export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { canal?: 'mostrador' | 'tienda'; pedidoId?: number | null; envio?: number; sinPermisoVender?: boolean } = {}): Promise<VentaVista & { duplicado: boolean; finanzas: 'registrado' | 'pendiente' | 'sin_importe'; avisos: string[] }> {
+export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { canal?: 'mostrador' | 'tienda'; pedidoId?: number | null; envio?: number; sinPermisoVender?: boolean; planId?: number | null; preciosPactados?: Record<number, number>; cubiertoPorPlan?: boolean } = {}): Promise<VentaVista & { duplicado: boolean; finanzas: 'registrado' | 'pendiente' | 'sin_importe'; avisos: string[] }> {
   if (!opciones.sinPermisoVender) exigir(ctx, 'vender', 'Tu rol no incluye la venta de mostrador.')
   const d = esquemaVenta.safeParse(entrada)
   if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Datos no válidos.')
@@ -301,7 +307,8 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { can
     const prod = pres.producto as FarProducto
     if (!pres.activa || !prod.activo) throw invalido(`${prod.nombre} · ${pres.nombre} está desactivado y no se vende.`)
     if (!pres.fraccionada && !Number.isInteger(r.cantidad)) throw invalido(`${prod.nombre} · ${pres.nombre} no se vende fraccionado: la cantidad va en piezas enteras.`)
-    const precioC = c(pres.precio)
+    const pactado = opciones.preciosPactados?.[pres.id]
+    const precioC = c(pactado != null ? pactado : pres.precio)
     const brutoC = Math.round(precioC * r.cantidad)
     const descuento = Math.round(r.descuentoPorciento * 100) / 100
     if (descuento > 0) autorizoDescuento = await puede('descuentos', 'Un descuento')
@@ -400,7 +407,9 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { can
       confirmadoEn: m.porConfirmar ? null : new Date().toISOString(),
     })
   }
-  if (totalC > 0 && sumaC !== totalC) throw invalido(sumaC < totalC ? `Faltan ${fmt(totalC - sumaC)} por cobrar (total ${fmt(totalC)}).` : `Los pagos (${fmt(sumaC)}) suman más que el total (${fmt(totalC)}). Si es efectivo, escribe lo recibido aparte para dar cambio.`)
+  if (opciones.cubiertoPorPlan) {
+    if (pagos.length) throw invalido('Una entrega cubierta por el plan anual no lleva pagos: ya se pagó por adelantado.')
+  } else if (totalC > 0 && sumaC !== totalC) throw invalido(sumaC < totalC ? `Faltan ${fmt(totalC - sumaC)} por cobrar (total ${fmt(totalC)}).` : `Los pagos (${fmt(sumaC)}) suman más que el total (${fmt(totalC)}). Si es efectivo, escribe lo recibido aparte para dar cambio.`)
   if (totalC === 0 && pagos.length) throw invalido('La venta queda en cero: no lleva pagos.')
 
   /* Candidatos FEFO (para el candado, antes de abrir la transacción) */
@@ -418,6 +427,7 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { can
         depth: 0,
         data: {
           canal: opciones.canal ?? 'mostrador',
+          plan: opciones.planId ?? null,
           estado: pagos.some((p) => p.estado === 'por_confirmar') ? 'por_confirmar' : 'pagada',
           claveIdempotencia: v.clave,
           dia: ctx.hoy,
@@ -579,6 +589,8 @@ async function registrarIngreso(ctx: Ctx, ventaId: number, cfg?: ConfiguracionVi
   const v = await cargar(ctx, ventaId)
   if (v.estado === 'anulada') return 'pendiente'
   if (!(c(v.total) > 0)) return 'sin_importe'
+  /* Plan anual: el cobro entró completo como anticipo (lib/farmacia/planes.ts); esta entrega no es otro ingreso. */
+  if (idDe(v.plan) && !(v.pagos ?? []).length) return 'registrado'
   const conf = cfg ?? (await leerConfiguracion(ctx.payload))
   const fin = ctxFinanzas(ctx)
   const folio = folioParaId('VTA', v.id)

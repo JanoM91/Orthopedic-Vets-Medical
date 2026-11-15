@@ -1571,6 +1571,71 @@ async function main() {
     await bd3.end()
   }
 
+  /* ── reportes (fase 7) ── */
+  console.log('\nReportes (fase 7)')
+  {
+    r = await vendedor.get('/api/farmacia/reportes/ventas')
+    ok(r.status === 403, 'Vendedor: sin reportes', r.status)
+    r = await encargado.get('/api/farmacia/reportes/ventas')
+    const hoyFila = r.data?.filas?.find((f) => f.dia === hoyTxt)
+    const totalInd = r.data?.indicadores?.find((k) => k.etiqueta === 'Total vendido')?.valor
+    ok(r.status === 200 && hoyFila && hoyFila.ventas > 0 && totalInd > 0 && r.data.desde === `${hoyTxt.slice(0, 8)}01` && r.data.hasta === hoyTxt, 'Ventas: del 1 del mes a hoy, con la fila de hoy y el total', r.data && { desde: r.data.desde, hasta: r.data.hasta, hoyFila })
+    ok(r.data?.indicadores?.some((k) => /planes anuales/.test(k.etiqueta) && k.valor >= 180) && r.data.indicadores.some((k) => /^Cobrado · /.test(k.etiqueta)), 'Ventas: entregas de planes anuales y cobrado por método', r.data?.indicadores)
+    const sumaDias = Math.round(r.data.filas.reduce((s, f) => s + f.total * 100, 0))
+    ok(sumaDias === Math.round(totalInd * 100), 'La suma de los días cuadra con el total', { sumaDias, totalInd })
+    r = await encargado.get(`/api/farmacia/reportes/ventas?desde=${hoyTxt}&hasta=2020-01-01`)
+    ok(r.status === 400, '«Desde» después de «Hasta»: no', r.data)
+    r = await encargado.get('/api/farmacia/reportes/inventado')
+    ok(r.status === 404, 'Reporte inexistente: 404', r.status)
+    r = await encargado.get(`/api/farmacia/reportes/productos?desde=${hoyTxt}&hasta=${hoyTxt}`)
+    const filaPln = r.data?.filas?.find((f) => String(f.producto).startsWith('Pipeta plan'))
+    ok(r.status === 200 && filaPln?.importe === 180 && filaPln.costo === 60 && filaPln.margen === 120 && filaPln.margenPorciento === 66.7, 'Productos y margen (encargado): la pipeta del plan vendió $180, costó $60, margen 66.7 %', filaPln)
+
+    /* un rol con reportes pero sin «Ver costos» */
+    const rolRep7 = (await admin.post('/api/roles', { nombre: `Reportes sin costos ${sufijo}`, farmacia: { reportes: true, verCostos: false } })).data?.doc
+    await crearUsuario(`reportes${sufijo}@ejemplo.mx`, 'Rita Reportes', rolRep7)
+    const lectora = new Sesion()
+    ok(rolRep7?.id && (await lectora.login('users', `reportes${sufijo}@ejemplo.mx`, PASS)), 'Rol con reportes y sin costos')
+    r = await lectora.get(`/api/farmacia/reportes/productos?desde=${hoyTxt}&hasta=${hoyTxt}`)
+    ok(r.status === 200 && r.data.filas.length > 0 && trazasDeCosto(r.data.filas).length === 0 && !r.data.columnas.some((x) => /costo|margen/i.test(x.clave)), 'Sin «Ver costos»: productos sin costo ni margen', r.data?.columnas)
+    r = await lectora.get('/api/farmacia/reportes/inventario')
+    ok(r.status === 403, 'Sin «Ver costos»: el valor del inventario no', r.status)
+    r = await lectora.get('/api/farmacia/reportes/caducidades')
+    ok(r.status === 200 && trazasDeCosto(r.data.filas).length === 0 && !r.data.filas.some((f) => 'valor' in f) && !r.data.indicadores.some((k) => /Valor/.test(k.etiqueta)), 'Sin «Ver costos»: caducidades sin valor', r.data?.indicadores)
+    r = await lectora.get('/api/farmacia/reportes/productos/csv')
+    ok(r.status === 200 && typeof r.data === 'string' && !/Costo|Margen/.test(r.data), 'CSV sin costos para quien no los ve', typeof r.data === 'string' ? r.data.slice(0, 120) : r.status)
+
+    r = await encargado.get('/api/farmacia/reportes/inventario')
+    const valorRep = r.data?.indicadores?.[0]?.valor
+    const valorCat = (await encargado.get('/api/farmacia/catalogo')).data?.totales?.valorInventario
+    ok(r.status === 200 && valorRep > 0 && valorRep === valorCat, 'Valor del inventario = el del catálogo', { valorRep, valorCat })
+    r = await encargado.get('/api/farmacia/reportes/caducidades?hasta=2027-12-31')
+    ok(r.status === 200 && r.data.filas.length > 0 && r.data.filas.every((f) => f.caducidad <= '2027-12-31') && r.data.filas.some((f) => f.estado === 'Vencido' || f.dias >= 0) && r.data.columnas.some((x) => x.clave === 'valor'), 'Caducidades hasta fin de 2027, con valor (encargado)', r.data?.filas?.length)
+    r = await encargado.get('/api/farmacia/reportes/rotacion')
+    ok(r.status === 200 && r.data.filas.some((f) => String(f.producto).startsWith('Pipeta plan') && f.vendidas >= 1 && f.cobertura != null), 'Rotación: vendidas, existencia y días de cobertura', r.data?.filas?.find((f) => String(f.producto).startsWith('Pipeta plan')))
+    r = await encargado.get('/api/farmacia/reportes/libro')
+    ok(r.status === 200 && r.data.filas.length >= 1 && r.data.filas.every((f) => f.fecha && f.producto), 'Libro de control como reporte', r.data?.filas?.length)
+    r = await encargado.get('/api/farmacia/reportes/planes')
+    ok(r.status === 200 && r.data.filas.some((f) => f.cobrado === 540 && f.entregado === 180 && f.porEntregar === 360) && r.data.indicadores[0].valor >= 540, 'Planes anuales: cobrado $540, entregado $180, por entregar $360', r.data?.filas)
+    const csv = await fetch(`${BASE}/api/farmacia/reportes/ventas/csv`, { headers: { cookie: encargado.cookie } })
+    const bytes = new Uint8Array(await csv.arrayBuffer())
+    const txt = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
+    ok(csv.status === 200 && /text\/csv/.test(csv.headers.get('content-type') ?? '') && /attachment; filename="farmacia-ventas-/.test(csv.headers.get('content-disposition') ?? '') && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf && txt.includes('Día,Ventas,Mostrador'), 'CSV de ventas: descarga con BOM y encabezados', txt.slice(0, 80))
+    r = await admin.get('/admin/farmacia/reportes')
+    ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('fa-app'), 'Panel: Farmacia → Reportes renderiza', r.status)
+    /* Instalación con Farmacia, Tienda y Finanzas, sin Clínica */
+    r = await admin.post('/api/globals/instalacion-configuracion', { modulos: { clinica: false, farmacia: true, tienda: true } })
+    ok(r.status === 200, 'Clínica apagada (Farmacia, Tienda y Finanzas encendidos)', r.data?.modulos)
+    r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: despa.pres.id, cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] })
+    ok(r.status === 201 && r.data.finanzas === 'registrado', 'Sin Clínica: venta de mostrador con Finanzas', r.data?.finanzas ?? r.data)
+    const sinClinica = await Promise.all(['ventas', 'productos', 'rotacion', 'caducidades', 'inventario', 'planes'].map((x) => encargado.get(`/api/farmacia/reportes/${x}`)))
+    ok(sinClinica.every((x) => x.status === 200), 'Sin Clínica: todos los reportes responden', sinClinica.map((x) => x.status))
+    r = await invitado.get('/api/tienda/catalogo')
+    ok(r.status === 200 && r.data.productos.length > 0, 'Sin Clínica: la tienda sigue vendiendo', r.status)
+    r = await admin.post('/api/globals/instalacion-configuracion', { modulos: { clinica: true, farmacia: true, tienda: true } })
+    ok(r.status === 200, 'Clínica encendida otra vez', r.data?.modulos)
+  }
+
   /* ── panel ── */
   console.log('\nPanel')
   for (const [ruta, texto] of [

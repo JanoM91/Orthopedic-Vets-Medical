@@ -3,7 +3,8 @@ import type { Payload } from 'payload'
 import type { SitioConfiguracion } from '../../payload-types'
 import { site } from '../site'
 
-export type ContactoClinica = { telefono: string | null; whatsapp: string | null; urgencias: string | null }
+/** `mapaUrl`: liga «Cómo llegar» de «Sitio público → Contacto» (inicio del portal, nov-2026). */
+export type ContactoClinica = { telefono: string | null; whatsapp: string | null; urgencias: string | null; mapaUrl?: string | null }
 
 const t = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
 
@@ -18,5 +19,5 @@ export async function contactoClinica(payload: Payload): Promise<ContactoClinica
   const wa = t(g?.contacto?.whatsapp)
   const telefono = t(g?.contacto?.telefono) ?? respaldo ?? wa
   const whatsapp = wa ?? telefono
-  return { telefono, whatsapp, urgencias: t(g?.contacto?.urgencias) }
+  return { telefono, whatsapp, urgencias: t(g?.contacto?.urgencias), mapaUrl: t(g?.contacto?.mapaUrl) }
 }

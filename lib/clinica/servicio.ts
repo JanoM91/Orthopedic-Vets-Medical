@@ -8,6 +8,7 @@ import { ESPECIES, normalizarTelefono } from '../../collections/clinica/paciente
 import { TIPOS_CARTILLA, TIPOS_DOCUMENTO, TIPOS_NOTA } from '../../collections/clinica/expediente'
 import { folioParaId } from '../../collections/clinica/acceso'
 import { diaEnZona } from '../finanzas/reglas'
+import { estadosCartilla } from './estadoCartilla'
 import { permisosDe, type Permisos } from '../permisos'
 import { site } from '../site'
 import { htmlDeInvitacion, VIGENCIA_INVITACION_MS } from '../authEmails'
@@ -1026,6 +1027,33 @@ export async function portalResumen(c: CtxTutor): Promise<PortalResumen> {
       return { ...vistaMascota(m, c.hoy, pesos.get(m.id) ?? null), proximaCartilla: prox ? { producto: prox.producto, fecha: prox.proximaFecha! } : null }
     }),
   }
+}
+
+/**
+ * Inicio del portal «Hoy primero» (UX del cliente, fase 2, nov-2026): refuerzos
+ * vencidos o próximos (30 días) de las mascotas del tutor, con el criterio de
+ * `estadosCartilla` (solo la aplicación más reciente de cada producto cuenta).
+ * Con las reglas de acceso del tutor. Vencidos primero, luego por fecha.
+ */
+export type RefuerzoPendiente = { mascotaId: number; estado: 'vencida' | 'proxima'; item: CartillaVista }
+export async function portalRefuerzosPendientes(c: CtxTutor, mascotaIds: number[]): Promise<RefuerzoPendiente[]> {
+  if (!mascotaIds.length) return []
+  const r = await c.payload.find({ collection: 'mas-cartilla', depth: 0, pagination: false, sort: '-fechaAplicacion', ...acceso(c), where: { mascota: { in: mascotaIds } } })
+  const porMascota = new Map<number, CartillaVista[]>()
+  for (const x of r.docs) {
+    const mid = idDe(x.mascota)
+    if (!mid) continue
+    porMascota.set(mid, [...(porMascota.get(mid) ?? []), vistaCartilla(x)])
+  }
+  const out: RefuerzoPendiente[] = []
+  for (const [mid, lista] of porMascota) {
+    const estados = estadosCartilla(lista, c.hoy)
+    for (const item of lista) {
+      const e = estados.get(item.id)
+      if (e === 'vencida' || e === 'proxima') out.push({ mascotaId: mid, estado: e, item })
+    }
+  }
+  return out.sort((a, b) => (a.estado === b.estado ? (a.item.proximaFecha ?? '').localeCompare(b.item.proximaFecha ?? '') : a.estado === 'vencida' ? -1 : 1))
 }
 
 export async function portalMascota(c: CtxTutor, id: number): Promise<PortalMascota> {

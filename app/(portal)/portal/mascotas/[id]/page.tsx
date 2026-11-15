@@ -12,10 +12,15 @@ import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, GraficaPeso, hoyISO, Ico
 import { ErrorClinica, portalMascota } from '../../../../../lib/clinica/servicio'
 import { sesionTutor } from '../../../../../lib/portal/sesion'
 import { contactoClinica } from '../../../../../lib/sitio/contacto'
+import { ligaRefuerzo as ligaDeRefuerzo } from '../../../../../lib/portal/refuerzo'
+import { leerModulos } from '../../../../../lib/modulos'
+import { pedidosDelTutor } from '../../../../../lib/farmacia/tienda'
+import { sesionDeTienda } from '../../../../../lib/portal/sesionTienda'
+import { ComprasMascota, FilaPedido, FilaReceta, pedidoActivo, surtible } from '../../../../../components/portal/Compras'
 
 export const dynamic = 'force-dynamic'
 
-const TABS = ['resumen', 'cartilla', 'citas', 'peso', 'documentos'] as const
+const TABS = ['resumen', 'cartilla', 'citas', 'compras', 'peso', 'documentos'] as const
 type Tab = (typeof TABS)[number]
 const TONO_CARTILLA: Record<EstadoCartilla, 'ok' | 'warn' | 'bad' | 'info' | 'gris'> = { vencida: 'bad', proxima: 'warn', al_dia: 'ok', sin_fecha: 'gris', historial: 'gris' }
 
@@ -35,28 +40,19 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
   const { ver } = await searchParams
   const tab: Tab = (TABS as readonly string[]).includes(ver ?? '') ? (ver as Tab) : 'resumen'
   const m = d.mascota
-  const [contacto, citas] = await Promise.all([contactoClinica(c.payload), portalCitas(c)])
+  const [contacto, citas, modulos] = await Promise.all([contactoClinica(c.payload), portalCitas(c), leerModulos(c.payload)])
+  /* Compras de la mascota (UX del cliente, fase 2): solo con la tienda encendida y en Resumen o Compras. */
+  const conTienda = Boolean(modulos.farmacia && modulos.tienda)
+  const [pedidosTodos, sesionTienda] = conTienda && (tab === 'resumen' || tab === 'compras') ? await Promise.all([pedidosDelTutor(c.payload, c.tutor.id), sesionDeTienda()]) : [[], null]
+  const pedidosMascota = pedidosTodos.filter((p) => p.mascota?.id === m.id)
+  const recetasMascota = (sesionTienda?.recetas ?? []).filter((r) => r.mascotaId === m.id)
   const hoy = hoyISO()
   const estados = estadosCartilla(d.cartilla, hoy)
   const vigentes = d.cartilla.filter((x) => estados.get(x.id) !== 'historial')
   const proxima = vigentes.filter((x) => x.proximaFecha && x.proximaFecha >= hoy).sort((a, b) => a.proximaFecha!.localeCompare(b.proximaFecha!))[0]
   const vencidas = vigentes.filter((x) => estados.get(x.id) === 'vencida')
   const puedePedir = m.estado !== 'fallecido' && Boolean(c.tutor.cliente)
-  /* «Pedir refuerzo»: abre «Pedir cita» con la mascota, el servicio de vacunación o desparasitación (por su icono) y una nota. */
-  const servicioPara = (tipo: string) => {
-    const quiero = tipo.startsWith('desparasitacion') ? ['desparasitacion', 'vacuna'] : ['vacuna', 'desparasitacion']
-    for (const q of quiero) {
-      const s = citas.servicios.find((x) => x.icono === q)
-      if (s) return s.id
-    }
-    return null
-  }
-  const ligaRefuerzo = (x: (typeof d.cartilla)[number]) => {
-    const q = new URLSearchParams({ mascota: String(m.id), nota: `Refuerzo: ${x.producto}` })
-    const sid = servicioPara(x.tipo)
-    if (sid) q.set('servicio', String(sid))
-    return `/portal/citas/nueva?${q.toString()}`
-  }
+  const ligaRefuerzo = (x: (typeof d.cartilla)[number]) => ligaDeRefuerzo(m.id, x, citas.servicios)
   const citasMascota = { proximas: citas.proximas.filter((x) => x.mascota.id === m.id), pasadas: citas.pasadas.filter((x) => x.mascota.id === m.id) }
   const documentosHabilitados = Boolean(process.env.CLINICA_BLOB_READ_WRITE_TOKEN || process.env.FINANZAS_BLOB_READ_WRITE_TOKEN)
 
@@ -97,6 +93,7 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
               ['resumen', 'Resumen'],
               ['cartilla', `Cartilla (${d.cartilla.length})`],
               ['citas', `Citas${citasMascota.proximas.length ? ` (${citasMascota.proximas.length})` : ''}`],
+              ...(conTienda ? [['compras', 'Compras'] as [Tab, string]] : []),
               ['peso', `Peso (${d.pesos.length})`],
               ['documentos', `Documentos (${d.documentos.length})`],
             ] as [Tab, string][]
@@ -136,6 +133,24 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
                 <p className="pt-tenue">Sin próximas fechas indicadas.</p>
               )}
             </div>
+            {(recetasMascota.some(surtible) || pedidosMascota.some(pedidoActivo)) && (
+              <section className="pt-seccion">
+                <div className="pt-seccion__cab">
+                  <h2>Compras de {m.nombre}</h2>
+                  <Link href={`/portal/mascotas/${m.id}?ver=compras`} className="pt-enlace">
+                    Ver todo
+                  </Link>
+                </div>
+                <div className="pt-card pt-lista">
+                  {recetasMascota.filter(surtible).map((r) => (
+                    <FilaReceta key={r.id} r={r} />
+                  ))}
+                  {pedidosMascota.filter(pedidoActivo).map((p) => (
+                    <FilaPedido key={p.id} p={p} />
+                  ))}
+                </div>
+              </section>
+            )}
             <div className="pt-card">
               <h2>Peso</h2>
               <GraficaPeso pesos={d.pesos} />
@@ -163,6 +178,9 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
             <TarjetaContacto mascota={m.nombre} contacto={contacto} />
           </>
         )}
+
+        {tab === 'compras' && conTienda && <ComprasMascota mascota={{ id: m.id, nombre: m.nombre }} pedidos={pedidosMascota} recetas={recetasMascota} />}
+        {tab === 'compras' && !conTienda && <p className="pt-tenue">La tienda en línea no está disponible.</p>}
 
         {tab === 'cartilla' && d.cartilla.length > 0 && (
           <a href={`/api/clinica/portal/mascotas/${m.id}/cartilla`} target="_blank" rel="noreferrer" className="pt-btn">

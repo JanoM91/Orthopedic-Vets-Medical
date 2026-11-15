@@ -374,17 +374,17 @@ Colecciones de productos, presentaciones, almacenes, proveedores, lotes, movimie
 
 ### Fase 6 · Compra recurrente y planes
 
-- [ ] Suscripción en modo prueba genera el pedido 3 días antes de la entrega.
-- [ ] Receta vencida detiene el plan y envía aviso con enlace a cita.
-- [ ] Plan anual prepagado registra anticipo en Finanzas y lo reconoce dosis por dosis.
-- [ ] Cambio de rango de peso cambia la presentación del plan.
-- [ ] Aviso de recompra se envía 5 días antes de la fecha estimada.
+- [x] Suscripción en modo prueba genera el pedido 3 días antes de la entrega.
+- [x] Receta vencida detiene el plan y envía aviso con enlace a cita.
+- [x] Plan anual prepagado registra anticipo en Finanzas y lo reconoce entrega por entrega.
+- [ ] Cambio de rango de peso cambia la presentación del plan. **Decisión (15-nov-2026):** no se cambia sola, porque sería elegir dosis; el plan se detiene, avisa al tutor y el equipo decide (FARMACIA.md §18).
+- [x] Aviso de recompra se envía 5 días antes de la fecha estimada.
 
 ### Fase 7 · Reportes, manuales y entrega
 
-- [ ] Reportes de ventas, margen, rotación, caducidades, valor de inventario y libro de control, exportables a CSV.
-- [ ] `docs/FARMACIA.md` (técnico), `docs/MANUAL-FARMACIA.md` (equipo) y secciones nuevas en `docs/ARRANQUE.md` y `docs/MANUAL-TUTOR.md`.
-- [ ] Instalación nueva solo con Farmacia, Tienda y Finanzas arranca desde cero y pasa todas las pruebas.
+- [x] Reportes de ventas, margen, rotación, caducidades, valor de inventario y libro de control, exportables a CSV.
+- [x] `docs/FARMACIA.md` (técnico), `docs/MANUAL-FARMACIA.md` (equipo) y secciones nuevas en `docs/ARRANQUE.md` y `docs/MANUAL-TUTOR.md`.
+- [x] Instalación nueva solo con Farmacia, Tienda y Finanzas arranca desde cero y pasa todas las pruebas (se prueba apagando Clínica dentro de `test:farmacia`; ver FARMACIA.md §19).
 
 ## Reglas de trabajo y pendientes
 

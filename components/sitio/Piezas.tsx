@@ -16,6 +16,10 @@ const TRAZOS: Record<string, React.ReactNode> = {
   user: (<><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></>),
   shield: (<><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z" /><path d="M9 12l2 2 4-4" /></>),
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  next: <path d="M9 5l7 7-7 7" />,
+  bolsa: (<><path d="M5 8h14l-1 12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20.5z" /><path d="M9 10V6.5a3 3 0 0 1 6 0V10" /></>),
+  file: (<><path d="M14 3H6v18h12V7z" /><path d="M14 3v4h4M9 12h6M9 16h6" /></>),
+  chispa: <path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />,
 }
 export function Icono({ n, grande }: { n: string; grande?: boolean }) {
   return (
@@ -38,11 +42,11 @@ export function Cabecera({ c, activa }: { c: ContenidoSitio; activa?: 'inicio' |
           <Link href="/servicios" className={activa === 'servicios' ? 'is-on' : ''}>
             Servicios
           </Link>
-          <Link href="/#horario">Horario</Link>
-          <Link href="/#contacto">Contacto</Link>
+          {c.equipo.length > 0 && <Link href="/#equipo">Equipo</Link>}
           {c.tienda && <Link href="/tienda">Tienda</Link>}
+          <Link href="/#contacto">Cómo llegar</Link>
           <Link href="/portal" className="st-btn st-btn--claro st-btn--chico">
-            Portal
+            Entrar
           </Link>
           <Link href="/portal/citas/nueva" className="st-btn st-btn--acento st-btn--chico">
             Pedir cita

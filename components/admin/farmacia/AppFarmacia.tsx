@@ -18,6 +18,7 @@
  *   recetas · recetas/nueva · recetas/:id   bandeja, receta externa, ficha (libro de control en ?ver=libro)
  *   cierre                  cierre del día
  *   alertas · reabasto · promociones   fase 4
+ *   pedidos                 pedidos de la tienda en línea (fase 5a)
  *   importar                importación con plantilla
  *   configuracion           parámetros, proveedores, almacenes
  *
@@ -36,6 +37,7 @@ import Cierre from './Cierre'
 import { Alertas, Promociones, Reabasto } from './Alertas'
 import { FichaReceta, NuevaRecetaExterna, Recetas } from './Recetas'
 import Vender from './Vender'
+import { FichaPedido, Pedidos } from './Pedidos'
 import { FichaVenta, Ventas } from './Ventas'
 import Importar from './Importar'
 import Inicio from './Inicio'
@@ -77,6 +79,10 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   else if (seccion === 'recetas' && !id) pantalla = <Recetas ver={query.ver ?? null} />
   else if (seccion === 'recetas' && id === 'nueva') pantalla = <NuevaRecetaExterna mascotaInicial={numero(query.mascota)} />
   else if (seccion === 'recetas' && numero(id)) pantalla = <FichaReceta key={id} id={numero(id)!} />
+  else if (seccion === 'pedidos' && !catalogo.modulos.tienda) pantalla = <Aviso>La tienda en línea está apagada (Instalación → módulos).</Aviso>
+  else if (seccion === 'pedidos' && !(p.vender || p.asignarRepartidor)) pantalla = <Aviso>Tu rol no incluye los pedidos de la tienda.</Aviso>
+  else if (seccion === 'pedidos' && !id) pantalla = <Pedidos grupo={query.grupo ?? null} />
+  else if (seccion === 'pedidos' && numero(id)) pantalla = <FichaPedido key={id} id={numero(id)!} />
   else if (seccion === 'cierre') pantalla = <Cierre />
   else if (seccion === 'alertas') pantalla = <Alertas tipo={query.tipo ?? null} />
   else if (seccion === 'reabasto') pantalla = p.recibirCompras || p.aprobar || p.reportes ? <Reabasto /> : <Aviso>La lista de reabasto es del encargado o el dueño.</Aviso>
@@ -98,6 +104,13 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
     { ver: p.vender, href: `${base}/vender`, on: seccion === 'vender', texto: 'Mostrador' },
     { ver: p.vender, href: `${base}/ventas`, on: seccion === 'ventas', texto: 'Ventas' },
     { ver: p.vender || p.recetas, href: `${base}/recetas`, on: seccion === 'recetas', texto: 'Recetas' },
+    {
+      ver: catalogo.modulos.tienda && (p.vender || p.asignarRepartidor),
+      href: `${base}/pedidos`,
+      on: seccion === 'pedidos',
+      texto: 'Pedidos',
+      extra: catalogo.hoy.pedidosTienda ? <span className="fa-contador">{catalogo.hoy.pedidosTienda}</span> : null,
+    },
     {
       ver: true,
       href: `${base}/alertas`,
@@ -169,6 +182,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
                 [p.vender, `${base}/vender`, seccion === 'vender', 'cartera', 'Mostrador'],
                 [p.vender, `${base}/ventas`, seccion === 'ventas', 'lista', 'Ventas'],
                 [p.vender || p.recetas, `${base}/recetas`, seccion === 'recetas', 'archivo', 'Recetas'],
+                [catalogo.modulos.tienda && (p.vender || p.asignarRepartidor), `${base}/pedidos`, seccion === 'pedidos', 'cartera', catalogo.hoy.pedidosTienda ? `Pedidos (${catalogo.hoy.pedidosTienda})` : 'Pedidos'],
                 [true, `${base}/alertas`, seccion === 'alertas', 'alerta', catalogo.hoy.alertasAbiertas ? `Alertas (${catalogo.hoy.alertasAbiertas})` : 'Alertas'],
                 [true, `${base}/productos`, esProductos, 'buscar', 'Productos'],
                 [true, `${base}/inventario`, seccion === 'inventario', 'bandeja', 'Inventario'],

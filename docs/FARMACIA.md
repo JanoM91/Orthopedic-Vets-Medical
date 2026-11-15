@@ -308,3 +308,46 @@ Solo pantalla: no cambia `lib/farmacia/*`, la API ni el modelo de datos.
 - Modo solo (sin panel): barra inferior con 4 opciones fijas + «Más» (`MenuMas` con `arriba` e `icono`) en vez de cortar a 5; las secciones que no cabían (Productos, Inventario, Compras, Ajustes) ya son alcanzables.
 - Inventario: si no hay lotes con existencia (instalación nueva), arranca en «Todos los productos».
 - Verificado a 1280 × 800: una venta en efectivo de 4 renglones se cobra sin desplazar (VTA cobrada, cambio $20). `test:farmacia` 299/299.
+
+## 14. Fase 5a · Tienda en línea: pedidos para recoger (13-nov-2026)
+
+Primera de dos ramas de la fase 5 (decisión de Jano, 12-nov). La 5b trae entrega a domicilio y repartidor, búsqueda con IA y Mercado Pago real.
+
+### Qué hace
+
+- **Tienda pública** en `/tienda` (dentro del grupo del portal, misma marca y app instalable). Con Farmacia o Tienda apagadas, todo `/tienda` y `/api/tienda` responden 404. El sitio y el portal muestran «Tienda»/«Farmacia» solo con el módulo encendido.
+- **«¿Para quién compras?»**: una mascota del tutor (usa especie, peso, edad y alergias de la ficha) o un perfil rápido de invitado (especie y peso). Cada producto dice «Le queda a…», «No es para…», «Confirma su peso» o «Falta su peso» con `revisarContraMascota()`, la misma regla del mostrador. Lo no apto se ordena al final y no se puede pedir.
+- **Catálogo**: productos activos con «Publicado en la tienda», **nunca Grupo I**. Secciones por necesidad (Pulgas y parásitos, Alimento, Medicamentos, Dietas especiales, Vitaminas, Baño e higiene, Accesorios), buscador, ficha con presentaciones, disponibilidad («Quedan pocas» < 3 piezas) y sin costos.
+- **Grupo II** (receta normal del veterinario): solo un tutor con sesión, cuenta vinculada y una **receta interna vigente de esa mascota** que cubra el producto y tenga surtidos. Un pedido en curso con esa receta ya cuenta como surtido. El invitado no lo puede pedir. A domicilio queda apagado (`recetaGrupoIIDomicilio`, fase 5b).
+- **Carrito** en el navegador (`components/tienda/estado.ts`, localStorage con respaldo en memoria). El servidor vuelve a revisar todo al crear el pedido.
+- **Pedido** (`far-pedidos`, folio `PED-`): recoger en farmacia; pagar al recoger (si `tienda.pagarAlRecoger`) o en línea. Idempotente por `clave`; candado por producto; correo al cliente y a `tienda.correosPedidos`; liga de seguimiento con token (`/tienda/pedido/PED-…?t=…`) que sirve al invitado y al tutor.
+- **Apartado**: un pedido vigente aparta unidades por producto **sin mover el kardex**. Sin pago vence a las `horasApartado`; pagado no vence. La vigencia se evalúa al leer, así que lo vencido se libera solo; el cron diario solo deja el estado en «expirado». **El mostrador también descuenta lo apartado** (búsqueda y venta).
+- **Pago en línea** con el adaptador `ProveedorPago` (`lib/farmacia/pagos.ts`). Hoy existe la pasarela **«prueba»** (simulada); Mercado Pago responde «no disponible» hasta la 5b. El pedido pasa a «pagado» **solo por un aviso firmado** (`POST /api/tienda/webhook/:proveedor`), idempotente por `far-pagos-eventos` (clave `proveedor:idEvento`); referencia o monto distintos se registran y no pagan.
+- **Panel → Farmacia → Pedidos** (rol con «Vender» o «Asignar repartidor»): Nuevos / Preparando / Listos / Cerrados con conteos; ficha con contacto (WhatsApp), historial y acciones: Empezar a preparar → Listo para recoger (avisa por correo) → **Entregar**. Entregar llama a `registrarVenta(ctx, …, { canal: 'tienda', pedidoId })`: FEFO, receta, autorización del encargado, Finanzas, todo igual que el mostrador. Pagado en línea entra con el método `tienda.metodoPagoEnLinea`; al recoger se cobra en un diálogo. Cancelar pide motivo; si ya se pagó queda «reembolso pendiente» (el reembolso se hace en la pasarela).
+- **Portal → Farmacia** (`/portal/farmacia`, quinta pestaña de la barra con la tienda encendida): pedidos en curso y anteriores, recetas vigentes con surtidos y «Surtir» (abre la tienda con esa mascota elegida, `?para=`). Lo que no se surte en línea (Grupo I o no publicado) dice «en mostrador».
+
+### Modelo y código
+
+- Colecciones `far-pedidos` y `far-pagos-eventos` (`collections/farmacia/pedidos.ts`; API genérica: leer solo el equipo con permiso; crear, editar y borrar 403). Configuración: `pasarelaActiva` admite `prueba`; grupo `tienda` (`pagarAlRecoger`, `metodoPagoEnLinea`, `correosPedidos`). Migración `20261113_053734_farmacia_tienda_pedidos` (con RLS).
+- `lib/farmacia/tienda.ts` (servicio), `apartados.ts` (apartado compartido con `ventas.ts`, sin ciclos), `pagos.ts` (adaptador), `tiposTienda.ts` (tipos puros y `LINEAS_TIENDA`).
+- `registrarVenta()` recibe `opciones = { canal, pedidoId }`; ventas y tienda toman `pg_advisory_xact_lock(9 000 000 + producto)` antes de los candados por lote (8 000 000 + lote), en orden de id.
+- API pública `app/api/tienda/[...ruta]/route.ts` (catalogo, producto, sesion, mis-pedidos, pedidos, cancelar, pagar, webhook, pago-prueba); límite de 30 pedidos por hora por IP. Panel: `GET pedidos`, `GET pedidos/:id`, `POST pedidos/:id/estado`, `POST pedidos/:id/entregar` en `/api/farmacia`.
+- Pantallas: `app/(portal)/tienda/*`, `components/tienda/{Tienda,Cabecera,estado}`, `components/admin/farmacia/Pedidos.tsx`, `app/(portal)/portal/farmacia/page.tsx`.
+
+### Pago de prueba (sin cuenta de pasarela)
+
+- Variable **`PAGOS_PRUEBA_SECRETO`** (Sensitive, 16+ caracteres) y en Farmacia → Configuración la pasarela «Pago de prueba». Sin la variable, la opción no se ofrece.
+- «Ir a pagar» abre `/tienda/pago-prueba/PED-…` con la banda «MODO PRUEBA». «Aprobar» firma el aviso con el secreto y lo pasa por el mismo camino que un aviso real.
+- **Nunca con clientes reales**: cualquiera con la liga de su pedido podría marcarlo pagado. Quitar la variable antes de abrir la tienda al público; la 5b conecta Mercado Pago.
+
+### Verificación (13-nov-2026)
+
+- `test:farmacia` 368/368 (69 nuevas): catálogo sin Grupo I ni no publicados y sin costos; apto/no apto por perfil; apartado que bloquea al mostrador y a otro pedido; vencido que se libera sin cron y el cron que lo marca; Grupo II rechazado al invitado, a otra mascota y sin surtidos; pedido en curso con la receta; firma inválida (401), aviso de otro cobro, aviso repetido; entrega con venta canal «tienda», FEFO, Finanzas y receta descontada; autorización del encargado; cancelación con reembolso pendiente; páginas.
+- `test:finanzas` 44/44, `test:clinica` 175/175, `auditoria-front` a 320/390/1280 (243 páginas, 0 hallazgos), recorrido en navegador (invitado → carrito → pago de prueba → seguimiento pagado → panel).
+
+### Decisiones y pendientes de la fase 5a
+
+- Precio de la tienda = precio de la presentación (sin precio en línea distinto). Las promociones por caducidad todavía no se aplican en la tienda.
+- La receta se valida al pedir y otra vez al entregar; no hay estado «receta por validar» (solo recetas internas). Recetas externas subidas por el cliente: pendiente.
+- Imágenes: `imagenUrl` (texto); sin imagen se dibuja el icono de la sección.
+- 5b: domicilio (zonas, costo, repartidor «Mis entregas»), búsqueda con IA, Mercado Pago (Checkout Pro + webhook firmado, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`), reembolso desde el panel.

@@ -47,6 +47,13 @@ En computadora la pantalla va en dos columnas: el ticket a la izquierda y el cob
 - Un descuento o un medicamento con receta piden la **contraseña del encargado** en el momento.
 - Si te quedas sin señal y vuelves a cobrar, no se cobra dos veces.
 
+**Pedidos de la tienda** (Farmacia → Pedidos; el número junto a «Pedidos» son los que esperan)
+1. **Nuevos**: «Empezar a preparar». Si dice «Por pagar», espera: el cliente eligió pagar en línea y aún no termina.
+2. Junta los productos y toca **«Listo para recoger»**: al cliente le llega un correo.
+3. Cuando llegue: **«Entregar»**. Si ya pagó en línea, solo entregas. Si paga al recoger, elige el método y cobra. Se registra como una venta normal (con receta y autorización del encargado si es Grupo II).
+4. ¿No hay producto o el cliente desiste? «Cancelar pedido» con el motivo (le llega por correo). Si ya había pagado en línea, el reembolso se hace en la pasarela.
+- Lo que está en un pedido queda **apartado**: el mostrador no lo puede vender. Si el cliente no paga ni recoge a tiempo, se libera solo.
+
 **Recetas** (Farmacia → Recetas): bandeja «Por validar» (externas) y «Originales pendientes». El encargado valida o rechaza con motivo (el tutor recibe el motivo por correo).
 
 **Compras** (Farmacia → Compras → Nueva): sube el XML de la factura; liga cada renglón a tu producto la primera vez (después se reconoce solo); captura **lote y caducidad** de cada renglón; «Recibir en inventario».

@@ -15,6 +15,10 @@
  * con fechas pasadas DIRECTO en la base local (DATABASE_URL de .env) — es
  * siembra de prueba; la app no tiene ninguna puerta para eso. Se niega a
  * correr si DATABASE_URL no apunta a localhost. El cron usa CRON_SECRET de .env.
+ *
+ * Fase 5a (tienda): enciende el módulo Tienda (y lo deja encendido), usa la
+ * pasarela de prueba (PAGOS_PRUEBA_SECRETO de .env, también en la app) y
+ * vence un apartado moviendo `expira_en` en la base local.
  */
 import fs from 'node:fs'
 import pg from 'pg'
@@ -962,6 +966,205 @@ async function main() {
     ok(r.status === 200 && r.data.correo === 'ya_enviado', 'Segunda corrida del mismo día: no repite el correo', r.data)
   } else ok(false, 'Falta CRON_SECRET en .env para probar el cron')
   await bd.end()
+
+
+  /* ── fase 5a: tienda en línea ── */
+  console.log('\nTienda en línea (fase 5a)')
+  const invitado = new Sesion()
+  r = await invitado.get('/api/tienda/catalogo')
+  ok(r.status === 404, 'Con el módulo Tienda apagado, la API pública responde 404', r.status)
+  r = await admin.post('/api/globals/instalacion-configuracion', { modulos: { clinica: true, farmacia: true, tienda: true } })
+  ok(r.status === 200, 'Superadmin enciende la Tienda', r.status)
+  const cfgAhora = (await admin.get('/api/farmacia/catalogo')).data.configuracion
+  r = await admin.post('/api/farmacia/configuracion', {
+    pasarelaActiva: 'prueba',
+    horasApartado: 24,
+    tienda: { pagarAlRecoger: true, metodoPagoEnLinea: 'en_linea', correosPedidos: `pedidos${sufijo}@ejemplo.mx` },
+    metodosPago: [...cfgAhora.metodosPago.filter((m) => m.clave !== 'en_linea').map(({ clave, nombre, tipo, cuentaId, porConfirmar, activo }) => ({ clave, nombre, tipo, cuentaId, porConfirmar, activo })), { clave: 'en_linea', nombre: 'Pago en línea', tipo: 'otro', cuentaId: banco.id, porConfirmar: false, activo: true }],
+  })
+  ok(r.status === 200 && r.data.pasarelaActiva === 'prueba' && r.data.tienda.metodoPagoEnLinea === 'en_linea', 'Configuración: pasarela de prueba y método «en_linea» con cuenta', r.data?.tienda ?? r.data)
+  const tiPub = await crearProd({ nombre: `Antipulgas tienda ${sufijo}`, linea: 'antiparasitario', grupo: 'III', unidadBase: 'tableta', especies: ['perro'], pesoMinKg: 10, pesoMaxKg: 25, publicadoTienda: true, descripcion: 'Tableta masticable' }, { nombre: 'Tableta', factor: 1, precio: 80 }, [{ numero: `TP-${sufijo}`, caducidad: '2028-06-30', costo: 30, cantidad: 10 }])
+  const tiG2 = await crearProd({ nombre: `Antibiótico tienda ${sufijo}`, linea: 'medicamento', grupo: 'II', registroSenasica: `Q-${sufijo}-T2`, unidadBase: 'tableta', especies: ['perro'], publicadoTienda: true }, { nombre: 'Tableta', factor: 1, precio: 50 }, [{ numero: `T2-${sufijo}`, caducidad: '2028-06-30', costo: 10, cantidad: 20 }])
+  const tiG1 = await crearProd({ nombre: `Controlado tienda ${sufijo}`, linea: 'medicamento', grupo: 'I', registroSenasica: `Q-${sufijo}-T1`, unidadBase: 'ml', publicadoTienda: true }, { nombre: 'Frasco', factor: 10, precio: 400 }, [{ numero: `T1-${sufijo}`, caducidad: '2028-06-30', costo: 10, cantidad: 30 }])
+  const tiNo = await crearProd({ nombre: `No publicado tienda ${sufijo}`, linea: 'higiene', grupo: 'desregulado', unidadBase: 'pieza' }, { nombre: 'Pieza', factor: 1, precio: 60 }, [{ numero: `TN-${sufijo}`, caducidad: '2028-06-30', costo: 10, cantidad: 5 }])
+  ok(tiPub.prod?.publicadoTienda && tiG2.pres?.id && tiG1.pres?.id && tiNo.pres?.id, 'Productos de prueba para la tienda (III, II y I publicados; uno sin publicar)', tiPub.prod)
+  r = await invitado.get(`/api/tienda/catalogo?q=${encodeURIComponent('tienda ' + sufijo)}`)
+  const ids = (r.data?.productos ?? []).map((p) => p.id)
+  ok(r.status === 200 && ids.includes(tiPub.prod.id) && ids.includes(tiG2.prod.id) && !ids.includes(tiG1.prod.id) && !ids.includes(tiNo.prod.id), 'Catálogo público: se ven III y II; nunca Grupo I ni lo no publicado', ids)
+  ok(trazasDeCosto(r.data).length === 0, 'El catálogo público no trae costos', trazasDeCosto(r.data))
+  const g2Cat = r.data.productos.find((p) => p.id === tiG2.prod.id)
+  ok(g2Cat?.requiereReceta === true, 'El Grupo II se marca «requiere receta»', g2Cat)
+  r = await invitado.get(`/api/tienda/catalogo?q=${encodeURIComponent('Antipulgas tienda ' + sufijo)}&especie=gato&peso=4`)
+  ok(r.data?.productos?.[0]?.apto?.estado === 'no_apto', '«¿Para quién?» gato de 4 kg: el antipulgas de perro sale «no apto»', r.data?.productos?.[0]?.apto)
+  r = await invitado.get(`/api/tienda/catalogo?q=${encodeURIComponent('Antipulgas tienda ' + sufijo)}&especie=perro&peso=15`)
+  ok(r.data?.productos?.[0]?.apto?.estado === 'apto', 'Perro de 15 kg: «apto»', r.data?.productos?.[0]?.apto)
+  r = await invitado.get(`/api/tienda/producto/${tiG1.prod.id}`)
+  ok(r.status === 404, 'La ficha de un Grupo I no existe en la tienda', r.status)
+
+  const contacto = { nombre: 'Invitado Prueba', correo: `invitado${sufijo}@ejemplo.mx`, telefono: '2281234567' }
+  const pedir = (s, datos) => s.post('/api/tienda/pedidos', { clave: clave(), contacto, entrega: 'recoger', pago: 'al_recoger', ...datos })
+  const clave1 = clave()
+  r = await invitado.post('/api/tienda/pedidos', { clave: clave1, contacto, pago: 'al_recoger', perfil: { especie: 'perro', pesoKg: 15 }, renglones: [{ presentacionId: tiPub.pres.id, cantidad: 6 }] })
+  const ped1 = r.data?.pedido
+  ok(r.status === 201 && ped1?.estado === 'creado' && ped1.folio?.startsWith('PED-') && ped1.token?.length >= 40 && ped1.total === 480 && ped1.expiraEn, 'Invitado aparta 6 para recoger y pagar al recoger: PED-, liga con token y vencimiento', r.data)
+  r = await invitado.post('/api/tienda/pedidos', { clave: clave1, contacto, pago: 'al_recoger', renglones: [{ presentacionId: tiPub.pres.id, cantidad: 6 }] })
+  ok(r.status === 201 && r.data.duplicado === true && r.data.pedido.id === ped1.id, 'Misma clave: no se duplica el pedido', r.data)
+  r = await pedir(invitado, { perfil: { especie: 'gato', pesoKg: 4 }, renglones: [{ presentacionId: tiPub.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /no es apto/.test(r.data.error), 'Pedido para un gato con producto de perro: se rechaza', r.data)
+  r = await vendedor.get(`/api/farmacia/vender/buscar?q=${encodeURIComponent('Antipulgas tienda ' + sufijo)}`)
+  ok(r.status === 200 && r.data[0]?.vendible === 4, 'Mostrador: lo apartado ya no cuenta como vendible (10 − 6 = 4)', r.data?.[0]?.vendible)
+  r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), renglones: [{ presentacionId: tiPub.pres.id, cantidad: 5 }], pagos: [{ metodo: 'efectivo', monto: 400 }] })
+  ok(r.status === 400 && /apartadas para pedidos de la tienda/.test(r.data.error), 'Mostrador no vende lo apartado por la tienda', r.data)
+  r = await pedir(invitado, { renglones: [{ presentacionId: tiPub.pres.id, cantidad: 5 }] })
+  ok(r.status === 400 && /Solo quedan 4/.test(r.data.error), 'Otro pedido no aparta más de lo libre', r.data)
+  r = await pedir(invitado, { renglones: [{ presentacionId: tiG2.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /requiere receta/.test(r.data.error), 'Invitado no pide Grupo II', r.data)
+  r = await pedir(invitado, { renglones: [{ presentacionId: tiG1.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /ya no está en la tienda/.test(r.data.error), 'Grupo I por la API: rechazado', r.data)
+  r = await pedir(invitado, { entrega: 'domicilio', renglones: [{ presentacionId: tiPub.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /domicilio/.test(r.data.error), 'A domicilio todavía no (fase 5b)', r.data)
+
+  /* pago en línea simulado */
+  r = await pedir(invitado, { pago: 'en_linea', renglones: [{ presentacionId: tiPub.pres.id, cantidad: 2 }] })
+  const ped2 = r.data?.pedido
+  ok(r.status === 201 && ped2?.estado === 'pago_pendiente' && /\/tienda\/pago-prueba\/PED-/.test(r.data.urlPago ?? ''), 'Pago en línea: queda «por pagar» y devuelve la página de la pasarela', r.data)
+  const ref2 = new URL(r.data.urlPago).searchParams.get('ref')
+  r = await invitado.llamar('POST', '/api/tienda/webhook/prueba', { idEvento: 'x', pedidoId: ped2.id, referencia: ref2, resultado: 'aprobado', monto: 160 }, { headers: { 'x-firma-prueba': '0'.repeat(64) } })
+  ok(r.status === 401, 'Aviso con firma inválida: 401 y no paga', r.data)
+  const crypto = await import('node:crypto')
+  const firmar = (cuerpo) => crypto.createHmac('sha256', ENV.PAGOS_PRUEBA_SECRETO || '').update(cuerpo).digest('hex')
+  const avisoAjeno = JSON.stringify({ idEvento: `ajeno-${sufijo}`, pedidoId: ped2.id, referencia: 'otra-referencia', resultado: 'aprobado', monto: 160 })
+  r = await fetch(`${BASE}/api/tienda/webhook/prueba`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-firma-prueba': firmar(avisoAjeno) }, body: avisoAjeno }).then(async (x) => ({ status: x.status, data: await x.json() }))
+  ok(r.status === 200 && /referencia distinta/.test(r.data.resultado), 'Aviso firmado de otro cobro: se registra pero no paga', r.data)
+  r = await invitado.post(`/api/tienda/pago-prueba/${ped2.folio}`, { t: ped2.token, ref: ref2, resultado: 'aprobado' })
+  ok(r.status === 200 && r.data.resultado === 'pagado' && !r.data.duplicado, 'Pago de prueba aprobado: pasa por el aviso firmado y marca pagado', r.data)
+  r = await invitado.post(`/api/tienda/pago-prueba/${ped2.folio}`, { t: ped2.token, ref: ref2, resultado: 'aprobado' })
+  ok(r.status === 200 && r.data.duplicado === true, 'El mismo aviso otra vez: no hace nada', r.data)
+  r = await invitado.get(`/api/tienda/pedidos/${ped2.folio}?t=${ped2.token}`)
+  ok(r.status === 200 && r.data.estado === 'pagado' && r.data.pago.estado === 'pagado' && r.data.expiraEn === null, 'Seguimiento: pagado y sin vencimiento', r.data)
+  r = await invitado.get(`/api/tienda/pedidos/${ped2.folio}?t=${'a'.repeat(48)}`)
+  ok(r.status === 404, 'Sin el token correcto no se ve el pedido', r.status)
+
+  /* panel: preparar, listo, entregar */
+  r = await vendedor.get('/api/farmacia/pedidos?grupo=nuevos')
+  ok(r.status === 200 && r.data.pedidos.some((p) => p.id === ped1.id) && r.data.pedidos.some((p) => p.id === ped2.id) && r.data.conteo.nuevos >= 2 && !r.data.pedidos[0].token, 'Panel → Pedidos: nuevos con conteo y sin el token del cliente', r.data?.conteo)
+  r = await vendedor.get('/api/farmacia/catalogo')
+  ok(r.data?.hoy?.pedidosTienda >= 2, 'Inicio de Farmacia: pedidos por atender', r.data?.hoy?.pedidosTienda)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped1.id}/estado`, { accion: 'listo' })
+  ok(r.status === 400, 'No salta de «Recibido» a «Listo»', r.data)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped1.id}/estado`, { accion: 'preparar' })
+  ok(r.status === 200 && r.data.estado === 'preparando', 'Empezar a preparar', r.data?.estado)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped1.id}/estado`, { accion: 'listo' })
+  ok(r.status === 200 && r.data.estado === 'listo_para_recoger' && r.data.historial.length === 3, 'Listo para recoger (con historial)', r.data?.historial)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped1.id}/entregar`, { clave: clave(), pagos: [{ metodo: 'efectivo', monto: 480, recibido: 500 }] })
+  ok(r.status === 200 && r.data.pedido.estado === 'entregado' && r.data.ventaFolio?.startsWith('VTA-') && r.data.finanzas === 'registrado', 'Entregar y cobrar: crea la venta y registra en Finanzas', r.data)
+  const venta1 = r.data.pedido.ventaId
+  r = await vendedor.get(`/api/farmacia/ventas/${venta1}`)
+  ok(r.status === 200 && r.data.canal === 'tienda' && r.data.total === 480 && r.data.renglones[0].lotes.length >= 1, 'La venta del pedido queda con canal «tienda» y salió por FEFO', { canal: r.data?.canal, total: r.data?.total })
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped1.id}/entregar`, { clave: clave(), pagos: [{ metodo: 'efectivo', monto: 480 }] })
+  ok(r.status === 200 && r.data.ventaFolio === `VTA-${String(venta1).padStart(4, '0')}` || (r.status === 200 && r.data.pedido.ventaId === venta1), 'Entregar otra vez no vende dos veces', r.data)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped2.id}/entregar`, { clave: clave() })
+  ok(r.status === 200 && r.data.pedido.estado === 'entregado', 'Pedido pagado en línea: se entrega sin cobrar en mostrador', r.data)
+  r = await vendedor.get(`/api/farmacia/ventas/${r.data.pedido?.ventaId}`)
+  ok(r.data?.pagos?.[0]?.metodo === 'en_linea' && r.data.pagos[0].referencia === ref2 && r.data.estado === 'pagada', 'Su pago entra con el método «en_linea» y la referencia de la pasarela', r.data?.pagos)
+  r = await vendedor.get(`/api/farmacia/vender/buscar?q=${encodeURIComponent('Antipulgas tienda ' + sufijo)}`)
+  ok(r.data?.[0]?.vendible === 2, 'Después de entregar: existencia 2 y nada apartado', r.data?.[0]?.vendible)
+
+  /* vencimiento del apartado */
+  r = await pedir(invitado, { renglones: [{ presentacionId: tiPub.pres.id, cantidad: 2 }] })
+  const ped3 = r.data?.pedido
+  r = await vendedor.get(`/api/farmacia/vender/buscar?q=${encodeURIComponent('Antipulgas tienda ' + sufijo)}`)
+  ok(ped3?.id && r.data?.[0]?.vendible === 0, 'Nuevo apartado de 2: el mostrador ya no tiene libres', r.data?.[0]?.vendible)
+  const bd2 = new pg.Client({ connectionString: urlBase })
+  await bd2.connect()
+  await bd2.query(`update far_pedidos set expira_en = now() - interval '1 hour' where id = $1`, [ped3.id])
+  r = await vendedor.get(`/api/farmacia/vender/buscar?q=${encodeURIComponent('Antipulgas tienda ' + sufijo)}`)
+  ok(r.data?.[0]?.vendible === 2, 'Vencido sin pago: lo apartado se libera solo (sin esperar al cron)', r.data?.[0]?.vendible)
+  r = await invitado.get(`/api/tienda/pedidos/${ped3.folio}?t=${ped3.token}`)
+  ok(r.data?.estado === 'expirado', 'El cliente lo ve «Venció el apartado»', r.data?.estado)
+  r = await invitado.post(`/api/tienda/pedidos/${ped3.folio}/pagar`, { t: ped3.token })
+  ok(r.status === 400 && /venció/.test(r.data.error), 'Un apartado vencido ya no se paga', r.data)
+  if (ENV.CRON_SECRET) {
+    await bd2.query(`update farmacia_configuracion set ultimo_resumen = null`)
+    r = await fetch(`${BASE}/api/farmacia/cron/diario`, { headers: { authorization: `Bearer ${ENV.CRON_SECRET}` } }).then(async (x) => ({ status: x.status, data: await x.json() }))
+    ok(r.status === 200 && r.data.pedidosExpirados >= 1, 'El cron diario marca «expirado» lo vencido', r.data?.pedidosExpirados)
+  }
+  await bd2.end()
+
+  /* cancelar por el cliente */
+  r = await pedir(invitado, { renglones: [{ presentacionId: tiPub.pres.id, cantidad: 1 }] })
+  const ped4 = r.data?.pedido
+  r = await invitado.post(`/api/tienda/pedidos/${ped4.folio}/cancelar`, { t: 'x'.repeat(48) })
+  ok(r.status === 404, 'Cancelar sin el token: no', r.status)
+  r = await invitado.post(`/api/tienda/pedidos/${ped4.folio}/cancelar`, { t: ped4.token })
+  ok(r.status === 200 && r.data.estado === 'cancelado', 'El cliente cancela con su liga y se libera', r.data?.estado)
+
+  /* tutor con receta (Grupo II) */
+  r = await admin.post(`/api/clinica/clientes/${tutor.id}/codigo`)
+  const codigoT = r.data?.codigo
+  const portal = new Sesion()
+  const correoPortal = `tienda${sufijo}@ejemplo.mx`
+  await portal.post('/api/tutores', { email: correoPortal, password: PASS, nombre: 'Tutor tienda' })
+  await portal.login('tutores', correoPortal, PASS)
+  r = await portal.post('/api/clinica/portal/vincular', { codigo: codigoT })
+  await portal.login('tutores', correoPortal, PASS)
+  ok(r.status === 200, 'Tutor del portal vinculado a la ficha de prueba', r.data)
+  r = await pedir(portal, { perfil: { mascotaId: max.id }, renglones: [{ presentacionId: tiG2.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /receta vigente/.test(r.data.error), 'Tutor sin receta de ese producto: no pide Grupo II', r.data)
+  r = await admin.post('/api/farmacia/recetas', { mascotaId: max.id, vigenciaDias: 30, firmar: true, renglones: [{ productoId: tiG2.prod.id, dosis: '1 tableta', frecuencia: 'cada 12 h', duracion: '7 días', surtidosPermitidos: 1 }] })
+  const recT = r.data
+  ok(r.status === 201 && recT?.estado === 'valida', 'Receta interna firmada para Max con el antibiótico de la tienda', r.data)
+  r = await portal.get('/api/tienda/sesion')
+  ok(r.status === 200 && r.data.vinculado && r.data.mascotas.some((m) => m.id === max.id) && r.data.recetas.some((x) => x.id === recT.id) && r.data.pagoEnLinea.disponible, 'Sesión de la tienda: mascotas, receta vigente y pago en línea disponible', r.data)
+  r = await pedir(portal, { perfil: { mascotaId: rocky.id }, renglones: [{ presentacionId: tiG2.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /receta vigente/.test(r.data.error), 'Con la receta de Max no se pide para Rocky', r.data)
+  r = await pedir(portal, { perfil: { mascotaId: max.id }, renglones: [{ presentacionId: tiG2.pres.id, cantidad: 2 }] })
+  const ped5 = r.data?.pedido
+  ok(r.status === 201 && ped5?.renglones[0].recetaId === recT.id && ped5.mascota?.id === max.id && ped5.contacto.correo === correoPortal, 'Tutor pide el Grupo II para Max: el pedido liga la receta', r.data)
+  r = await pedir(portal, { perfil: { mascotaId: max.id }, renglones: [{ presentacionId: tiG2.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /pedido en curso/.test(r.data.error), 'Con un pedido en curso que ya usa el único surtido, no se hace otro', r.data)
+  r = await portal.get('/api/tienda/mis-pedidos')
+  ok(r.status === 200 && r.data.some((p) => p.id === ped5.id), 'Portal: «Mis pedidos»', r.data?.length)
+  r = await portal.get('/api/far-pedidos?depth=0')
+  ok(r.status === 403 || (r.status === 200 && r.data.docs.length === 0), 'API genérica: el tutor no lee pedidos', r.status)
+  r = await admin.post('/api/far-pedidos', { estado: 'pagado' })
+  ok(r.status === 403, 'Ni el superadmin crea pedidos por la API genérica', r.status)
+  await vendedor.post(`/api/farmacia/pedidos/${ped5.id}/estado`, { accion: 'preparar' })
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped5.id}/entregar`, { clave: clave(), pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 403 && r.data.codigo === 'autorizacion', 'El vendedor no despacha Grupo II sin autorización del encargado', r.data)
+  r = await encargado.post(`/api/farmacia/pedidos/${ped5.id}/entregar`, { clave: clave(), pagos: [{ metodo: 'efectivo', monto: 100 }] })
+  ok(r.status === 200 && r.data.pedido.estado === 'entregado', 'El encargado lo entrega con la receta ligada', r.data)
+  r = await admin.get(`/api/farmacia/recetas/${recT.id}`)
+  ok(r.data?.renglones?.[0]?.surtidosUsados === 1, 'La receta descuenta el surtido', r.data?.renglones)
+  r = await pedir(portal, { perfil: { mascotaId: max.id }, renglones: [{ presentacionId: tiG2.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /receta vigente|surtidos/.test(r.data.error), 'Sin surtidos restantes ya no se pide', r.data)
+
+  /* cancelación del equipo con pago en línea → reembolso pendiente */
+  r = await pedir(invitado, { pago: 'en_linea', renglones: [{ presentacionId: tiPub.pres.id, cantidad: 1 }] })
+  const ped6 = r.data?.pedido
+  await invitado.post(`/api/tienda/pago-prueba/${ped6.folio}`, { t: ped6.token, ref: new URL(r.data.urlPago).searchParams.get('ref'), resultado: 'aprobado' })
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped6.id}/estado`, { accion: 'cancelar' })
+  ok(r.status === 400 && /motivo/.test(r.data.error), 'Cancelar desde el panel pide motivo', r.data)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped6.id}/estado`, { accion: 'cancelar', motivo: 'Producto dañado' })
+  ok(r.status === 200 && r.data.estado === 'cancelado' && r.data.pago.estado === 'reembolso_pendiente', 'Cancelado ya pagado: queda «reembolso pendiente»', r.data?.pago)
+
+  /* páginas */
+  for (const [s, ruta, texto] of [
+    [invitado, '/tienda', 'Farmacia en línea'],
+    [invitado, `/tienda/producto/${tiPub.prod.id}`, 'ti-main'],
+    [invitado, '/tienda/carrito', 'Tu carrito'],
+    [invitado, `/tienda/pedido/${ped2.folio}?t=${ped2.token}`, 'ti-main'],
+    [invitado, `/tienda/pago-prueba/${ped2.folio}?t=${ped2.token}&ref=x`, 'ti-main'],
+    [portal, '/portal/farmacia', 'Mis pedidos'],
+    [admin, '/admin/farmacia/pedidos', 'fa-app'],
+    [admin, `/admin/farmacia/pedidos/${ped1.id}`, 'fa-app'],
+  ]) {
+    r = await s.get(ruta)
+    const html = typeof r.data === 'string' ? r.data : ''
+    ok(r.status === 200 && html.includes(texto), `${ruta.split('?')[0]} renderiza («${texto}»)`, r.status)
+  }
+  r = await invitado.get('/')
+  ok(typeof r.data === 'string' && r.data.includes('href="/tienda"'), 'El sitio muestra «Tienda» con el módulo encendido', r.status)
 
   /* ── panel ── */
   console.log('\nPanel')

@@ -94,6 +94,41 @@ export default function Configuracion() {
           </Campo>
         </div>
 
+        {catalogo.modulos.tienda && (
+          <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
+            <h2 className="fz-h2">Tienda en línea</h2>
+            <div className="cl-grid cl-grid--3">
+              <Campo etiqueta="Pago en línea" ayuda={c.pasarelaActiva === 'prueba' ? 'Simulado: exige PAGOS_PRUEBA_SECRETO en Vercel. Nunca con clientes reales.' : 'Mercado Pago llega en la siguiente fase.'}>
+                <Select valor={c.pasarelaActiva} onChange={(v) => setC({ ...c, pasarelaActiva: v as typeof c.pasarelaActiva })}>
+                  <option value="ninguna">Sin pago en línea</option>
+                  <option value="prueba">Pago de prueba (simulado)</option>
+                  <option value="mercadopago" disabled>
+                    Mercado Pago (próximamente)
+                  </option>
+                </Select>
+              </Campo>
+              <Campo etiqueta="Método de pago de lo cobrado en línea" ayuda="Su cuenta de Finanzas recibe esos cobros al entregar.">
+                <Select valor={c.tienda.metodoPagoEnLinea} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, metodoPagoEnLinea: v } })}>
+                  {!c.metodosPago.some((m) => m.clave === c.tienda.metodoPagoEnLinea) && <option value={c.tienda.metodoPagoEnLinea}>{c.tienda.metodoPagoEnLinea} (no existe: agrégalo abajo)</option>}
+                  {c.metodosPago.map((m) => (
+                    <option key={m.clave} value={m.clave}>
+                      {m.nombre}
+                    </option>
+                  ))}
+                </Select>
+              </Campo>
+              <Campo etiqueta="Correos que reciben los pedidos" ayuda="Separados por coma.">
+                <input className="fz-input" value={c.tienda.correosPedidos ?? ''} onChange={(e) => setC({ ...c, tienda: { ...c.tienda, correosPedidos: e.target.value || null } })} placeholder="farmacia@clinica.mx" />
+              </Campo>
+            </div>
+            <div className="cl-fieldset">
+              <Check checked={c.tienda.pagarAlRecoger} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, pagarAlRecoger: v } })}>
+                Permitir pagar al recoger (el apartado dura las horas de arriba)
+              </Check>
+            </div>
+          </div>
+        )}
+
         <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
           <h2 className="fz-h2">Alertas y punto de reorden que aprende</h2>
           <div className="cl-grid cl-grid--3">

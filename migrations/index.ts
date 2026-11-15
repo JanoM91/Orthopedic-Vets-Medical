@@ -9,6 +9,7 @@ import * as migration_20261027_053609_farmacia_ventas from './20261027_053609_fa
 import * as migration_20261027_144827_farmacia_alertas from './20261027_144827_farmacia_alertas';
 import * as migration_20261027_154211_clinica_avisos from './20261027_154211_clinica_avisos';
 import * as migration_20261112_055949_clinica_fotos_iconos from './20261112_055949_clinica_fotos_iconos';
+import * as migration_20261113_053734_farmacia_tienda_pedidos from './20261113_053734_farmacia_tienda_pedidos';
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20261112_055949_clinica_fotos_iconos.up,
     down: migration_20261112_055949_clinica_fotos_iconos.down,
-    name: '20261112_055949_clinica_fotos_iconos'
+    name: '20261112_055949_clinica_fotos_iconos',
+  },
+  {
+    up: migration_20261113_053734_farmacia_tienda_pedidos.up,
+    down: migration_20261113_053734_farmacia_tienda_pedidos.down,
+    name: '20261113_053734_farmacia_tienda_pedidos'
   },
 ];

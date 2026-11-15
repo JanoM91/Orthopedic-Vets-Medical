@@ -155,6 +155,17 @@ export const FarmaciaConfiguracion: GlobalConfig = {
       options: [
         { label: 'Ninguna (sin tienda)', value: 'ninguna' },
         { label: 'Mercado Pago', value: 'mercadopago' },
+        { label: 'Pago de prueba (simulado; exige PAGOS_PRUEBA_SECRETO)', value: 'prueba' },
+      ],
+    },
+    {
+      name: 'tienda',
+      label: 'Tienda en línea',
+      type: 'group',
+      fields: [
+        { name: 'pagarAlRecoger', label: 'Permitir pagar al recoger', type: 'checkbox', defaultValue: true },
+        { name: 'metodoPagoEnLinea', label: 'Método de pago (clave) con que entran a Finanzas los pagos en línea', type: 'text', defaultValue: 'en_linea', admin: { description: 'Debe existir en «Métodos de pago» con su cuenta de Finanzas (p. ej. la cuenta de Mercado Pago).' } },
+        { name: 'correosPedidos', label: 'Correos que reciben los pedidos nuevos', type: 'text', admin: { description: 'Separados por coma. Además, el resumen diario.' } },
       ],
     },
   ],

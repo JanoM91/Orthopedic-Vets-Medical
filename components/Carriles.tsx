@@ -11,7 +11,7 @@ import { useEffect } from 'react'
  * contenido escondido a ese lado (el CSS pinta un desvanecido) y lleva la
  * pestaña activa a la vista. No dibuja nada.
  */
-const SELECTOR = '.fz-subnav, .fz-pestanas, .fz-chips--scroll, .pt-tabs'
+const SELECTOR = '.fz-subnav, .fz-pestanas, .fz-chips--scroll, .pt-tabs, .ti-lineas'
 
 function marcar(el: HTMLElement) {
   const fin = el.scrollWidth - el.clientWidth

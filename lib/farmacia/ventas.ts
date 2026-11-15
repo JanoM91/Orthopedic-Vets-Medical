@@ -9,6 +9,7 @@ import { aCentavos, aPesos, saldoDeCuenta } from '../finanzas/reglas'
 import { calcularPermisos, type Permisos, type RolGuardado } from '../permisosBase'
 import { rateLimit } from '../rateLimit'
 import { site } from '../site'
+import { apartadas } from './apartados'
 import { escapar, pacienteDe, recetaVigente, renglonQueCubre, tutorDe } from './recetas'
 import { almacenPorOmision, type Ctx, enTransaccion, ErrorFarmacia, idDe, leerConfiguracion, registrarMovimiento } from './servicio'
 import type { AsientoLibroVista, CierreVista, ConfiguracionVista, MetodoPagoVista, PacienteVenta, ProblemaMascota, VentaBreve, VentaVista } from './tipos'
@@ -246,7 +247,11 @@ type Plan = {
 
 const MEDIO: Record<MetodoPagoVista['tipo'], 'efectivo' | 'tarjeta' | 'transferencia' | null> = { efectivo: 'efectivo', terminal: 'tarjeta', transferencia: 'transferencia', otro: null }
 
-export async function registrarVenta(ctx: Ctx, entrada: unknown): Promise<VentaVista & { duplicado: boolean; finanzas: 'registrado' | 'pendiente' | 'sin_importe'; avisos: string[] }> {
+/**
+ * `opciones.canal = 'tienda'` y `pedidoId`: la usa `entregarPedido()` de la
+ * tienda; lo apartado por ese pedido no cuenta contra él (sí lo de los demás).
+ */
+export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { canal?: 'mostrador' | 'tienda'; pedidoId?: number | null } = {}): Promise<VentaVista & { duplicado: boolean; finanzas: 'registrado' | 'pendiente' | 'sin_importe'; avisos: string[] }> {
   exigir(ctx, 'vender', 'Tu rol no incluye la venta de mostrador.')
   const d = esquemaVenta.safeParse(entrada)
   if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Datos no válidos.')
@@ -409,7 +414,7 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown): Promise<VentaV
         req,
         depth: 0,
         data: {
-          canal: 'mostrador',
+          canal: opciones.canal ?? 'mostrador',
           estado: pagos.some((p) => p.estado === 'por_confirmar') ? 'por_confirmar' : 'pagada',
           claveIdempotencia: v.clave,
           dia: ctx.hoy,
@@ -435,6 +440,17 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown): Promise<VentaV
       /* Existencia viva de los lotes candidatos (ya con candado). */
       const vivos = await ctx.payload.find({ collection: 'far-lotes', depth: 0, pagination: false, overrideAccess: true, req, sort: 'caducidad', where: { and: [{ producto: { in: prodIds } }, { almacen: { equals: almacen.id } }, { existencia: { greater_than: 0 } }] } })
       const disponible = new Map<number, number>(vivos.docs.map((l) => [l.id, n0(l.existencia)]))
+      /* Apartados de la tienda: lo vendible menos lo apartado por pedidos vigentes (menos el propio, si es una entrega). */
+      const apart = await apartadas(ctx.payload, prodIds, { excluirPedido: opciones.pedidoId ?? null, req })
+      const pedidasPorProd = new Map<number, number>()
+      for (const p of planes) pedidasPorProd.set(p.prod.id, r3((pedidasPorProd.get(p.prod.id) ?? 0) + p.unidades))
+      for (const p of planes) {
+        const a = apart.get(p.prod.id) ?? 0
+        if (a <= 1e-9) continue
+        const vendibleProd = vivos.docs.filter((l) => idDe(l.producto) === p.prod.id && !l.bloqueado && l.caducidad >= ctx.hoy).reduce((s, l) => s + n0(l.existencia), 0)
+        const libres = r3(vendibleProd - a)
+        if ((pedidasPorProd.get(p.prod.id) ?? 0) > libres + 1e-9) throw invalido(`No alcanza ${p.prod.nombre}: hay ${r3(vendibleProd)} ${p.prod.unidadBase} y ${r3(a)} están apartadas para pedidos de la tienda (quedan ${Math.max(0, libres)} libres). Revisa Farmacia → Pedidos.`)
+      }
       for (const p of planes) {
         const lotes = vivos.docs
           .filter((l) => idDe(l.producto) === p.prod.id && !l.bloqueado && l.caducidad >= ctx.hoy)
@@ -530,6 +546,7 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown): Promise<VentaV
       return doc.id
     },
     lotesACandar,
+    prodIds,
   ).catch(async (e) => {
     /* Dos cobros simultáneos con la misma clave: la base rechaza el segundo. */
     if (/claveIdempotencia|clave_idempotencia|unique|duplicate/i.test(String((e as Error)?.message))) {
@@ -871,6 +888,8 @@ export async function buscarParaVenta(ctx: Ctx, texto: string): Promise<Presenta
   const lotes = ids.length && almacen ? await ctx.payload.find({ collection: 'far-lotes', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ producto: { in: ids } }, { almacen: { equals: almacen.id } }, { existencia: { greater_than: 0 } }, { bloqueado: { not_equals: true } }, { caducidad: { greater_than_equal: ctx.hoy } }] } }) : { docs: [] as FarLote[] }
   const vendible = new Map<number, number>()
   for (const l of lotes.docs) vendible.set(idDe(l.producto)!, r3((vendible.get(idDe(l.producto)!) ?? 0) + n0(l.existencia)))
+  /* Lo apartado por pedidos de la tienda no se puede vender en mostrador. */
+  if (ids.length && ctx.modulos.tienda) for (const [pid, a] of await apartadas(ctx.payload, ids)) vendible.set(pid, Math.max(0, r3((vendible.get(pid) ?? 0) - a)))
   /* Coincidencia exacta de código primero; luego por nombre. */
   const limpio = q.replace(/\s+/g, '')
   return lista

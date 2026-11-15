@@ -58,32 +58,33 @@ export function ParaQuien({ sesion }: { sesion: SesionTienda }) {
   const esMascota = (id: number) => Boolean(perfil && 'mascotaId' in perfil && perfil.mascotaId === id)
   const rapido = perfil && !('mascotaId' in perfil)
   return (
-    <section className="ti-quien" aria-label="¿Para quién compras?">
-      <div className="ti-quien__cab">
-        <b>¿Para quién compras?</b>
-        {perfil && (
-          <button type="button" className="pt-btn pt-btn--texto pt-btn--chico" onClick={() => elegir(null)}>
-            Quitar
+    <section className="ti-para" aria-label="¿Para quién compras?">
+      <div className="ti-para__fila">
+        <span className="ti-para__lbl">Para</span>
+        <div className="ti-para__chips">
+          {sesion.mascotas.map((m) => (
+            <button key={m.id} type="button" className={`ti-chip${esMascota(m.id) ? ' is-on' : ''}`} aria-pressed={esMascota(m.id)} onClick={() => elegir(esMascota(m.id) ? null : { mascotaId: m.id, etiqueta: m.nombre })}>
+              <Avatar nombre={m.nombre} especie={m.especie} foto={m.foto} />
+              {m.nombre}
+              {m.pesoKg ? <small>· {m.pesoKg} kg</small> : null}
+            </button>
+          ))}
+          <button type="button" className={`ti-chip ti-chip--otra${rapido ? ' is-on' : ''}`} aria-pressed={Boolean(rapido)} aria-expanded={abierto} onClick={() => setAbierto((x) => !x)}>
+            <span className="ti-chip__i">
+              <Icono n="paw" />
+            </span>
+            {rapido ? perfil.etiqueta : sesion.mascotas.length ? 'Otra mascota' : 'Elegir especie y peso'}
           </button>
-        )}
-      </div>
-      <div className="pt-chips ti-quien__chips">
-        {sesion.mascotas.map((m) => (
-          <button key={m.id} type="button" className={`pt-chip-mascota${esMascota(m.id) ? ' is-on' : ''}`} aria-pressed={esMascota(m.id)} onClick={() => elegir({ mascotaId: m.id, etiqueta: m.nombre })}>
-            <Avatar nombre={m.nombre} especie={m.especie} foto={m.foto} />
-            {m.nombre}
-          </button>
-        ))}
-        <button type="button" className={`pt-chip-mascota ti-chip-otra${rapido ? ' is-on' : ''}`} aria-pressed={Boolean(rapido)} aria-expanded={abierto} onClick={() => setAbierto((x) => !x)}>
-          <span className="ti-chip-otra__i">
-            <Icono n="paw" />
-          </span>
-          {rapido ? perfil.etiqueta : sesion.mascotas.length ? 'Otra mascota' : 'Elegir especie y peso'}
-        </button>
+          {perfil && (
+            <button type="button" className="ti-chip ti-chip--quitar" onClick={() => elegir(null)} aria-label="Quitar: ver todo sin filtrar">
+              <Icono n="x" />
+            </button>
+          )}
+        </div>
       </div>
       {abierto && (
         <form
-          className="ti-quien__form"
+          className="ti-quien__form pt-card"
           onSubmit={(e) => {
             e.preventDefault()
             const kg = Number(peso.replace(',', '.'))
@@ -110,7 +111,7 @@ export function ParaQuien({ sesion }: { sesion: SesionTienda }) {
           </button>
         </form>
       )}
-      {!perfil && <p className="pt-chico pt-tenue">Te mostramos primero lo que le queda y te avisamos si algo no es para él.</p>}
+      {!perfil && !abierto && <p className="pt-chico pt-tenue">Elige para quién y te mostramos primero lo que le queda.</p>}
     </section>
   )
 }
@@ -130,15 +131,6 @@ function ImagenProducto({ p, grande }: { p: Pick<ProductoTienda, 'imagenUrl' | '
   )
 }
 
-function SelloApto({ p, perfil }: { p: ProductoTienda; perfil: PerfilGuardado }) {
-  if (!p.apto || !perfil) return null
-  const quien = perfil.etiqueta
-  if (p.apto.estado === 'apto') return <span className="pt-pill pt-pill--ok">Le queda a {quien}</span>
-  if (p.apto.estado === 'no_apto') return <span className="pt-pill pt-pill--bad">No es para {quien}</span>
-  if (p.apto.estado === 'confirmar_peso') return <span className="pt-pill pt-pill--warn">Confirma su peso</span>
-  return <span className="pt-pill pt-pill--info">Falta su peso</span>
-}
-
 /** ¿Puede este comprador pedir este producto con receta? */
 function permisoReceta(p: Pick<ProductoTienda, 'id' | 'requiereReceta'>, sesion: SesionTienda, perfil: PerfilGuardado): { ok: boolean; motivo: string | null } {
   if (!p.requiereReceta) return { ok: true, motivo: null }
@@ -149,6 +141,20 @@ function permisoReceta(p: Pick<ProductoTienda, 'id' | 'requiereReceta'>, sesion:
   return cubre ? { ok: true, motivo: null } : { ok: false, motivo: `Requiere una receta vigente de ${perfil.etiqueta}. Pídela en consulta.` }
 }
 
+/** Etiqueta sobre la imagen: lo más importante para decidir (no apto, receta, aptitud, existencia). */
+function EtiquetaTarjeta({ p, perfil, receta, disponibles }: { p: ProductoTienda; perfil: PerfilGuardado; receta: { ok: boolean }; disponibles: number }) {
+  if (!disponibles) return <span className="pt-pill pt-pill--gris ti-prod__tag">Agotado</span>
+  if (p.apto?.estado === 'no_apto') return <span className="pt-pill pt-pill--warn ti-prod__tag">No es para {perfil?.etiqueta}</span>
+  if (p.requiereReceta) return <span className="pt-pill pt-pill--info ti-prod__tag">{receta.ok ? 'Tu receta' : 'Con receta'}</span>
+  if (p.apto && perfil) {
+    if (p.apto.estado === 'apto') return <span className="pt-pill pt-pill--ok ti-prod__tag">Le queda</span>
+    if (p.apto.estado === 'confirmar_peso') return <span className="pt-pill pt-pill--warn ti-prod__tag">Confirma su peso</span>
+    return <span className="pt-pill pt-pill--info ti-prod__tag">Falta su peso</span>
+  }
+  if (p.presentaciones.filter((x) => x.disponible).every((x) => x.pocas)) return <span className="pt-pill pt-pill--warn ti-prod__tag">Quedan pocas</span>
+  return null
+}
+
 function Tarjeta({ p, sesion, perfil }: { p: ProductoTienda; sesion: SesionTienda; perfil: PerfilGuardado }) {
   const disponibles = p.presentaciones.filter((x) => x.disponible)
   const desde = Math.min(...p.presentaciones.map((x) => x.precio))
@@ -156,42 +162,38 @@ function Tarjeta({ p, sesion, perfil }: { p: ProductoTienda; sesion: SesionTiend
   const [agregado, setAgregado] = useState(false)
   const una = p.presentaciones.length === 1 ? p.presentaciones[0] : null
   const noApto = p.apto?.estado === 'no_apto'
+  const rapido = una && una.disponible && receta.ok && !noApto
   return (
     <article className={`ti-prod${noApto ? ' is-no-apto' : ''}`}>
       <Link href={`/tienda/producto/${p.id}`} className="ti-prod__liga">
         <ImagenProducto p={p} />
+        <EtiquetaTarjeta p={p} perfil={perfil} receta={receta} disponibles={disponibles.length} />
         <div className="ti-prod__txt">
-          <span className="ti-prod__linea">{NOMBRE_LINEA[p.linea]}</span>
           <b className="ti-prod__nombre">{p.nombre}</b>
-          {una ? <span className="pt-chico pt-tenue">{una.nombre}</span> : <span className="pt-chico pt-tenue">{p.presentaciones.length} presentaciones</span>}
+          <span className="ti-prod__pres">{una ? una.nombre : `${p.presentaciones.length} presentaciones`}</span>
         </div>
       </Link>
-      <div className="ti-prod__sellos">
-        {p.requiereReceta && <span className="pt-pill pt-pill--info">Con receta</span>}
-        <SelloApto p={p} perfil={perfil} />
-        {!disponibles.length && <span className="pt-pill pt-pill--gris">Agotado</span>}
-        {disponibles.length > 0 && disponibles.every((x) => x.pocas) && <span className="pt-pill pt-pill--warn">Quedan pocas</span>}
-      </div>
       <div className="ti-prod__pie">
         <b className="ti-precio">
           {una ? '' : <small>desde </small>}
           {pesos(desde)}
         </b>
-        {una && una.disponible && receta.ok && !noApto ? (
+        {rapido ? (
           <button
             type="button"
-            className={`pt-btn pt-btn--chico ${agregado ? 'pt-btn--primario' : 'pt-btn--acento'}`}
+            className={`ti-mas${agregado ? ' is-ok' : ''}`}
+            aria-label={agregado ? `${p.nombre}: agregado` : `Agregar ${p.nombre} al carrito`}
             onClick={() => {
               tienda.agregar({ presentacionId: una.id, productoId: p.id, producto: p.nombre, presentacion: una.nombre, precio: una.precio, fraccionada: una.fraccionada, requiereReceta: p.requiereReceta, imagenUrl: p.imagenUrl })
               setAgregado(true)
               window.setTimeout(() => setAgregado(false), 1600)
             }}
           >
-            <Icono n={agregado ? 'check' : 'mas'} /> {agregado ? 'Agregado' : 'Agregar'}
+            <Icono n={agregado ? 'check' : 'mas'} />
           </button>
         ) : (
-          <Link href={`/tienda/producto/${p.id}`} className="pt-btn pt-btn--chico">
-            Ver
+          <Link href={`/tienda/producto/${p.id}`} className="ti-mas ti-mas--ver" aria-label={`Ver ${p.nombre}`}>
+            <Icono n="next" />
           </Link>
         )}
       </div>
@@ -201,6 +203,14 @@ function Tarjeta({ p, sesion, perfil }: { p: ProductoTienda; sesion: SesionTiend
 }
 
 /* ───────────────────────────── asistente (búsqueda con IA, fase 5b) ───────────────────────────── */
+
+function IconoChispa() {
+  return (
+    <svg className="pt-i ti-chispa" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+    </svg>
+  )
+}
 
 function Asistente({ sesion, perfil }: { sesion: SesionTienda; perfil: PerfilGuardado }) {
   const [texto, setTexto] = useState('')
@@ -221,14 +231,17 @@ function Asistente({ sesion, perfil }: { sesion: SesionTienda; perfil: PerfilGua
   }
   return (
     <section className="ti-asistente" aria-label="Asistente de la farmacia">
-      <b>¿Qué necesita tu mascota?</b>
-      <p>Cuéntanos con tus palabras y te sugerimos productos de venta libre. No sustituye a tu veterinario.</p>
+      <div className="ti-asistente__cab">
+        <IconoChispa />
+        <b>¿Qué necesita {perfil && 'mascotaId' in perfil ? perfil.etiqueta : 'tu mascota'}?</b>
+      </div>
       <form className="ti-asistente__fila" onSubmit={preguntar}>
-        <input className="pt-input" value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={300} placeholder="Ej. se rasca mucho y tiene pulgas" aria-label="Qué necesita tu mascota" />
-        <button className="pt-btn" type="submit" disabled={cargando || texto.trim().length < 3}>
-          {cargando ? '…' : 'Buscar'}
+        <input className="pt-input" value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={300} placeholder="Ej. se rasca mucho las orejas" aria-label="Qué necesita tu mascota" />
+        <button className="ti-asistente__ir" type="submit" disabled={cargando || texto.trim().length < 3} aria-label="Buscar sugerencias">
+          {cargando ? <span className="pt-giro" aria-hidden="true" /> : <Icono n="next" />}
         </button>
       </form>
+      <p>Te sugerimos productos sin receta. Si suena serio, te proponemos una cita. No sustituye a tu veterinario.</p>
       {error && <div className="pt-aviso pt-aviso--bad">{error}</div>}
       {res && (
         <div className="ti-respuesta">
@@ -359,6 +372,8 @@ export function FichaProducto({ id, sesion }: { id: number; sesion: SesionTienda
   const receta = permisoReceta(p, sesion, perfil)
   const enCarrito = carrito.find((x) => x.presentacionId === pres.id)
   const noApto = p.apto?.estado === 'no_apto'
+  const quien = perfil?.etiqueta
+  const disponibleAlgo = p.presentaciones.some((x) => x.disponible)
   return (
     <div className="ti-ficha">
       <ImagenProducto p={p} grande />
@@ -366,51 +381,40 @@ export function FichaProducto({ id, sesion }: { id: number; sesion: SesionTienda
         <span className="ti-prod__linea">{NOMBRE_LINEA[p.linea]}</span>
         <h1>{p.nombre}</h1>
         {(p.principioActivo || p.laboratorio) && <p className="pt-chico pt-tenue">{[p.principioActivo, p.laboratorio].filter(Boolean).join(' · ')}</p>}
-        <div className="ti-prod__sellos">
+        <div className="ti-ficha__precio">
+          <b>{pesos(pres.precio)}</b>
+          <span className={`pt-pill ${!pres.disponible ? 'pt-pill--gris' : pres.pocas ? 'pt-pill--warn' : 'pt-pill--ok'}`}>{!pres.disponible ? 'Agotado' : pres.pocas ? 'Quedan pocas' : 'Disponible'}</span>
           {p.requiereReceta && <span className="pt-pill pt-pill--info">Con receta</span>}
-          <SelloApto p={p} perfil={perfil} />
         </div>
       </div>
-      {p.apto && p.apto.motivos.length > 0 && <div className={`pt-aviso ${noApto ? 'pt-aviso--bad' : 'pt-aviso--warn'}`}>{p.apto.motivos.join(' ')}</div>}
-      <section className="pt-card">
-        <b>Presentación</b>
-        <div className="ti-presentaciones">
-          {p.presentaciones.map((x) => (
-            <button key={x.id} type="button" className={`ti-pres${x.id === pres.id ? ' is-on' : ''}`} disabled={!x.disponible} aria-pressed={x.id === pres.id} onClick={() => setElegida(x.id)}>
-              <span>{x.nombre}</span>
-              <b>{pesos(x.precio)}</b>
-              <small>{x.disponible ? (x.pocas ? 'Quedan pocas' : 'Disponible') : 'Agotado'}</small>
-            </button>
-          ))}
+
+      {p.apto && quien && (
+        <div className={`ti-apto ti-apto--${p.apto.estado}`}>
+          <Icono n={p.apto.estado === 'apto' ? 'check' : 'alerta'} />
+          <span>
+            <b>{p.apto.estado === 'apto' ? `Le queda a ${quien}` : p.apto.estado === 'no_apto' ? `No es para ${quien}` : p.apto.estado === 'confirmar_peso' ? 'Confirma su peso' : 'Falta su peso'}</b>
+            {p.apto.motivos.length > 0 && <> · {p.apto.motivos.join(' ')}</>}
+          </span>
         </div>
-        <div className="ti-ficha__comprar">
-          <Cantidad valor={cantidad} onCambio={setCantidad} />
-          <button
-            type="button"
-            className={`pt-btn ${agregado ? 'pt-btn--primario' : 'pt-btn--acento'}`}
-            disabled={!pres.disponible || !receta.ok || noApto}
-            onClick={() => {
-              tienda.agregar({ presentacionId: pres.id, productoId: p.id, producto: p.nombre, presentacion: pres.nombre, precio: pres.precio, fraccionada: pres.fraccionada, requiereReceta: p.requiereReceta, imagenUrl: p.imagenUrl }, cantidad)
-              setAgregado(true)
-              window.setTimeout(() => setAgregado(false), 1600)
-            }}
-          >
-            <Icono n={agregado ? 'check' : 'carrito'} /> {agregado ? 'Agregado' : `Agregar · ${pesos(pres.precio * cantidad)}`}
-          </button>
-        </div>
-        {!receta.ok && <p className="pt-chico pt-rojo">{receta.motivo}</p>}
-        {enCarrito && (
-          <Link href="/tienda/carrito" className="pt-enlace">
-            Tienes {enCarrito.cantidad} en el carrito · Ir al carrito
-          </Link>
-        )}
-      </section>
-      {p.descripcion && (
-        <section className="pt-card">
-          <b>Qué es</b>
-          <p className="ti-texto">{p.descripcion}</p>
+      )}
+
+      {p.presentaciones.length > 1 && (
+        <section className="ti-ficha__bloque">
+          <b className="ti-ficha__t">Presentación</b>
+          <div className="ti-presentaciones">
+            {p.presentaciones.map((x) => (
+              <button key={x.id} type="button" className={`ti-pres${x.id === pres.id ? ' is-on' : ''}`} disabled={!x.disponible} aria-pressed={x.id === pres.id} onClick={() => setElegida(x.id)}>
+                <span>{x.nombre}</span>
+                <b>{pesos(x.precio)}</b>
+                <small>{x.disponible ? (x.pocas ? 'Quedan pocas' : 'Disponible') : 'Agotado'}</small>
+              </button>
+            ))}
+          </div>
         </section>
       )}
+      {p.presentaciones.length === 1 && <p className="pt-chico pt-tenue">Presentación: {pres.nombre}</p>}
+
+      {p.descripcion && <p className="ti-texto">{p.descripcion}</p>}
       {(p.especies.length > 0 || p.rangoPeso.min != null || p.rangoPeso.max != null) && (
         <section className="pt-card">
           <b>Para quién es</b>
@@ -420,9 +424,34 @@ export function FichaProducto({ id, sesion }: { id: number; sesion: SesionTienda
               Peso: {p.rangoPeso.max == null ? `desde ${p.rangoPeso.min} kg` : p.rangoPeso.min == null ? `hasta ${p.rangoPeso.max} kg` : `${p.rangoPeso.min} a ${p.rangoPeso.max} kg`}
             </p>
           )}
-          <p className="pt-chico pt-tenue">Dudas de uso o dosis: pregúntale a tu veterinario.</p>
         </section>
       )}
+      <p className="pt-chico pt-tenue">¿Dudas de cómo dárselo? Pregúntale a tu veterinario.</p>
+
+      <div className="pt-resumen ti-comprar">
+        {!receta.ok && <p className="pt-chico pt-rojo">{receta.motivo}</p>}
+        {enCarrito && (
+          <Link href="/tienda/carrito" className="pt-enlace">
+            Tienes {enCarrito.cantidad} en el carrito · Ir al carrito
+          </Link>
+        )}
+        <div className="pt-resumen__fila">
+          <Cantidad valor={cantidad} onCambio={setCantidad} />
+          <button
+            type="button"
+            className={`pt-btn ti-comprar__btn ${agregado ? 'pt-btn--primario' : 'pt-btn--acento'}`}
+            disabled={!pres.disponible || !receta.ok || noApto}
+            onClick={() => {
+              tienda.agregar({ presentacionId: pres.id, productoId: p.id, producto: p.nombre, presentacion: pres.nombre, precio: pres.precio, fraccionada: pres.fraccionada, requiereReceta: p.requiereReceta, imagenUrl: p.imagenUrl }, cantidad)
+              setAgregado(true)
+              window.setTimeout(() => setAgregado(false), 1600)
+            }}
+          >
+            <Icono n={agregado ? 'check' : 'carrito'} /> {agregado ? 'Agregado' : !disponibleAlgo ? 'Agotado' : 'Agregar'}
+            {!agregado && disponibleAlgo && receta.ok && !noApto && <span className="ti-comprar__precio"> · {pesos(pres.precio * cantidad)}</span>}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -584,13 +613,13 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
       )}
 
       <section className="pt-card">
-        <b>Entrega</b>
-        <div className="ti-opciones">
+        <b>¿Cómo lo quieres?</b>
+        <div className={`ti-opciones${sesion.domicilio.activo ? ' ti-opciones--dos' : ''}`}>
           <label className={`ti-opcion${!aDomicilio ? ' is-on' : ''}`}>
             <input type="radio" name="entrega" checked={!aDomicilio} onChange={() => setEntrega('recoger')} />
             <span>
-              <b>Recoger en la farmacia</b>
-              <small>Te lo apartamos {sesion.horasApartado} h si pagas al recoger.</small>
+              <b>Recoger</b>
+              <small>En la farmacia. Te lo apartamos {sesion.horasApartado} h si pagas al recoger.</small>
             </span>
           </label>
           {sesion.domicilio.activo && (
@@ -623,7 +652,15 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
               <span>Referencias (opcional)</span>
               <input className="pt-input" value={dir.referencias} onChange={(e) => setDir({ ...dir, referencias: e.target.value })} placeholder="Ej. portón verde, entre dos calles" />
             </label>
-            {cp.length === 5 && cotVigente?.mensaje && <p className={`pt-chico${cotVigente.cubre && !(cotVigente.pedidoMinimo > 0 && subtotal < cotVigente.pedidoMinimo) ? '' : ' pt-rojo'}`}>{cotVigente.mensaje}</p>}
+            {cp.length === 5 && cotVigente?.mensaje && (
+              <div className={`ti-zona${cotVigente.cubre && !(cotVigente.pedidoMinimo > 0 && subtotal < cotVigente.pedidoMinimo) ? '' : ' is-no'}`} role="status">
+                <Icono n={cotVigente.cubre ? 'camion' : 'alerta'} />
+                <span>
+                  {cotVigente.zona && <b>{cotVigente.zona} · </b>}
+                  {cotVigente.mensaje}
+                </span>
+              </div>
+            )}
             {sesion.tutor && !contacto.telefono && (
               <label className="pt-campo">
                 <span>Teléfono para el repartidor</span>
@@ -635,8 +672,8 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
       </section>
 
       <section className="pt-card">
-        <b>Pago</b>
-        <div className="ti-opciones">
+        <b>¿Cómo pagas?</b>
+        <div className={`ti-opciones${formas.length === 2 ? ' ti-opciones--dos' : ''}`}>
           {formas.includes('al_recibir') && (
             <label className={`ti-opcion${formaPago === 'al_recibir' ? ' is-on' : ''}`}>
               <input type="radio" name="pago" checked={formaPago === 'al_recibir'} onChange={() => setPago('al_recibir')} />
@@ -678,6 +715,14 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
         </div>
       )}
       <div className="pt-resumen ti-resumen">
+        {aDomicilio && (
+          <div className="ti-resumen__lineas">
+            <span>Productos</span>
+            <span>{pesos(subtotal)}</span>
+            <span>Envío</span>
+            <span className={cotVigente?.cubre && !envio ? 'ti-gratis' : undefined}>{cotVigente?.cubre ? (envio ? pesos(envio) : 'Gratis') : '—'}</span>
+          </div>
+        )}
         <div className="pt-resumen__fila">
           <div className="pt-resumen__texto">
             <b>{pesos(total)}</b>
@@ -762,42 +807,83 @@ export function Seguimiento({ folio, token, recienPagado, nuevo }: { folio: stri
     setAccion(null)
   }
 
+  /* Hora de cada paso: la primera vez que el pedido entró a uno de sus estados. */
+  const horaPaso = (estados: string[]) => {
+    const h = p.historial.find((x) => estados.includes(x.estado))
+    return h ? fechaHora(h.fecha) : null
+  }
+  const frase =
+    p.estado === 'pago_pendiente' ? 'Falta el pago' :
+    p.estado === 'receta_por_validar' ? 'Estamos revisando la receta' :
+    p.estado === 'preparando' ? 'Estamos preparando tu pedido' :
+    p.estado === 'listo_para_recoger' ? (p.entrega === 'domicilio' ? 'Listo para salir' : 'Listo para recoger') :
+    p.estado === 'en_ruta' ? 'Va en camino' :
+    p.estado === 'entregado' ? (p.entrega === 'domicilio' ? '¡Listo! Ya lo tienes' : '¡Listo! Ya lo recogiste') :
+    p.estado === 'cancelado' ? 'Pedido cancelado' :
+    p.estado === 'expirado' ? 'El apartado venció' :
+    'Recibimos tu pedido'
+  const porPagar = !cerrado && p.pago.estado !== 'pagado' && p.estado !== 'entregado'
+
   return (
     <div className="ti-seguimiento">
-      {nuevo && p.estado === 'creado' && <div className="pt-aviso pt-aviso--ok">¡Listo! Recibimos tu pedido. Te avisamos por correo cuando puedas pasar por él.</div>}
+      {nuevo && p.estado === 'creado' && <div className="pt-aviso pt-aviso--ok">¡Listo! Recibimos tu pedido. Te avisamos por correo en cada paso.</div>}
       {esperandoPago && <div className="pt-aviso pt-aviso--info">Estamos confirmando tu pago…</div>}
-      <section className="pt-card">
-        <div className="ti-seg__cab">
-          <div>
-            <span className="pt-chico pt-tenue">Pedido</span>
-            <h1>{p.folio}</h1>
-          </div>
-          <span className={`pt-pill ${cerrado ? 'pt-pill--bad' : p.estado === 'entregado' ? 'pt-pill--ok' : p.estado === 'pago_pendiente' ? 'pt-pill--warn' : 'pt-pill--info'}`}>{ESTADO_PEDIDO_LABEL[p.estado]}</span>
-        </div>
-        {!cerrado && (
-          <ol className={`ti-pasos ti-pasos--${pasos.length}`}>
-            {pasos.map((x, i) => (
-              <li key={x.nombre} className={i < idx ? 'is-hecho' : i === idx ? 'is-ahora' : ''}>
-                <i aria-hidden="true" />
-                <span>{x.nombre}</span>
-              </li>
-            ))}
-          </ol>
-        )}
-        {p.estado === 'pago_pendiente' && p.expiraEn && <p className="pt-chico">Falta el pago. Si no se completa antes del {fechaHora(p.expiraEn)}, el apartado se libera solo.</p>}
-        {p.estado === 'creado' && p.expiraEn && <p className="pt-chico">Te lo apartamos hasta el {fechaHora(p.expiraEn)}. Pagas al recoger.</p>}
-        {p.estado === 'listo_para_recoger' && p.entrega !== 'domicilio' && <p className="pt-chico">Ya puedes pasar por él a la farmacia. Menciona el folio {p.folio}.</p>}
-        {p.estado === 'en_ruta' && <p className="pt-chico">Va en camino{p.repartidor ? ` con ${p.repartidor.nombre}` : ''}. {p.pago.estado === 'pagado' ? 'Ya está pagado.' : `Ten listo el pago de ${pesos(p.total)}.`}</p>}
-        {p.direccion && (
-          <p className="pt-chico pt-tenue">
-            Entrega en {p.direccion.calle}
-            {p.direccion.colonia ? `, ${p.direccion.colonia}` : ''}, CP {p.direccion.codigoPostal}
-          </p>
-        )}
-        {p.estado === 'expirado' && <p className="pt-chico">El apartado venció sin pago y los productos se liberaron. Puedes hacer un pedido nuevo.</p>}
-        {p.estado === 'cancelado' && <p className="pt-chico">{p.motivoCancelacion ?? 'Pedido cancelado.'}</p>}
-        {p.pago.estado === 'reembolso_pendiente' && <p className="pt-chico pt-rojo">Tu pago se reembolsará por el mismo medio. Si tienes dudas, escríbenos.</p>}
+
+      <section className={`ti-estado${cerrado ? ' is-cerrado' : ''}`} aria-label="Estado del pedido">
+        <span className="ti-estado__pill">{ESTADO_PEDIDO_LABEL[p.estado]}</span>
+        <h1>{frase}</h1>
+        <p>
+          Pedido {p.folio}
+          {p.direccion ? ` · ${p.direccion.calle}${p.direccion.colonia ? `, ${p.direccion.colonia}` : ''}, CP ${p.direccion.codigoPostal}` : p.entrega === 'recoger' && !cerrado ? ' · recoges en la farmacia' : ''}
+        </p>
+        {p.estado === 'listo_para_recoger' && p.entrega !== 'domicilio' && <p>Ya puedes pasar por él. Menciona el folio {p.folio}.</p>}
+        {p.estado === 'expirado' && <p>Los productos se liberaron. Puedes hacer un pedido nuevo.</p>}
+        {p.estado === 'cancelado' && <p>{p.motivoCancelacion ?? 'Se canceló el pedido.'}</p>}
       </section>
+
+      {p.repartidor && ['en_ruta', 'entregado'].includes(p.estado) && (
+        <div className="pt-card ti-repartidor">
+          <span className="ti-fila-i">
+            <Icono n="camion" />
+          </span>
+          <span>
+            <b>{p.estado === 'en_ruta' ? `${p.repartidor.nombre} te lo lleva` : `Lo entregó ${p.repartidor.nombre}`}</b>
+            <span className="pt-chico pt-tenue">{p.entregaDomicilio?.recibio ? `Recibió: ${p.entregaDomicilio.recibio}` : 'Repartidor de la farmacia'}</span>
+          </span>
+        </div>
+      )}
+
+      {!cerrado && (
+        <section className="pt-card ti-linea-tiempo" aria-label="Avance del pedido">
+          <ol className="ti-tl">
+            {pasos.map((x, i) => {
+              const hora = i <= idx ? horaPaso(x.estados) : null
+              return (
+                <li key={x.nombre} className={i < idx || p.estado === 'entregado' ? 'is-hecho' : i === idx ? 'is-ahora' : ''} aria-current={i === idx ? 'step' : undefined}>
+                  <i aria-hidden="true">{i < idx || p.estado === 'entregado' ? <Icono n="check" /> : null}</i>
+                  <span>
+                    <b>{x.nombre}</b>
+                    {hora && <small>{hora}</small>}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      )}
+
+      {porPagar && (
+        <div className="ti-pago-aviso">
+          <Icono n="billete" />
+          <span>
+            <b>{p.pago.forma === 'al_recibir' ? `Pagas ${pesos(p.total)} al recibir` : p.pago.forma === 'al_recoger' ? `Pagas ${pesos(p.total)} al recoger` : `Falta pagar ${pesos(p.total)} en línea`}</b>
+            {p.estado === 'pago_pendiente' && p.expiraEn && <> · Si no se completa antes del {fechaHora(p.expiraEn)}, el apartado se libera solo.</>}
+            {p.estado === 'creado' && p.expiraEn && p.pago.forma === 'al_recoger' && <> · Te lo apartamos hasta el {fechaHora(p.expiraEn)}.</>}
+            {p.estado === 'en_ruta' && p.pago.forma === 'al_recibir' && <> · Ten listo el pago para {p.repartidor?.nombre ?? 'el repartidor'}.</>}
+          </span>
+        </div>
+      )}
+      {p.pago.estado === 'reembolso_pendiente' && <div className="pt-aviso pt-aviso--warn">Tu pago se reembolsará por el mismo medio. Si tienes dudas, escríbenos.</div>}
 
       <section className="pt-card pt-lista">
         {p.renglones.map((r) => (

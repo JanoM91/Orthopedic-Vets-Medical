@@ -388,3 +388,21 @@ Segunda rama de la fase 5 (sobre la 5a). Decisión de Jano (13-nov): incluir las
 - La venta se registra al **salir** el pedido (no al entregar): así el inventario y el libro de control reflejan la salida física.
 - Comisiones de Mercado Pago: el cobro entra por el total a la cuenta del método «en_linea»; la comisión se registra aparte en Finanzas (pendiente automatizarla).
 - Firma del cliente al recibir: no (solo nombre y foto). Rutas optimizadas para varias entregas: no.
+
+## 16. Tienda dentro de la app (UX del cliente, fase 3, 14-nov-2026)
+
+Solo presentación; la lógica, la API y las reglas de 5a/5b no cambiaron.
+
+- **Catálogo:** «Para» en una fila de chips. Tocar la mascota elegida la quita; «Otra mascota» abre especie y peso.
+  - El asistente con IA pregunta «¿Qué necesita <mascota>?».
+  - Cada tarjeta lleva una sola etiqueta sobre la imagen, por prioridad: agotado, no es para, receta, le queda o falta su peso, quedan pocas.
+  - El botón **+** agrega al carrito cuando el producto tiene una sola presentación y se puede comprar. Si no, la flecha abre la ficha.
+- **Ficha:** precio y disponibilidad arriba, aviso de aptitud a todo lo ancho y barra fija con cantidad y «Agregar · $» encima de la barra de la app.
+- **Carrito:** «¿Cómo lo quieres?» y «¿Cómo pagas?» en dos columnas (una debajo de 380 px).
+  - El código postal muestra la zona y el envío, o por qué no se puede, en un aviso de color.
+  - El resumen fijo desglosa productos y envío.
+- **Seguimiento:**
+  - Tarjeta de estado con una frase clara, la dirección o «recoges en la farmacia».
+  - Repartidor y quién recibió.
+  - Línea de tiempo vertical con la hora de cada paso, sacada del historial del pedido.
+  - Aviso de cómo y cuánto se paga.

@@ -14,7 +14,7 @@ export default async function Tienda({ searchParams }: { searchParams: Promise<{
       <main className="pt-main ti-main">
         <div>
           <h1>Farmacia en línea</h1>
-          <p className="pt-tenue pt-chico">Pide aquí y recoge en la clínica.</p>
+          <p className="pt-tenue pt-chico">{sesion.domicilio.activo ? 'Recoge en la clínica o recíbelo en casa.' : 'Pide aquí y recoge en la clínica.'}</p>
         </div>
         <Catalogo sesion={sesion} lineaInicial={linea} qInicial={(sp.q ?? '').slice(0, 80)} para={Number(sp.para) || null} />
       </main>

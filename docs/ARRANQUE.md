@@ -52,7 +52,7 @@ Después de cambiar variables: **Deployments → … → Redeploy** de la últim
    - **Correos de la clínica para avisos**: quién recibe el aviso cuando un tutor pide, cambia o cancela desde el portal.
    - **Recordatorio la víspera** (encendido por omisión): correo a las 18:00 al tutor con cita al día siguiente.
 3. **Pacientes**: importa con la plantilla (Clínica → Importar) o da de alta cliente por cliente. El teléfono va a 10 dígitos (sirve para WhatsApp).
-4. **Sitio público**: Clínica → «Sitio público» (menú lateral): textos, **contacto** (teléfono, WhatsApp y urgencias: los usan también el portal, los correos de citas y la cartilla impresa) y «Sitio publicado».
+4. **Sitio público**: Clínica → «Sitio público» (menú lateral): textos, **contacto** (teléfono, WhatsApp y urgencias: los usan también el portal, los correos de citas y la cartilla impresa) y «Sitio publicado». Llena también **dirección** y **liga del mapa** (Google Maps → Compartir → Copiar vínculo): alimentan la tarjeta «Hoy» del sitio y el botón «Cómo llegar» del sitio y del inicio del portal. El **lema** es el título grande del sitio; la **descripción**, la línea debajo.
 
 ## 5. Farmacia (si está encendida)
 

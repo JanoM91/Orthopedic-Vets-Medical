@@ -129,3 +129,114 @@ a { color: var(--st-accent); }
   .st-nav { flex: none; }
   .st-nav .st-btn { white-space: nowrap; min-height: 44px; border-radius: 14px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sitio renovado · Versión B (UX del cliente, fase 4, nov-2026; lienzo
+   «OVM · Experiencia del cliente», artboards «Sitio computadora» y «Sitio
+   celular»): fondo verdoso, cabecera blanca, hero oscuro con la tarjeta
+   «Hoy», servicios en tarjetas con icono, banda de tienda y banda de la app.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root { --st-bg: #eef4f1; --st-line: #dce5e2; --st-ink: #0f2f2a; --st-muted: #4b5b56; --st-sombra: 0 1px 2px rgba(15, 47, 42, 0.06); }
+.st-wrap { max-width: 1180px; padding: 0 24px; }
+@media (max-width: 599px) { .st-wrap { padding: 0 16px; } }
+h1, h2, h3 { font-weight: 800; }
+h2 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.01em; }
+.st-eyebrow { color: var(--st-muted); font-weight: 800; letter-spacing: 0.08em; }
+.st-enlace { font-weight: 700; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+
+/* Cabecera */
+.st-cabecera { background: #fff; }
+.st-cabecera__in { min-height: 72px; }
+.st-marca img { width: 40px; height: 40px; }
+.st-nav a { font-weight: 700; min-height: 44px; padding: 0 6px; border-radius: 12px; }
+.st-btn { border-radius: 14px; min-height: 48px; border-color: #c9d4d0; }
+.st-btn--chico { min-height: 44px; border-radius: 12px; }
+.st-btn--vidrio { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+
+/* Hero */
+.st-hero__in { padding-block: 64px; gap: 40px; }
+@media (min-width: 820px) { .st-hero__in { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); } }
+.st-hero__pill { align-self: flex-start; display: inline-flex; align-items: center; min-height: 28px; padding: 2px 12px; border-radius: 999px; background: var(--st-gold); color: var(--st-primary); font-size: 13px; font-weight: 800; margin-bottom: 16px; }
+.st-hero h1 { font-size: clamp(32px, 5vw, 56px); line-height: 1.05; letter-spacing: -0.02em; }
+.st-hero .st-lead { color: #cfe9e1; opacity: 1; font-size: 19px; }
+.st-hero .st-btn--claro { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+.st-hero .st-btn--primario { min-height: 54px; padding: 0 26px; font-size: 17px; }
+.st-hero .st-primera { color: #cfe9e1; }
+.st-hoy { background: #fff; color: var(--st-ink); border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); align-self: center; }
+.st-hoy__fila { display: flex; align-items: center; gap: 10px; font-size: 17px; }
+.st-hoy__punto { width: 12px; height: 12px; border-radius: 50%; background: #ad2a20; flex: none; box-shadow: 0 0 0 4px #fbe3e0; }
+.st-hoy__punto.is-abierto { background: #13967c; box-shadow: 0 0 0 4px #d0f5ea; }
+.st-hoy__dir { display: flex; align-items: flex-start; gap: 8px; color: var(--st-muted); font-size: 15px; }
+.st-hoy__dir .st-i { width: 20px; height: 20px; margin-top: 2px; color: var(--st-accent); }
+.st-hoy__urg { background: #fdf1dc; color: #6b4a07; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.st-hoy__acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.st-hoy .st-btn--claro { background: #fff; color: var(--st-ink); border-color: #c9d4d0; }
+
+/* Secciones */
+.st-sec { padding-block: 56px; }
+.st-sec--pegada { padding-top: 0; }
+.st-sec--alt { background: transparent; border: 0; }
+.st-sec__head { align-items: flex-end; flex-wrap: wrap; margin-bottom: 22px; }
+.st-sec__head .st-eyebrow { margin-bottom: 6px; }
+.st-card { border: 0; border-radius: 20px; padding: 22px; box-shadow: var(--st-sombra); }
+
+/* Servicios destacados */
+.st-tarjetas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+.st-servicio { display: flex; flex-direction: column; gap: 8px; padding: 22px; border-radius: 20px; background: #fff; box-shadow: var(--st-sombra); color: inherit; text-decoration: none; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.st-servicio b { font-size: 18px; line-height: 1.25; }
+.st-servicio__det { font-size: 14px; color: var(--st-muted); font-weight: 600; }
+.st-servicio__txt { font-size: 15px; color: var(--st-muted); display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.st-servicio__ir { margin-top: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--st-accent); font-weight: 700; font-size: 15px; padding-top: 4px; }
+.st-servicio__ir .st-i { width: 18px; height: 18px; }
+@media (hover: hover) { .st-servicio:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15, 47, 42, 0.1); } }
+.st-servicio:focus-visible, .st-linea:focus-visible { outline: 3px solid var(--st-gold); outline-offset: 2px; }
+.svc-insignia--grande { width: 52px; height: 52px; border-radius: 14px; }
+
+/* Banda de la tienda */
+.st-banda { background: #fff; border-radius: 24px; padding: 28px; display: flex; flex-wrap: wrap; gap: 24px 32px; align-items: center; box-shadow: var(--st-sombra); }
+.st-banda__texto { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.st-banda__texto .st-acciones { margin-top: 6px; }
+.st-banda__lineas { flex: 1 1 380px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 10px; }
+.st-linea { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 12px; border-radius: 14px; background: #f3f8f6; color: var(--st-ink); font-weight: 700; font-size: 14.5px; text-decoration: none; }
+.st-linea__i { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: #e3f8f2; color: var(--st-accent); }
+
+/* Banda de la app */
+.st-app { background: var(--st-primary); color: #fff; border-radius: 24px; padding: 28px; display: flex; flex-wrap: wrap; gap: 24px 40px; align-items: center; }
+.st-app__texto { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.st-app__texto p { color: #cfe9e1; font-size: 16px; }
+.st-app__texto .st-btn--primario { background: var(--st-gold); border-color: var(--st-gold); color: var(--st-primary); }
+.st-app__pasos { flex: 1 1 340px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.st-app__pasos li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; color: #cfe9e1; }
+.st-app__pasos li b { color: #fff; }
+.st-app__pasos .st-i { flex: none; width: 40px; height: 40px; padding: 9px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: var(--st-gold); }
+
+/* Equipo, horario y contacto */
+.st-persona { flex-direction: row; align-items: flex-start; gap: 14px; }
+.st-persona__ini { flex: none; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: #e3f8f2; color: var(--st-accent); font-weight: 800; font-size: 18px; }
+.st-dos .st-card h2 { font-size: 22px; }
+.st-horario { width: 100%; }
+.st-horario th, .st-horario td { border-bottom: 1px solid #eef2f0; }
+.st-horario tr:last-child th, .st-horario tr:last-child td { border-bottom: 0; }
+.st-acciones--juntas { margin-top: 6px; }
+.st-aviso { border-radius: 12px; }
+.st-cta h2 { justify-content: center; }
+
+/* Servicios (página) */
+.st-main { max-width: 1080px; }
+.st-servicios { gap: 16px; }
+.st-servicios .st-card h3 { font-size: 18px; }
+/* En el teléfono: servicios como filas compactas (icono · nombre y duración · flecha), hero más corto. */
+@media (max-width: 599px) {
+  .st-hero__in { padding-block: 36px 40px; gap: 24px; }
+  .st-sec { padding-block: 40px; }
+  .st-sec--pegada { padding-top: 0; }
+  .st-tarjetas { gap: 10px; }
+  .st-servicio { display: grid; grid-template-columns: 52px minmax(0, 1fr) 24px; grid-template-areas: 'i n ir' 'i d ir'; gap: 2px 12px; align-items: center; padding: 14px; border-radius: 18px; }
+  .st-servicio .svc-insignia { grid-area: i; }
+  .st-servicio b { grid-area: n; font-size: 16px; }
+  .st-servicio__det { grid-area: d; font-size: 13px; }
+  .st-servicio__txt { display: none; }
+  .st-servicio__ir { grid-area: ir; margin: 0; padding: 0; font-size: 0; justify-content: flex-end; }
+  .st-servicio__ir .st-i { width: 22px; height: 22px; }
+  .st-banda, .st-app { padding: 20px; border-radius: 20px; }
+}

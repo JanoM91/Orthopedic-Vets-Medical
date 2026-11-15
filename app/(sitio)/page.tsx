@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 import { BotonesCita, Cabecera, Horario, Icono, Pie } from '../../components/sitio/Piezas'
+import { BarraApp } from '../../components/app/BarraApp'
 import { partesLocales } from '../../lib/localTime'
 import { contenidoSitio, ligaWhatsApp } from '../../lib/sitio/contenido'
 
@@ -195,6 +196,7 @@ export default async function Inicio() {
         </section>
       </main>
       <Pie c={c} />
+      <BarraApp modo="visitante" activa="inicio" tienda={c.tienda} soloTelefono />
     </>
   )
 }

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 import { sesionDeTienda } from '../../../../lib/portal/sesionTienda'
-import { CabeceraTienda } from '../../../../components/tienda/Cabecera'
+import { BarraTienda, CabeceraTienda } from '../../../../components/tienda/Cabecera'
 import { Carrito } from '../../../../components/tienda/Tienda'
 import { Icono } from '../../../../components/portal/comun'
 
@@ -19,6 +19,7 @@ export default async function PaginaCarrito() {
         <h1>Tu carrito</h1>
         <Carrito sesion={sesion} />
       </main>
+      <BarraTienda sesion={sesion} />
     </>
   )
 }

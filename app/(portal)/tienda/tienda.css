@@ -2,7 +2,7 @@
    Tienda en línea (Farmacia, fase 5a). Usa los tokens y piezas del portal
    (pt-*); aquí solo lo propio con prefijo ti-. De 320 px a escritorio.
    ═══════════════════════════════════════════════════════════════════════════ */
-.ti-main { max-width: 1080px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
+.ti-main { max-width: 1080px; }
 
 /* Cabecera: carrito con contador */
 .ti-carrito-btn { position: relative; width: 40px; justify-content: center; padding: 0 !important; }
@@ -99,8 +99,6 @@
 .ti-opcion small { font-size: 13px; color: var(--pt-muted); }
 .ti-opcion.is-on { border-color: var(--pt-accent); background: #effaf6; }
 .ti-opcion.is-off { opacity: 0.55; cursor: not-allowed; }
-.ti-resumen { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
-@media (min-width: 720px) { .ti-resumen { bottom: 16px; } }
 
 /* Seguimiento */
 .ti-seguimiento { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
@@ -137,3 +135,17 @@
 .ti-asistente__fila .pt-btn { flex: none; background: var(--pt-menta); border-color: var(--pt-menta); color: #0f2f2a; }
 .ti-respuesta { display: flex; flex-direction: column; gap: 10px; }
 .ti-respuesta__txt { font-size: 15px; }
+
+/* App del cliente · Versión B (UX del cliente, fase 1): la tienda lleva la barra de la app; el resumen del carrito va encima de ella (regla .pt-resumen del portal). */
+.ti-carrito-btn { width: 44px; }
+.ti-carrito-btn__n { background: var(--pt-accent); color: #fff; }
+.ti-cabecera .pt-cabecera__der a { gap: 6px; }
+.ti-cabecera .pt-cabecera__der .pt-i { width: 20px; height: 20px; }
+@media (max-width: 419px) { .ti-cabecera__txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+.ti-quien, .ti-prod, .ti-asistente { border-radius: 18px; }
+.ti-asistente { background: var(--pt-primary); }
+.ti-pres, .ti-opcion { border-radius: 14px; }
+.ti-cantidad { border-radius: 14px; }
+.ti-cantidad button { width: 44px; height: 44px; border-radius: 12px; }
+.ti-buscar .pt-input { border-radius: 14px; }
+.ti-linea.is-on { background: var(--pt-primary); border-color: var(--pt-primary); }

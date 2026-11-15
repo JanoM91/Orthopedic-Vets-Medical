@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import React from 'react'
 import { BotonesCita, Cabecera, Pie, PrimeraVez } from '../../../components/sitio/Piezas'
+import { BarraApp } from '../../../components/app/BarraApp'
 import { contenidoSitio } from '../../../lib/sitio/contenido'
 import { InsigniaServicio } from '../../../components/IconoServicio'
 
@@ -55,6 +56,7 @@ export default async function Servicios() {
         <BotonesCita c={c} />
       </main>
       <Pie c={c} />
+      <BarraApp modo="visitante" activa="servicios" tienda={c.tienda} soloTelefono />
     </>
   )
 }

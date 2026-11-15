@@ -1,0 +1,21 @@
+/* Barra de la app del cliente (components/app/BarraApp.tsx). Prefijo ap-.
+   Versión B: 72 px, icono activo sobre una píldora menta clara, texto de 12 px. */
+.ap-barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: #fff; border-top: 1px solid #dce5e2; padding-bottom: env(safe-area-inset-bottom, 0px); font-family: inherit; }
+.ap-barra a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 64px; padding: 8px 2px 8px; font-size: 12px; font-weight: 700; color: #4b5b56; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.ap-barra__i { width: 52px; height: 30px; border-radius: 999px; display: grid; place-items: center; transition: background-color 0.15s ease; }
+.ap-barra svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ap-barra a.is-on { color: var(--pt-accent, var(--st-accent, #0b6b59)); }
+.ap-barra a.is-on .ap-barra__i { background: #e3f8f2; }
+.ap-barra a:focus-visible { outline: 3px solid #36dab7; outline-offset: -3px; border-radius: 12px; }
+@media (hover: hover) { .ap-barra a:not(.is-on):hover .ap-barra__i { background: #f0f5f3; } }
+
+/* «Tienda» sin bandera explícita: solo con la tienda encendida (layout del portal → body[data-tienda]). */
+.ap-barra a.ap-barra__tienda { display: none; }
+body[data-tienda='1'] .ap-barra a.ap-barra__tienda { display: flex; }
+
+/* En tableta y computadora acompaña al contenido (640 px) y flota. */
+@media (min-width: 720px) {
+  .ap-barra { left: 50%; right: auto; width: 640px; transform: translateX(-50%); bottom: 12px; border: 1px solid #dce5e2; border-radius: 18px; box-shadow: 0 10px 30px rgba(15, 47, 42, 0.12); padding-bottom: 0; overflow: hidden; }
+}
+/* En el sitio público solo en el teléfono: en computadora manda la cabecera. */
+@media (min-width: 720px) { .ap-barra--telefono { display: none; } }

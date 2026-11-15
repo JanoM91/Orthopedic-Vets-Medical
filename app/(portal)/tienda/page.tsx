@@ -1,7 +1,7 @@
 import React from 'react'
 import { sesionDeTienda } from '../../../lib/portal/sesionTienda'
 import { LINEAS_TIENDA, type Linea } from '../../../lib/farmacia/tiposTienda'
-import { CabeceraTienda } from '../../../components/tienda/Cabecera'
+import { BarraTienda, CabeceraTienda } from '../../../components/tienda/Cabecera'
 import { Catalogo } from '../../../components/tienda/Tienda'
 
 /** Inicio de la tienda: ¿para quién compras?, buscador, secciones por necesidad y productos. */
@@ -18,6 +18,7 @@ export default async function Tienda({ searchParams }: { searchParams: Promise<{
         </div>
         <Catalogo sesion={sesion} lineaInicial={linea} qInicial={(sp.q ?? '').slice(0, 80)} para={Number(sp.para) || null} />
       </main>
+      <BarraTienda sesion={sesion} />
     </>
   )
 }

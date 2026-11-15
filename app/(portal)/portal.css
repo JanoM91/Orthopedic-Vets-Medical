@@ -3,7 +3,7 @@
    Colores de marca: --pt-primary y --pt-accent los inyecta el layout desde
    las variables de entorno (marca blanca). Prefijo pt- para no chocar.
    ═══════════════════════════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
 :root {
   --pt-primary: #0f2f2a;
   --pt-accent: #0b6b59;
@@ -20,7 +20,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--pt-bg); color: var(--pt-ink); }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-.pt-body { font: 16px/1.5 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; min-height: 100dvh; }
+.pt-body { font: 500 16px/1.5 Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; min-height: 100dvh; }
 h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: -0.01em; }
 h1 { font-size: 24px; } h2 { font-size: 18px; } h3 { font-size: 16px; }
 p { margin: 0; }
@@ -41,9 +41,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pt-main { max-width: 640px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(90px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 14px; }
 .pt-main--centro { padding-top: 32px; max-width: 440px; }
 
-.pt-barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--pt-surface); border-top: 1px solid var(--pt-line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-.pt-barra a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px 10px; min-height: 56px; font-size: 11.5px; color: var(--pt-muted); text-decoration: none; }
-.pt-barra a.is-on { color: var(--pt-primary); font-weight: 650; }
 .pt-i { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .pt-card { background: var(--pt-surface); border: 1px solid var(--pt-line); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
@@ -119,7 +116,6 @@ input[type='file'] { max-width: 100%; font-size: 14px; }
 input[type='file']::file-selector-button { margin-right: 10px; min-height: 40px; padding: 0 14px; border: 1px solid var(--pt-line); border-radius: 10px; background: #fff; color: var(--pt-ink); font: inherit; font-weight: 600; }
 /* En tableta y computadora la barra inferior acompaña al contenido (640 px) en vez de estirarse a todo lo ancho. */
 @media (min-width: 720px) {
-  .pt-barra { left: 50%; right: auto; width: 640px; transform: translateX(-50%); bottom: 12px; border: 1px solid var(--pt-line); border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 47, 42, 0.12); padding-bottom: 0; overflow: hidden; }
   .pt-main { padding-bottom: 104px; }
 }
 /* Enlaces de regreso y pequeños: zona de toque cómoda sin cambiar su aspecto. */
@@ -130,7 +126,6 @@ input[type='file']::file-selector-button { margin-right: 10px; min-height: 40px;
    servicios y calendario de citas. Valores de la Versión A (ui-a.css).
    ═══════════════════════════════════════════════════════════════════════════ */
 :root { --pt-bg: #f6f9f8; --pt-line: #d9e4e0; --pt-ink: #0f2f2a; --pt-muted: #4b5b56; --pt-menta: #36dab7; --pt-sombra: 0 1px 2px rgba(15, 47, 42, 0.05), 0 6px 18px rgba(15, 47, 42, 0.06); }
-.pt-barra a { font-size: 12px; }
 .pt-card { box-shadow: var(--pt-sombra); }
 .pt-saludo h1 { font-size: 26px; }
 .pt-enlace { font-weight: 600; font-size: 14px; text-decoration: none; min-height: 40px; display: inline-flex; align-items: center; }
@@ -323,8 +318,54 @@ input[type='file']::file-selector-button { margin-right: 10px; min-height: 40px;
 .pt-primera__texto { display: flex; flex-direction: column; font-size: 14px; }
 .pt-primera__texto b { font-size: 15px; }
 
-/* Farmacia en la barra inferior: solo con la tienda encendida (layout → body[data-tienda]). */
-.pt-barra a.pt-barra__tienda { display: none; }
-body[data-tienda='1'] .pt-barra a.pt-barra__tienda { display: flex; }
 /* Portal → Farmacia (fase 5a) */
 .ti-fila-i { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: #effaf6; color: var(--pt-accent); flex: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   App del cliente · Versión B (UX del cliente, fase 1, nov-2026). Lienzo
+   «OVM · Experiencia del cliente». Una capa encima de lo anterior: Manrope,
+   fondo verdoso, cabecera clara, tarjetas de 18 px y botones de 14 px.
+   La barra inferior vive en components/app/barra-app.css (prefijo ap-).
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root { --pt-bg: #eef4f1; --pt-line: #dce5e2; --pt-ink: #0f2f2a; --pt-muted: #4b5b56; --pt-sombra: 0 1px 2px rgba(15, 47, 42, 0.06); }
+h1 { font-weight: 800; } h2, h3 { font-weight: 800; }
+b, strong { font-weight: 700; }
+
+/* Cabecera clara: logotipo para fondo claro (site.brand.logoClaro), nombre e iconos en cuadros de 44 px. */
+.pt-cabecera { background: rgba(238, 244, 241, 0.94); color: var(--pt-ink); min-height: 64px; -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px); }
+.pt-marca { color: var(--pt-ink); font-weight: 800; font-size: 17px; }
+.pt-marca img { border-radius: 0; height: 36px; width: 36px; }
+.pt-cabecera__der a, .pt-cabecera__der button { color: var(--pt-ink); background: #fff; border: 1px solid var(--pt-line); border-radius: 14px; min-height: 44px; min-width: 44px; padding: 0 12px; justify-content: center; font-weight: 700; }
+.pt-cabecera__der a.pt-cabecera__perfil { border-radius: 50%; width: 44px; padding: 0; background: var(--pt-primary); border-color: var(--pt-primary); color: #fff; font-size: 14px; font-weight: 800; }
+
+/* Contenido y espacio para la barra de 72 px. */
+.pt-main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 720px) { .pt-main { padding-bottom: 112px; } }
+.pt-resumen { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); border-radius: 18px; }
+@media (min-width: 720px) { .pt-resumen { bottom: 96px; } }
+
+/* Tarjetas, filas y piezas */
+.pt-card, .pt-mascota, .pt-servicio, .pt-paso, .pt-accion { border-radius: 18px; border-color: #e1eae6; }
+.pt-card--activa { background: var(--pt-primary); }
+.pt-proxima { background: var(--pt-primary); box-shadow: none; }
+.pt-tile { border-radius: 18px; border-color: #e1eae6; box-shadow: var(--pt-sombra); }
+
+/* Botones: rectángulo redondeado de 14 px (antes píldora), 48 px de alto. */
+.pt-btn { border-radius: 14px; min-height: 48px; border-color: #c9d4d0; }
+.pt-btn--chico { min-height: 44px; border-radius: 12px; }
+.pt-btn--primario { background: var(--pt-primary); border-color: var(--pt-primary); }
+.pt-btn--acento { background: var(--pt-accent); border-color: var(--pt-accent); }
+.pt-input { border-radius: 14px; min-height: 48px; border-color: #c9d4d0; }
+.pt-hueco { border-radius: 12px; min-height: 46px; }
+
+/* Pestañas como píldoras (como la ficha de la mascota del lienzo). */
+.pt-tabs { gap: 8px; border-bottom: 0; padding: 2px 0; }
+.pt-tabs a { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #c9d4d0; background: #fff; color: var(--pt-ink); font-weight: 700; }
+.pt-tabs a.is-on { background: var(--pt-primary); border-color: var(--pt-primary); color: #fff; }
+
+/* Estados */
+.pt-pill { min-height: 24px; padding: 2px 10px; }
+.pt-pill--warn { background: #fdf1dc; color: #7a4f07; }
+.pt-pill--info { background: #dbe9f7; color: #1f4f7a; }
+.pt-aviso { border-radius: 14px; }
+.pt-aviso--info { background: #dbe9f7; color: #163a5c; }

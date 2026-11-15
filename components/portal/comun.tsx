@@ -3,6 +3,7 @@ import React from 'react'
 import { diaLocal } from '../../lib/localTime'
 import { site } from '../../lib/site'
 import { enlaceWhatsApp, mensajes } from '../../lib/whatsapp'
+import { BarraApp } from '../app/BarraApp'
 
 /* ───────── piezas de servidor (sin estado) ───────── */
 
@@ -86,12 +87,12 @@ export function Cabecera({ nombre }: { nombre?: string }) {
     <header className="pt-cabecera">
       <Link href="/portal" className="pt-marca">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={site.brand.logo} alt="" />
+        <img src={site.brand.logoClaro} alt="" />
         <span>{site.brand.name}</span>
       </Link>
       <span className="pt-cabecera__der">
         {nombre ? (
-          <Link href="/portal/cuenta" aria-label="Mi cuenta">
+          <Link href="/portal/cuenta" aria-label="Mi cuenta" className="pt-cabecera__perfil">
             {iniciales(nombre)}
           </Link>
         ) : null}
@@ -101,28 +102,12 @@ export function Cabecera({ nombre }: { nombre?: string }) {
 }
 
 /**
- * Barra inferior. «Farmacia» siempre se dibuja, pero el CSS solo la muestra
- * cuando el layout del portal marca `body[data-tienda="1"]` (módulos Farmacia
- * y Tienda encendidos), así ninguna página tiene que pasar la bandera.
+ * Barra inferior del portal = la barra de la app del cliente (components/app/BarraApp.tsx),
+ * en modo tutor. «Tienda» lleva a /tienda y solo se ve con la tienda encendida
+ * (body[data-tienda="1"] del layout). Portal → Farmacia (mis pedidos) marca «Tienda».
  */
 export function Barra({ activa }: { activa: 'inicio' | 'mascotas' | 'citas' | 'farmacia' | 'cuenta' }) {
-  const items: [typeof activa, string, string, string][] = [
-    ['inicio', '/portal', 'inicio', 'Inicio'],
-    ['mascotas', '/portal/mascotas', 'paw', 'Mascotas'],
-    ['citas', '/portal/citas', 'cal', 'Citas'],
-    ['farmacia', '/portal/farmacia', 'bolsa', 'Farmacia'],
-    ['cuenta', '/portal/cuenta', 'user', 'Mi cuenta'],
-  ]
-  return (
-    <nav className="pt-barra" aria-label="Secciones">
-      {items.map(([k, href, ic, l]) => (
-        <Link key={k} href={href} className={`${activa === k ? 'is-on' : ''}${k === 'farmacia' ? ' pt-barra__tienda' : ''}`.trim() || undefined} aria-current={activa === k ? 'page' : undefined}>
-          <Icono n={ic} />
-          <span>{l}</span>
-        </Link>
-      ))}
-    </nav>
-  )
+  return <BarraApp modo="tutor" activa={activa === 'farmacia' ? 'tienda' : activa} />
 }
 
 export function GraficaPeso({ pesos }: { pesos: { fecha: string; kg: number }[] }) {

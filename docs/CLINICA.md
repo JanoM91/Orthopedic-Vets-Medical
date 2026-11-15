@@ -91,6 +91,7 @@ Duplicados: tutor existente por **teléfono o correo** (o por nombre completo ex
 | `NEXT_PUBLIC_BRAND_PRIMARY` | Color primario oscuro `#rrggbb` (portal y panel) | Verde pino de la instalación actual |
 | `NEXT_PUBLIC_BRAND_ACCENT` | Acento `#rrggbb` | Menta de la instalación actual |
 | `NEXT_PUBLIC_BRAND_LOGO` | Logotipo para fondo oscuro (ruta en `public/` o URL) | `/logo-mark-white.png` |
+| `NEXT_PUBLIC_BRAND_LOGO_LIGHT` | Logotipo para fondo claro: cabecera del portal y de la tienda (app del cliente, nov-2026) | `/logo-mark.png` |
 | `NEXT_PUBLIC_BRAND_PHONE` | Teléfono de respaldo si «Sitio público → Contacto» está vacío | Nada |
 | `CLINICA_BLOB_READ_WRITE_TOKEN` | Almacén **privado** de Vercel Blob para documentos del expediente | Usa `FINANZAS_BLOB_READ_WRITE_TOKEN`; sin ninguno, subir documentos responde 503 y lo demás funciona |
 | `RESEND_API_KEY`, `LEADS_FROM_EMAIL` | «Olvidé mi contraseña» del portal (mismo adaptador que el panel) | No se envía el correo |

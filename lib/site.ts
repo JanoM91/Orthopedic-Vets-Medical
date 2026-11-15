@@ -21,6 +21,8 @@ const env = {
   brandPrimary: process.env.NEXT_PUBLIC_BRAND_PRIMARY,
   brandAccent: process.env.NEXT_PUBLIC_BRAND_ACCENT,
   brandLogo: process.env.NEXT_PUBLIC_BRAND_LOGO,
+  /* App del cliente (nov-2026): cabeceras claras del portal y la tienda. Opcional. */
+  brandLogoLight: process.env.NEXT_PUBLIC_BRAND_LOGO_LIGHT,
   brandPhone: process.env.NEXT_PUBLIC_BRAND_PHONE,
   locationCity: process.env.NEXT_PUBLIC_LOCATION_CITY,
   /* App instalable (nov-2026): nombre completo y corto bajo el icono del celular. Opcionales. */
@@ -83,6 +85,8 @@ export const site = {
     accent: esColor(env.brandAccent) ? env.brandAccent!.trim() : '#0b6b59',
     /** Logotipo para fondos oscuros (ruta en public/ o URL). */
     logo: env.brandLogo?.trim() || '/logo-mark-white.png',
+    /** Logotipo para fondos claros (cabecera del portal y de la tienda, Versión B). */
+    logoClaro: env.brandLogoLight?.trim() || '/logo-mark.png',
     /** Teléfono de la clínica que se muestra en el portal (texto libre). */
     phone: env.brandPhone?.trim() || '',
   },

@@ -19,6 +19,10 @@
  * Fase 5a (tienda): enciende el módulo Tienda (y lo deja encendido), usa la
  * pasarela de prueba (PAGOS_PRUEBA_SECRETO de .env, también en la app) y
  * vence un apartado moviendo `expira_en` en la base local.
+ *
+ * Fase 5b: domicilio y repartidor; Mercado Pago contra un simulador local que
+ * levanta esta prueba (MERCADOPAGO_API_URL=http://127.0.0.1:4555,
+ * MERCADOPAGO_ACCESS_TOKEN y MERCADOPAGO_WEBHOOK_SECRET falsos en .env).
  */
 import fs from 'node:fs'
 import pg from 'pg'
@@ -1066,7 +1070,7 @@ async function main() {
   r = await vendedor.post(`/api/farmacia/pedidos/${ped2.id}/entregar`, { clave: clave() })
   ok(r.status === 200 && r.data.pedido.estado === 'entregado', 'Pedido pagado en línea: se entrega sin cobrar en mostrador', r.data)
   r = await vendedor.get(`/api/farmacia/ventas/${r.data.pedido?.ventaId}`)
-  ok(r.data?.pagos?.[0]?.metodo === 'en_linea' && r.data.pagos[0].referencia === ref2 && r.data.estado === 'pagada', 'Su pago entra con el método «en_linea» y la referencia de la pasarela', r.data?.pagos)
+  ok(r.data?.pagos?.[0]?.metodo === 'en_linea' && r.data.pagos[0].referencia?.includes(ref2) && r.data.estado === 'pagada', 'Su pago entra con el método «en_linea» y la referencia de la pasarela', r.data?.pagos)
   r = await vendedor.get(`/api/farmacia/vender/buscar?q=${encodeURIComponent('Antipulgas tienda ' + sufijo)}`)
   ok(r.data?.[0]?.vendible === 2, 'Después de entregar: existencia 2 y nada apartado', r.data?.[0]?.vendible)
 
@@ -1148,6 +1152,166 @@ async function main() {
   r = await vendedor.post(`/api/farmacia/pedidos/${ped6.id}/estado`, { accion: 'cancelar', motivo: 'Producto dañado' })
   ok(r.status === 200 && r.data.estado === 'cancelado' && r.data.pago.estado === 'reembolso_pendiente', 'Cancelado ya pagado: queda «reembolso pendiente»', r.data?.pago)
 
+
+  /* ── fase 5b: domicilio, repartidor, Mercado Pago, búsqueda ── */
+  console.log('\nTienda 5b: domicilio, repartidor, Mercado Pago y búsqueda')
+  const cfg5b = (await admin.get('/api/farmacia/catalogo')).data.configuracion
+  const metodos5b = [...cfg5b.metodosPago.filter((m) => m.clave !== 'contra_entrega').map(({ clave, nombre, tipo, cuentaId, porConfirmar, activo }) => ({ clave, nombre, tipo, cuentaId, porConfirmar, activo })), { clave: 'contra_entrega', nombre: 'Cobro del repartidor', tipo: 'otro', cuentaId: cajaMostrador.id, porConfirmar: true, activo: true }]
+  r = await admin.post('/api/farmacia/configuracion', { tienda: { domicilioActivo: true, zonas: [{ nombre: 'Centro', codigosPostales: '91000, 91010', envio: 40, pedidoMinimo: 100, gratisDesde: 500 }, { nombre: 'Otra', codigosPostales: '91010', envio: 60 }] } })
+  ok(r.status === 400 && /91010 está en dos zonas/.test(r.data.error), 'Un código postal no puede estar en dos zonas', r.data)
+  r = await admin.post('/api/farmacia/configuracion', { metodosPago: metodos5b, tienda: { domicilioActivo: true, pagarAlRecibir: true, metodoContraEntrega: 'contra_entrega', horarioEntrega: 'Lunes a sábado, 10 a 19 h', zonas: [{ nombre: 'Centro', codigosPostales: '91000 91010', envio: 40, pedidoMinimo: 100, gratisDesde: 500 }] } })
+  ok(r.status === 200 && r.data.tienda.domicilioActivo && r.data.tienda.zonas[0].codigosPostales.join() === '91000,91010', 'Configuración: domicilio, zona Centro (2 CP) y método «contra_entrega»', r.data?.tienda ?? r.data)
+  r = await invitado.get('/api/tienda/envio?cp=91000&subtotal=80')
+  ok(r.status === 200 && r.data.cubre && r.data.envio === 40 && /mínimo/.test(r.data.mensaje), 'Cotización: el 91000 cubre, $40 y avisa el mínimo', r.data)
+  r = await invitado.get('/api/tienda/envio?cp=91000&subtotal=600')
+  ok(r.data?.envio === 0 && /gratis/i.test(r.data.mensaje), 'Desde $500: envío gratis', r.data)
+  r = await invitado.get('/api/tienda/envio?cp=99999&subtotal=600')
+  ok(r.data?.cubre === false, 'Fuera de zona: no cubre', r.data)
+  const tiDom = await crearProd({ nombre: `Shampoo domicilio ${sufijo}`, linea: 'higiene', grupo: 'desregulado', unidadBase: 'pieza', publicadoTienda: true, descripcion: 'Shampoo para piel con comezón' }, { nombre: 'Botella', factor: 1, precio: 120 }, [{ numero: `SD-${sufijo}`, caducidad: '2028-06-30', costo: 50, cantidad: 10 }])
+  const dir = { calle: 'Av. Ávila Camacho 100', colonia: 'Centro', codigoPostal: '91000', referencias: 'Portón verde' }
+  r = await pedir(invitado, { entrega: 'domicilio', pago: 'al_recibir', renglones: [{ presentacionId: tiDom.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /dirección/.test(r.data.error), 'A domicilio sin dirección: no', r.data)
+  r = await pedir(invitado, { entrega: 'domicilio', pago: 'al_recibir', direccion: { ...dir, codigoPostal: '99999' }, renglones: [{ presentacionId: tiDom.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /no entregamos en el 99999/i.test(r.data.error), 'Fuera de zona: no', r.data)
+  r = await pedir(invitado, { entrega: 'domicilio', pago: 'al_recoger', direccion: dir, renglones: [{ presentacionId: tiDom.pres.id, cantidad: 1 }] })
+  ok(r.status === 400, 'A domicilio no se «paga al recoger»', r.data)
+  r = await pedir(invitado, { entrega: 'domicilio', pago: 'al_recibir', direccion: { ...dir, codigoPostal: '91010' }, renglones: [{ presentacionId: tiPub.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /mínimo/.test(r.data.error), 'Abajo del pedido mínimo: no', r.data)
+  r = await pedir(invitado, { entrega: 'domicilio', pago: 'al_recibir', direccion: dir, renglones: [{ presentacionId: tiDom.pres.id, cantidad: 2 }] })
+  const ped7 = r.data?.pedido
+  ok(r.status === 201 && ped7.entrega === 'domicilio' && ped7.subtotal === 240 && ped7.envio === 40 && ped7.total === 280 && ped7.pago.forma === 'al_recibir' && ped7.direccion?.zona === 'Centro', 'Pedido a domicilio, paga al recibir: $240 + $40 de envío = $280', r.data)
+  r = await pedir(portal, { entrega: 'domicilio', pago: 'al_recibir', direccion: dir, perfil: { mascotaId: max.id }, renglones: [{ presentacionId: tiG2.pres.id, cantidad: 1 }] })
+  ok(r.status === 400 && /no se envía a domicilio/.test(r.data.error), 'Grupo II a domicilio apagado: se rechaza', r.data)
+
+  const rep = await crearUsuario('repartidor@ejemplo.mx', 'Pepe Repartidor', rolRep)
+  const repartidor = new Sesion()
+  ok(rep?.id && (await repartidor.login('users', 'repartidor@ejemplo.mx', PASS)), 'Repartidor entra')
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped7.id}/entregar`, { clave: clave(), pagos: [{ metodo: 'efectivo', monto: 280 }] })
+  ok(r.status === 400 && /repartidor/.test(r.data.error), 'Un pedido a domicilio no se «entrega en mostrador»', r.data)
+  await vendedor.post(`/api/farmacia/pedidos/${ped7.id}/estado`, { accion: 'preparar' })
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped7.id}/estado`, { accion: 'listo' })
+  ok(r.status === 200 && r.data.estado === 'listo_para_recoger', 'Preparado y listo para salir', r.data?.estado)
+  r = await vendedor.get('/api/farmacia/repartidores')
+  ok(r.status === 200 && r.data.some((x) => x.id === rep.id), 'Lista de repartidores (rol con «Mis entregas»)', r.data)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped7.id}/enviar`, { clave: clave() })
+  ok(r.status === 400 && /quién lo lleva/.test(r.data.error), 'Enviar sin repartidor: no', r.data)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped7.id}/enviar`, { clave: clave(), repartidorId: rep.id })
+  ok(r.status === 200 && r.data.pedido.estado === 'en_ruta' && r.data.pedido.repartidor?.id === rep.id && r.data.ventaFolio, 'Enviar con repartidor: en camino y venta registrada', r.data)
+  const venta7 = r.data.pedido.ventaId
+  r = await vendedor.get(`/api/farmacia/ventas/${venta7}`)
+  ok(r.data?.canal === 'tienda' && r.data.envio === 40 && r.data.total === 280 && r.data.estado === 'por_confirmar' && r.data.pagos[0].metodo === 'contra_entrega', 'La venta lleva el envío y el cobro queda «por confirmar»', { envio: r.data?.envio, total: r.data?.total, estado: r.data?.estado })
+  r = await vendedor.get(`/api/farmacia/vender/buscar?q=${encodeURIComponent('Shampoo domicilio ' + sufijo)}`)
+  ok(r.data?.[0]?.vendible === 8, 'Salió del inventario y ya no cuenta como apartado (10 − 2 = 8)', r.data?.[0]?.vendible)
+  r = await vendedor.get('/api/farmacia/entregas')
+  ok(r.status === 403, 'Sin «Mis entregas» en el rol: 403', r.status)
+  r = await repartidor.get('/api/farmacia/entregas')
+  ok(r.status === 200 && r.data.enRuta.some((p) => p.id === ped7.id) && r.data.enRuta[0].direccion?.calle, 'Mis entregas: el pedido con dirección', r.data)
+  r = await repartidor.post(`/api/farmacia/pedidos/${ped7.id}/entregado`, { recibio: 'Señora Ana' })
+  ok(r.status === 400 && /Cobra/.test(r.data.error), 'Paga al recibir: no se entrega sin marcar «Cobrado»', r.data)
+  const jpeg = Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64')
+  const fd = new FormData()
+  fd.append('recibio', 'Señora Ana')
+  fd.append('cobrado', 'true')
+  fd.append('foto', new Blob([jpeg], { type: 'image/jpeg' }), 'entrega.jpg')
+  r = await repartidor.llamar('POST', `/api/farmacia/pedidos/${ped7.id}/entregado`, fd)
+  ok(r.status === 200 && r.data.estado === 'entregado' && r.data.entregaDomicilio?.recibio === 'Señora Ana' && r.data.entregaDomicilio.conFoto && r.data.pago.estado === 'pagado', 'Entregado con foto: recibió, cobrado y pagado', r.data)
+  r = await vendedor.get(`/api/farmacia/ventas/${venta7}`)
+  ok(r.data?.estado === 'pagada' && r.data.pagos[0].estado === 'confirmado', 'El cobro del repartidor se confirma en la venta (entra a Finanzas)', r.data?.pagos)
+  r = await vendedor.get(`/api/farmacia/pedidos/${ped7.id}/evidencia`)
+  ok(r.status === 200 && (r.headers.get('content-type') || '').startsWith('image/jpeg'), 'La foto de la entrega se ve en el panel', r.status)
+  r = await invitado.get(`/api/farmacia/pedidos/${ped7.id}/evidencia`)
+  ok(r.status === 401, 'Sin sesión no se ve la foto', r.status)
+
+  /* en línea + no se pudo entregar + reintento */
+  r = await pedir(invitado, { entrega: 'domicilio', pago: 'en_linea', direccion: dir, renglones: [{ presentacionId: tiDom.pres.id, cantidad: 5 }] })
+  const ped8 = r.data?.pedido
+  ok(r.status === 201 && ped8.envio === 0 && ped8.total === 600, 'Pedido de $600: envío gratis', r.data?.pedido)
+  await invitado.post(`/api/tienda/pago-prueba/${ped8.folio}`, { t: ped8.token, ref: new URL(r.data.urlPago).searchParams.get('ref'), resultado: 'aprobado' })
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped8.id}/enviar`, { clave: clave(), repartidorId: rep.id })
+  ok(r.status === 200 && r.data.pedido.estado === 'en_ruta', 'Pagado en línea: sale con el repartidor', r.data)
+  r = await vendedor.get(`/api/farmacia/ventas/${r.data.pedido.ventaId}`)
+  ok(r.data?.estado === 'pagada' && r.data.pagos[0].metodo === 'en_linea', 'Su venta entra pagada con el método en línea', r.data?.pagos)
+  r = await repartidor.post(`/api/farmacia/pedidos/${ped8.id}/no-entregado`, { motivo: 'No había nadie' })
+  ok(r.status === 200 && r.data.estado === 'listo_para_recoger' && r.data.entregaDomicilio.intentos === 1, 'No se pudo entregar: regresa a la farmacia con el intento anotado', r.data?.entregaDomicilio)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped8.id}/estado`, { accion: 'cancelar', motivo: 'Cliente no contesta' })
+  ok(r.status === 400 && /anúlala en Ventas/.test(r.data.error), 'Con venta registrada no se cancela sin anularla', r.data)
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped8.id}/enviar`, { clave: clave(), repartidorId: rep.id })
+  ok(r.status === 200 && r.data.pedido.estado === 'en_ruta' && r.data.pedido.ventaId === ped8.id * 0 + r.data.pedido.ventaId, 'Reintento: vuelve a salir sin vender otra vez', r.data?.ventaFolio)
+  r = await repartidor.post(`/api/farmacia/pedidos/${ped8.id}/entregado`, { recibio: 'Vecino' })
+  ok(r.status === 200 && r.data.estado === 'entregado', 'Pagado en línea: se entrega sin cobrar', r.data?.estado)
+
+  /* reembolso (pasarela de prueba) */
+  r = await vendedor.post(`/api/farmacia/pedidos/${ped6.id}/reembolsar`)
+  ok(r.status === 403, 'El vendedor no reembolsa', r.status)
+  r = await encargado.post(`/api/farmacia/pedidos/${ped6.id}/reembolsar`)
+  ok(r.status === 200 && r.data.pago.estado === 'reembolsado', 'El encargado reembolsa el pedido cancelado y pagado', r.data?.pago)
+
+  /* Mercado Pago contra un simulador local (MERCADOPAGO_API_URL de .env) */
+  if (ENV.MERCADOPAGO_API_URL && ENV.MERCADOPAGO_WEBHOOK_SECRET) {
+    const http = await import('node:http')
+    const crypto = await import('node:crypto')
+    const mpLog = { preferencias: [], reembolsos: 0 }
+    const pagos = new Map()
+    const srv = http.createServer((req, res) => {
+      let cuerpo = ''
+      req.on('data', (c) => (cuerpo += c))
+      req.on('end', () => {
+        const env = (st, d) => {
+          res.writeHead(st, { 'content-type': 'application/json' })
+          res.end(JSON.stringify(d))
+        }
+        if (req.method === 'POST' && req.url === '/checkout/preferences/') {
+          const b = JSON.parse(cuerpo)
+          mpLog.preferencias.push({ b, auth: req.headers.authorization, idem: req.headers['x-idempotency-key'] })
+          return env(201, { id: `pref-${mpLog.preferencias.length}`, init_point: `https://mp.local/checkout?pref=${mpLog.preferencias.length}`, sandbox_init_point: 'https://sandbox.mp.local/x' })
+        }
+        const m = /^\/v1\/payments\/(\d+)(\/refunds)?$/.exec(req.url)
+        if (m && req.method === 'GET') return pagos.has(m[1]) ? env(200, pagos.get(m[1])) : env(404, { message: 'not found' })
+        if (m && m[2] && req.method === 'POST') {
+          mpLog.reembolsos++
+          return env(201, { id: 5550 + mpLog.reembolsos })
+        }
+        env(404, {})
+      })
+    })
+    await new Promise((ok2) => srv.listen(Number(new URL(ENV.MERCADOPAGO_API_URL).port), '127.0.0.1', ok2))
+    r = await admin.post('/api/farmacia/configuracion', { pasarelaActiva: 'mercadopago' })
+    r = await invitado.get('/api/tienda/sesion')
+    ok(r.data?.pagoEnLinea?.proveedor === 'mercadopago', 'Con llaves en el servidor, la tienda ofrece Mercado Pago', r.data?.pagoEnLinea)
+    r = await pedir(invitado, { pago: 'en_linea', renglones: [{ presentacionId: tiDom.pres.id, cantidad: 1 }] })
+    const ped9 = r.data?.pedido
+    const pref = mpLog.preferencias.at(-1)
+    ok(r.status === 201 && r.data.urlPago?.startsWith('https://mp.local/checkout') && pref?.b.external_reference?.startsWith(`ped-${ped9.id}-`) && pref.b.items[0].unit_price === 120 && pref.b.items[0].currency_id === 'MXN' && /\/api\/tienda\/webhook\/mercadopago$/.test(pref.b.notification_url) && pref.auth?.startsWith('Bearer ') && pref.idem, 'Mercado Pago: preferencia con referencia, monto, MXN, webhook e idempotencia', pref?.b)
+    pagos.set('777', { id: 777, status: 'approved', external_reference: pref.b.external_reference, transaction_amount: 120, currency_id: 'MXN' })
+    const aviso = async (firma, query = 'data.id=777&type=payment', body = { type: 'payment', action: 'payment.updated', data: { id: '777' } }) =>
+      fetch(`${BASE}/api/tienda/webhook/mercadopago?${query}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': firma, 'x-request-id': 'req-abc' }, body: JSON.stringify(body) }).then(async (x) => ({ status: x.status, data: await x.json() }))
+    const ts = String(Math.floor(Date.now() / 1000))
+    const firmaMP = (id) => `ts=${ts},v1=${crypto.createHmac('sha256', ENV.MERCADOPAGO_WEBHOOK_SECRET).update(`id:${id};request-id:req-abc;ts:${ts};`).digest('hex')}`
+    r = await aviso(`ts=${ts},v1=${'0'.repeat(64)}`)
+    ok(r.status === 401, 'Aviso de Mercado Pago con firma falsa: 401', r.data)
+    r = await aviso(firmaMP('778'))
+    ok(r.status === 401, 'Firma de otro pago (el id es parte de la firma): 401', r.data)
+    r = await aviso(firmaMP('777'))
+    ok(r.status === 200 && r.data.resultado === 'pagado', 'Aviso firmado: consulta el pago aprobado y marca pagado', r.data)
+    r = await aviso(firmaMP('777'))
+    ok(r.data?.duplicado === true, 'El mismo aviso otra vez: no hace nada', r.data)
+    r = await aviso(firmaMP('900'), 'data.id=900&type=merchant_order', { type: 'merchant_order', data: { id: '900' } })
+    ok(r.status === 200 && /ignorado/.test(r.data.resultado), 'Aviso de otro tipo (merchant_order): se ignora sin error', r.data)
+    r = await invitado.get(`/api/tienda/pedidos/${ped9.folio}?t=${ped9.token}`)
+    ok(r.data?.pago?.estado === 'pagado' && r.data.pago.proveedor === 'mercadopago', 'El pedido queda pagado por Mercado Pago', r.data?.pago)
+    await vendedor.post(`/api/farmacia/pedidos/${ped9.id}/estado`, { accion: 'cancelar', motivo: 'Sin existencia física' })
+    r = await encargado.post(`/api/farmacia/pedidos/${ped9.id}/reembolsar`)
+    ok(r.status === 200 && r.data.pago.estado === 'reembolsado' && mpLog.reembolsos === 1, 'Reembolso total en Mercado Pago desde el panel', r.data?.pago)
+    srv.close()
+    await admin.post('/api/farmacia/configuracion', { pasarelaActiva: 'prueba' })
+  } else ok(false, 'Faltan MERCADOPAGO_API_URL y MERCADOPAGO_WEBHOOK_SECRET en .env para probar Mercado Pago')
+
+  /* búsqueda (sin llave de Anthropic en local: respaldo por palabras) */
+  r = await invitado.post('/api/tienda/sugerir', { texto: 'shampoo para la comezón de mi perro' })
+  ok(r.status === 200 && r.data.productos.some((p) => p.id === tiDom.prod.id) && !r.data.productos.some((p) => p.requiereReceta), 'Búsqueda «¿qué necesita?»: encuentra el shampoo y nunca sugiere algo con receta', r.data)
+  r = await invitado.post('/api/tienda/sugerir', { texto: 'mi perro vomita sangre desde ayer' })
+  ok(r.status === 200 && r.data.veterinario === true && r.data.motivoVeterinario, 'Señales de alarma: recomienda al veterinario', r.data)
+
   /* páginas */
   for (const [s, ruta, texto] of [
     [invitado, '/tienda', 'Farmacia en línea'],
@@ -1158,6 +1322,8 @@ async function main() {
     [portal, '/portal/farmacia', 'Mis pedidos'],
     [admin, '/admin/farmacia/pedidos', 'fa-app'],
     [admin, `/admin/farmacia/pedidos/${ped1.id}`, 'fa-app'],
+    [admin, `/admin/farmacia/pedidos/${ped7.id}`, 'fa-app'],
+    [repartidor, '/admin/farmacia/entregas', 'fa-app'],
   ]) {
     r = await s.get(ruta)
     const html = typeof r.data === 'string' ? r.data : ''

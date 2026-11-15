@@ -139,6 +139,7 @@ function vistaVenta(ctx: Ctx, v: FarVenta, recetaFolio: (id: number) => string =
     }),
     subtotal: v.subtotal,
     descuento: n0(v.descuento),
+    envio: n0(v.envio),
     total: v.total,
     pagos,
     cambio: aPesos(pagos.reduce((a, p) => a + c(p.cambio ?? 0), 0)),
@@ -251,8 +252,8 @@ const MEDIO: Record<MetodoPagoVista['tipo'], 'efectivo' | 'tarjeta' | 'transfere
  * `opciones.canal = 'tienda'` y `pedidoId`: la usa `entregarPedido()` de la
  * tienda; lo apartado por ese pedido no cuenta contra él (sí lo de los demás).
  */
-export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { canal?: 'mostrador' | 'tienda'; pedidoId?: number | null } = {}): Promise<VentaVista & { duplicado: boolean; finanzas: 'registrado' | 'pendiente' | 'sin_importe'; avisos: string[] }> {
-  exigir(ctx, 'vender', 'Tu rol no incluye la venta de mostrador.')
+export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { canal?: 'mostrador' | 'tienda'; pedidoId?: number | null; envio?: number; sinPermisoVender?: boolean } = {}): Promise<VentaVista & { duplicado: boolean; finanzas: 'registrado' | 'pendiente' | 'sin_importe'; avisos: string[] }> {
+  if (!opciones.sinPermisoVender) exigir(ctx, 'vender', 'Tu rol no incluye la venta de mostrador.')
   const d = esquemaVenta.safeParse(entrada)
   if (!d.success) throw invalido(d.error.issues[0]?.message ?? 'Datos no válidos.')
   const v = d.data
@@ -368,7 +369,9 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { can
 
   /* Pagos */
   const subtotalC = planes.reduce((a, p) => a + Math.round(p.precioC * p.cantidad), 0)
-  const totalC = planes.reduce((a, p) => a + p.importeC, 0)
+  /* Envío a domicilio (tienda, fase 5b): entra al total y a Finanzas con la venta; no es un producto. */
+  const envioC = opciones.envio ? c(opciones.envio) : 0
+  const totalC = planes.reduce((a, p) => a + p.importeC, 0) + envioC
   const pagos: NonNullable<FarVenta['pagos']> = []
   let sumaC = 0
   for (const p of v.pagos) {
@@ -424,7 +427,8 @@ export async function registrarVenta(ctx: Ctx, entrada: unknown, opciones: { can
           pesoUsadoKg: v.pesoConfirmadoKg ?? paciente?.pesoKg ?? null,
           renglones: [],
           subtotal: aPesos(subtotalC),
-          descuento: aPesos(subtotalC - totalC),
+          descuento: aPesos(subtotalC + envioC - totalC),
+          envio: aPesos(envioC),
           total: aPesos(totalC),
           pagos,
           vendedor: ctx.user.id,
@@ -622,6 +626,15 @@ export async function reintentarFinanzas(ctx: Ctx, id: number): Promise<VentaVis
 /** Confirmar una transferencia (u otro pago «por confirmar») al verla en el banco: entra el cobro a Finanzas. */
 export async function confirmarPago(ctx: Ctx, id: number, indice: number, entrada: unknown): Promise<VentaVista> {
   exigir(ctx, 'aprobar', 'Confirmar transferencias lo hace el encargado o el dueño.')
+  return confirmarPagoSinPermiso(ctx, id, indice, entrada)
+}
+
+/**
+ * Lo mismo sin revisar el rol: SOLO para `lib/farmacia/tienda.ts`, cuando el
+ * repartidor entrega y cobra un pedido «pagar al recibir» (el pago quedó «por
+ * confirmar» al salir el pedido y el cobro entra a Finanzas en este momento).
+ */
+export async function confirmarPagoSinPermiso(ctx: Ctx, id: number, indice: number, entrada: unknown): Promise<VentaVista> {
   const d = z.object({ referencia: z.string().trim().max(80).nullable().optional() }).safeParse(entrada ?? {})
   const v = await cargar(ctx, id)
   if (v.estado === 'anulada') throw invalido('La venta está anulada.')
@@ -708,7 +721,7 @@ function armarTicket(v: VentaVista, conImprimir: boolean): string {
 <style>body{font:14px/1.4 system-ui,sans-serif;margin:0;padding:16px;color:#0f172a;background:#fff}.t{max-width:340px;margin:0 auto}h1{font-size:16px;margin:0 0 2px}table{width:100%;border-collapse:collapse}td{padding:4px 0;vertical-align:top;border-bottom:1px dashed #cbd5e1}.d{text-align:right;white-space:nowrap;padding-left:8px}.tot td{font-weight:700;font-size:16px;border-bottom:0}small{color:#475569}.no-print{margin-top:16px;text-align:center}@media print{.no-print{display:none}body{padding:0}}</style></head>
 <body><div class="t"><h1>${escapar(site.brand.name)}</h1><small>Farmacia · ${v.folio} · ${v.dia}${v.vendedor ? ` · atendió ${escapar(v.vendedor.nombre)}` : ''}</small>
 ${v.cliente ? `<p><small>Cliente: ${escapar(v.cliente.nombre)}${v.mascota ? ` · ${escapar(v.mascota.nombre)}` : ''}</small></p>` : ''}
-<table>${filas}${v.descuento ? `<tr><td>Descuento</td><td class="d">−${m(v.descuento)}</td></tr>` : ''}<tr class="tot"><td>Total</td><td class="d">${m(v.total)}</td></tr></table>
+<table>${filas}${v.descuento ? `<tr><td>Descuento</td><td class="d">−${m(v.descuento)}</td></tr>` : ''}${v.envio ? `<tr><td>Envío a domicilio</td><td class="d">${m(v.envio)}</td></tr>` : ''}<tr class="tot"><td>Total</td><td class="d">${m(v.total)}</td></tr></table>
 <table style="margin-top:8px">${pagos}${v.cambio ? `<tr class="tot"><td>Cambio</td><td class="d">${m(v.cambio)}</td></tr>` : ''}</table>
 <p><small>Precios con IVA incluido. Este ticket no es un comprobante fiscal.${v.estado === 'anulada' ? ' <b>VENTA ANULADA.</b>' : ''}</small></p>
 ${conImprimir ? `<div class="no-print"><button onclick="window.print()" style="font:inherit;padding:10px 18px;border-radius:8px;border:1px solid #cbd5e1;background:${site.brand.accent};color:#fff">Imprimir o guardar PDF</button></div>` : ''}</div></body></html>`

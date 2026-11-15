@@ -19,6 +19,7 @@
  *   cierre                  cierre del día
  *   alertas · reabasto · promociones   fase 4
  *   pedidos                 pedidos de la tienda en línea (fase 5a)
+ *   entregas                «Mis entregas» del repartidor (fase 5b)
  *   importar                importación con plantilla
  *   configuracion           parámetros, proveedores, almacenes
  *
@@ -37,7 +38,7 @@ import Cierre from './Cierre'
 import { Alertas, Promociones, Reabasto } from './Alertas'
 import { FichaReceta, NuevaRecetaExterna, Recetas } from './Recetas'
 import Vender from './Vender'
-import { FichaPedido, Pedidos } from './Pedidos'
+import { Entregas, FichaPedido, Pedidos } from './Pedidos'
 import { FichaVenta, Ventas } from './Ventas'
 import Importar from './Importar'
 import Inicio from './Inicio'
@@ -79,6 +80,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   else if (seccion === 'recetas' && !id) pantalla = <Recetas ver={query.ver ?? null} />
   else if (seccion === 'recetas' && id === 'nueva') pantalla = <NuevaRecetaExterna mascotaInicial={numero(query.mascota)} />
   else if (seccion === 'recetas' && numero(id)) pantalla = <FichaReceta key={id} id={numero(id)!} />
+  else if (seccion === 'entregas') pantalla = p.entregas ? <Entregas /> : <Aviso>Tu rol no incluye «Mis entregas».</Aviso>
   else if (seccion === 'pedidos' && !catalogo.modulos.tienda) pantalla = <Aviso>La tienda en línea está apagada (Instalación → módulos).</Aviso>
   else if (seccion === 'pedidos' && !(p.vender || p.asignarRepartidor)) pantalla = <Aviso>Tu rol no incluye los pedidos de la tienda.</Aviso>
   else if (seccion === 'pedidos' && !id) pantalla = <Pedidos grupo={query.grupo ?? null} />
@@ -104,6 +106,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
     { ver: p.vender, href: `${base}/vender`, on: seccion === 'vender', texto: 'Mostrador' },
     { ver: p.vender, href: `${base}/ventas`, on: seccion === 'ventas', texto: 'Ventas' },
     { ver: p.vender || p.recetas, href: `${base}/recetas`, on: seccion === 'recetas', texto: 'Recetas' },
+    { ver: catalogo.modulos.tienda && p.entregas, href: `${base}/entregas`, on: seccion === 'entregas', texto: 'Mis entregas', mas: p.vender },
     {
       ver: catalogo.modulos.tienda && (p.vender || p.asignarRepartidor),
       href: `${base}/pedidos`,
@@ -178,6 +181,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
             /* Modo solo (sin panel): 4 opciones fijas y el resto en «Más» (Versión A, fase 4), en vez de cortar a 5. */
             const barra = (
               [
+                [catalogo.modulos.tienda && p.entregas, `${base}/entregas`, seccion === 'entregas', 'cartera', 'Entregas'],
                 [true, base, !seccion, 'inicio', 'Inicio'],
                 [p.vender, `${base}/vender`, seccion === 'vender', 'cartera', 'Mostrador'],
                 [p.vender, `${base}/ventas`, seccion === 'ventas', 'lista', 'Ventas'],

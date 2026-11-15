@@ -1409,3 +1409,10 @@ input[type='time']::-webkit-date-and-time-value {
 /* Farmacia → Pedidos de la tienda (fase 5a): detalle en dos columnas desde 1000 px. */
 .fa-pedido__cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 @media (min-width: 1000px) { .fa-pedido__cols { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
+/* Fase 5b: «Mis entregas» y cobro del repartidor */
+.fa-entrega { padding: 14px; }
+.fa-entrega__acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.fa-entrega__acciones .fz-btn { min-height: 44px; }
+.fa-cobrado { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--fz-linea, #d9e4e0); border-radius: 10px; cursor: pointer; }
+.fa-cobrado input { width: 20px; height: 20px; accent-color: #0b6b59; }
+.fa-zona { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; }

@@ -123,3 +123,17 @@
 .ti-prueba__banda { padding: 10px 14px; border-radius: 12px; background: repeating-linear-gradient(-45deg, #fdf1dc, #fdf1dc 10px, #fbe7c0 10px, #fbe7c0 20px); color: #6b4a07; font-weight: 800; font-size: 14px; letter-spacing: 0.03em; text-align: center; }
 
 @media (max-width: 440px) { .ti-pasos li span { font-size: 11px; letter-spacing: -0.01em; overflow-wrap: anywhere; line-height: 1.2; } }
+
+/* Fase 5b: domicilio, pasos de 4 y asistente */
+.ti-total--envio { font-size: 15px; padding-top: 4px; padding-bottom: 0; color: var(--pt-muted); }
+.ti-direccion { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.ti-direccion__fila { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; }
+.ti-pasos--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ti-asistente { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: linear-gradient(135deg, #0f2f2a, #164a41); color: #fff; }
+.ti-asistente b { font-size: 16px; }
+.ti-asistente p { color: rgba(255, 255, 255, 0.82); font-size: 14px; }
+.ti-asistente__fila { display: flex; gap: 8px; }
+.ti-asistente__fila .pt-input { flex: 1; min-width: 0; border-color: transparent; }
+.ti-asistente__fila .pt-btn { flex: none; background: var(--pt-menta); border-color: var(--pt-menta); color: #0f2f2a; }
+.ti-respuesta { display: flex; flex-direction: column; gap: 10px; }
+.ti-respuesta__txt { font-size: 15px; }

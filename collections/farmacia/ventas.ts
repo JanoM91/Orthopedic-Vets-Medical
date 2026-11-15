@@ -182,7 +182,7 @@ export const FarVentas: CollectionConfig = {
         { name: 'autorizacionMascota', label: 'Autorización (validación por mascota)', type: 'text' },
       ],
     },
-    { type: 'row', fields: [{ name: 'subtotal', type: 'number', required: true }, { name: 'descuento', type: 'number', defaultValue: 0 }, { name: 'total', type: 'number', required: true, index: true }] },
+    { type: 'row', fields: [{ name: 'subtotal', type: 'number', required: true }, { name: 'descuento', type: 'number', defaultValue: 0 }, { name: 'envio', label: 'Envío', type: 'number', defaultValue: 0 }, { name: 'total', type: 'number', required: true, index: true }] },
     { name: 'costoTotal', type: 'number', access: { read: leeCostos } },
     {
       name: 'pagos',

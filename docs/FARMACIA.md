@@ -351,3 +351,40 @@ Primera de dos ramas de la fase 5 (decisión de Jano, 12-nov). La 5b trae entreg
 - La receta se valida al pedir y otra vez al entregar; no hay estado «receta por validar» (solo recetas internas). Recetas externas subidas por el cliente: pendiente.
 - Imágenes: `imagenUrl` (texto); sin imagen se dibuja el icono de la sección.
 - 5b: domicilio (zonas, costo, repartidor «Mis entregas»), búsqueda con IA, Mercado Pago (Checkout Pro + webhook firmado, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`), reembolso desde el panel.
+
+## 15. Fase 5b · Domicilio, repartidor, Mercado Pago y búsqueda con IA (13-nov-2026)
+
+Segunda rama de la fase 5 (sobre la 5a). Decisión de Jano (13-nov): incluir las tres partes en esta rama.
+
+### Qué hace
+
+- **Entrega a domicilio** (Configuración → Tienda en línea): se enciende con «Entrega a domicilio» y se definen **zonas por código postal** (envío, pedido mínimo, envío gratis desde, activa). Un código postal no puede estar en dos zonas activas. El cliente escribe su dirección y la tienda cotiza al instante (`GET /api/tienda/envio?cp=&subtotal=`). El envío entra al total del pedido y a la venta (`far-ventas.envio`), no es un producto.
+- **Pago a domicilio**: en línea o **al recibir** (`tienda.pagarAlRecibir`). A domicilio no existe «pagar al recoger». El Grupo II a domicilio sigue apagado (`recetaGrupoIIDomicilio`); si se enciende, aplica la misma regla de receta.
+- **Enviar con repartidor** (Panel → Pedidos, quien vende): se elige a una persona con «Mis entregas» en su rol y **en ese momento se registra la venta** (la mercancía sale del inventario): pagado en línea → método `tienda.metodoPagoEnLinea`; al recibir → método `tienda.metodoContraEntrega`, que debe ser «por confirmar». El pedido queda «En camino» y el cliente recibe un correo. Un pedido con venta ya no aparta inventario ni vence.
+- **Mis entregas** (`/admin/farmacia/entregas`, rol Repartidor): lo que lleva, con dirección (liga a Google Maps), llamar, WhatsApp, «Entregado» (quién recibió, «Cobré $…» obligatorio si paga al recibir, foto opcional reducida en el teléfono, nota) y «No se pudo» (motivo; regresa a la farmacia como «Listo» y se puede volver a enviar sin vender otra vez). Al entregar un pedido «al recibir», el pago de la venta se confirma (`confirmarPagoSinPermiso`) y el cobro entra a Finanzas. La foto vive en `far-evidencias` y solo se sirve por `/api/farmacia/pedidos/:id/evidencia`.
+- **Cancelar con venta**: si el pedido ya tiene venta (salió y regresó), primero se anula la venta en Ventas (regresa el inventario) y luego se cancela.
+- **Mercado Pago (Checkout Pro)**: con `MERCADOPAGO_ACCESS_TOKEN` y `MERCADOPAGO_WEBHOOK_SECRET` y la pasarela «Mercado Pago» en Configuración.
+  - Cobro: preferencia con `external_reference` = `ped-<id>-<azar>`, `notification_url` = `/api/tienda/webhook/mercadopago`, `back_urls` al seguimiento, vencimiento = el del apartado, `X-Idempotency-Key`. Con token `TEST-…` usa el sandbox.
+  - Aviso: firma `x-signature` (`ts=…,v1=…`) = HMAC-SHA256(secreto, `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`), la misma regla del SDK oficial `mercadopago@3.6.2` (`utils/webhook`). Después **se consulta el pago** (`GET /v1/payments/{id}`) y solo se cree lo que dice Mercado Pago (estado, monto, MXN, referencia). Avisos de otro tipo o pagos pendientes responden 200 sin cambiar nada.
+  - Un pago de un cobro anterior del mismo pedido también vale (el cliente pudo abrir el pago dos veces); un segundo pago aprobado se anota para reembolsarlo.
+  - **Reembolso** total desde la ficha del pedido cancelado (encargado, «Aprobar»): `POST /v1/payments/{id}/refunds`. La pasarela de prueba simula el reembolso.
+- **Búsqueda con IA** («¿Qué necesita tu mascota?», solo si hay `ANTHROPIC_API_KEY`): Claude elige hasta 6 productos **de venta libre** del catálogo publicado (nunca Grupo I ni II), sin dosis ni diagnósticos, respetando especie y peso del «¿Para quién?». Si lo escrito suena a urgencia, recomienda pedir cita (también por una lista de palabras de alarma, aunque no haya IA). Sin llave o si falla, cae a búsqueda por palabras. Límite de 20 búsquedas cada 10 minutos por IP.
+
+### Modelo y código
+
+- Migración `20261113_185522_farmacia_domicilio_mercadopago` (con RLS en `far_evidencias` y `farmacia_configuracion_tienda_zonas`): dirección, envío, subtotal, repartidor, datos de entrega e `idPago` en `far-pedidos`; formas `al_recibir` y estado `reembolsado`; `envio` en `far-ventas`; colección `far-evidencias`; configuración `tienda.domicilioActivo`, `pagarAlRecibir`, `metodoContraEntrega`, `horarioEntrega`, `zonas`.
+- En las vistas el envío se llama `envio` (nunca «costo»: «costo» es el costo interno que no ve quien no tiene «Ver costos»).
+- `lib/farmacia/pagos.ts` (adaptador con `verificarAviso` asíncrono y `reembolsar`), `tienda.ts` (`cotizar`, `enviarPedido`, `misEntregas`, `entregarDomicilio`, `noEntregado`, `reembolsarPedido`, `evidencia`, `repartidores`), `sugerir.ts` (IA), `ventas.ts` (`opciones.envio`, `confirmarPagoSinPermiso`).
+- API equipo: `GET repartidores`, `GET entregas`, `GET pedidos/:id/evidencia`, `POST pedidos/:id/enviar | entregado (multipart con foto) | no-entregado | reembolsar`. API pública: `GET envio`, `POST sugerir`.
+
+### Verificación (13-nov-2026)
+
+- `test:farmacia` 416/416 (48 nuevas): zonas y cotización, mínimo y gratis, validaciones de domicilio, Grupo II a domicilio apagado, enviar con repartidor (venta con envío «por confirmar»), «Mis entregas» y permisos, entregado con foto y cobro confirmado, no entregado y reintento, cancelar con venta, reembolso; **Mercado Pago contra un simulador local** (preferencia, firma falsa, firma de otro pago, aviso válido, aviso repetido, otro tipo, reembolso); búsqueda por palabras y señales de alarma.
+- `test:finanzas` 44/44, `test:clinica` 175/175, `auditoria-front` a 320/390/1280 (249 páginas, 0 hallazgos), recorrido en navegador (carrito a domicilio → seguimiento → enviar con repartidor → Mis entregas).
+- La búsqueda con IA real y Mercado Pago real no se probaron (sin llaves en este entorno).
+
+### Decisiones y pendientes de la fase 5b
+
+- La venta se registra al **salir** el pedido (no al entregar): así el inventario y el libro de control reflejan la salida física.
+- Comisiones de Mercado Pago: el cobro entra por el total a la cuenta del método «en_linea»; la comisión se registra aparte en Finanzas (pendiente automatizarla).
+- Firma del cliente al recibir: no (solo nombre y foto). Rutas optimizadas para varias entregas: no.

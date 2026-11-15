@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import React, { useEffect, useMemo, useState } from 'react'
 
 import type { ClaveIcono } from '../../lib/iconosServicio'
-import type { Linea, PedidoVista, ProductoTienda, SesionTienda } from '../../lib/farmacia/tiposTienda'
+import type { CotizacionEnvio, Linea, PedidoVista, ProductoTienda, SesionTienda, SugerenciaIA } from '../../lib/farmacia/tiposTienda'
 import { ESTADO_PEDIDO_LABEL, LINEAS_TIENDA } from '../../lib/farmacia/tiposTienda'
 import { IconoServicio } from '../IconoServicio'
 import { Avatar, Icono } from '../portal/comun'
@@ -200,6 +200,57 @@ function Tarjeta({ p, sesion, perfil }: { p: ProductoTienda; sesion: SesionTiend
   )
 }
 
+/* ───────────────────────────── asistente (búsqueda con IA, fase 5b) ───────────────────────────── */
+
+function Asistente({ sesion, perfil }: { sesion: SesionTienda; perfil: PerfilGuardado }) {
+  const [texto, setTexto] = useState('')
+  const [res, setRes] = useState<SugerenciaIA | null>(null)
+  const [cargando, setCargando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const preguntar = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (texto.trim().length < 3) return
+    setCargando(true)
+    setError(null)
+    try {
+      setRes(await api<SugerenciaIA>('sugerir', { method: 'POST', body: JSON.stringify({ texto, perfil: perfilParaApi(perfil) }) }))
+    } catch (err) {
+      setError((err as Error).message)
+    }
+    setCargando(false)
+  }
+  return (
+    <section className="ti-asistente" aria-label="Asistente de la farmacia">
+      <b>¿Qué necesita tu mascota?</b>
+      <p>Cuéntanos con tus palabras y te sugerimos productos de venta libre. No sustituye a tu veterinario.</p>
+      <form className="ti-asistente__fila" onSubmit={preguntar}>
+        <input className="pt-input" value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={300} placeholder="Ej. se rasca mucho y tiene pulgas" aria-label="Qué necesita tu mascota" />
+        <button className="pt-btn" type="submit" disabled={cargando || texto.trim().length < 3}>
+          {cargando ? '…' : 'Buscar'}
+        </button>
+      </form>
+      {error && <div className="pt-aviso pt-aviso--bad">{error}</div>}
+      {res && (
+        <div className="ti-respuesta">
+          {res.veterinario && (
+            <div className="pt-aviso pt-aviso--warn">
+              {res.motivoVeterinario} <Link href="/portal/citas/nueva">Pedir cita</Link>
+            </div>
+          )}
+          <p className="ti-respuesta__txt">{res.explicacion}</p>
+          {res.productos.length > 0 && (
+            <div className="ti-rejilla">
+              {res.productos.map((p) => (
+                <Tarjeta key={p.id} p={p} sesion={sesion} perfil={perfil} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 /* ───────────────────────────── catálogo ───────────────────────────── */
 
 type Resultado = { clave: string; productos: ProductoTienda[]; error: string | null }
@@ -245,6 +296,7 @@ export function Catalogo({ sesion, lineaInicial, qInicial, para }: { sesion: Ses
   return (
     <div className="ti-catalogo">
       <ParaQuien sesion={sesion} />
+      {sesion.busquedaIA && <Asistente sesion={sesion} perfil={perfil} />}
       <label className="ti-buscar">
         <Icono n="buscar" />
         <span className="pt-sr">Buscar</span>
@@ -398,14 +450,40 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
   const { carrito, perfil } = useTienda()
   const [clave, setClave] = useState(nuevaClave)
   const [contacto, setContacto] = useState({ nombre: sesion.tutor?.nombre ?? '', correo: sesion.tutor?.correo ?? '', telefono: sesion.tutor?.telefono ?? '' })
-  const [pago, setPago] = useState<'al_recoger' | 'en_linea'>(sesion.pagarAlRecoger ? 'al_recoger' : 'en_linea')
+  const [pago, setPago] = useState<'al_recoger' | 'en_linea' | 'al_recibir'>(sesion.pagarAlRecoger ? 'al_recoger' : 'en_linea')
+  const [entrega, setEntrega] = useState<'recoger' | 'domicilio'>('recoger')
+  const [dir, setDir] = useState({ calle: '', colonia: '', codigoPostal: '', referencias: '' })
+  const [cot, setCot] = useState<{ cp: string; subtotal: number; c: CotizacionEnvio } | null>(null)
   const [notas, setNotas] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const total = carrito.reduce((a, r) => a + Math.round(r.precio * 100 * r.cantidad), 0) / 100
+  const subtotal = carrito.reduce((a, r) => a + Math.round(r.precio * 100 * r.cantidad), 0) / 100
   const conReceta = carrito.some((r) => r.requiereReceta)
-  const formaPago = !sesion.pagoEnLinea.disponible ? 'al_recoger' : !sesion.pagarAlRecoger ? 'en_linea' : pago
-  const sinOpcionPago = !sesion.pagoEnLinea.disponible && !sesion.pagarAlRecoger
+  const domicilioPosible = sesion.domicilio.activo && (!conReceta || sesion.domicilio.grupoII)
+  const aDomicilio = entrega === 'domicilio' && domicilioPosible
+  /* Formas de pago según la entrega: recoger → al recoger o en línea; domicilio → al recibir o en línea. */
+  const formas: ('al_recoger' | 'en_linea' | 'al_recibir')[] = [...(aDomicilio ? (sesion.domicilio.pagarAlRecibir ? ['al_recibir' as const] : []) : sesion.pagarAlRecoger ? ['al_recoger' as const] : []), ...(sesion.pagoEnLinea.disponible ? ['en_linea' as const] : [])]
+  const formaPago = formas.includes(pago) ? pago : (formas[0] ?? pago)
+  const sinOpcionPago = formas.length === 0
+  const cp = dir.codigoPostal.replace(/\D/g, '')
+  /* Cotización del envío al escribir el código postal (y si cambia el subtotal). */
+  useEffect(() => {
+    if (!aDomicilio || cp.length !== 5) return
+    let vivo = true
+    const h = window.setTimeout(() => {
+      api<CotizacionEnvio>(`envio?cp=${cp}&subtotal=${subtotal}`)
+        .then((c) => vivo && setCot({ cp, subtotal, c }))
+        .catch(() => undefined)
+    }, 250)
+    return () => {
+      vivo = false
+      window.clearTimeout(h)
+    }
+  }, [aDomicilio, cp, subtotal])
+  const cotVigente = aDomicilio && cot && cot.cp === cp && cot.subtotal === subtotal ? cot.c : null
+  const envio = cotVigente?.cubre ? cotVigente.envio : 0
+  const total = Math.round((subtotal + (aDomicilio ? envio : 0)) * 100) / 100
+  const bloqueoDomicilio = aDomicilio && (!cotVigente || !cotVigente.cubre || (cotVigente.pedidoMinimo > 0 && subtotal < cotVigente.pedidoMinimo))
 
   const pedir = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -419,7 +497,8 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
           renglones: carrito.map((x) => ({ presentacionId: x.presentacionId, cantidad: x.cantidad })),
           perfil: perfilParaApi(perfil),
           contacto: { nombre: contacto.nombre, correo: contacto.correo, telefono: contacto.telefono || null },
-          entrega: 'recoger',
+          entrega: aDomicilio ? 'domicilio' : 'recoger',
+          direccion: aDomicilio ? { calle: dir.calle, colonia: dir.colonia || null, codigoPostal: cp, referencias: dir.referencias || null } : null,
           pago: formaPago,
           notas: notas || null,
         }),
@@ -462,6 +541,12 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
             <b className="ti-renglon__imp">{pesos(r.precio * r.cantidad)}</b>
           </div>
         ))}
+        {aDomicilio && (
+          <div className="ti-total ti-total--envio">
+            <span>Envío{cotVigente?.zona ? ` · ${cotVigente.zona}` : ''}</span>
+            <b>{cotVigente?.cubre ? (envio ? pesos(envio) : 'Gratis') : '—'}</b>
+          </div>
+        )}
         <div className="ti-total">
           <span>Total</span>
           <b>{pesos(total)}</b>
@@ -492,8 +577,8 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
             <input className="pt-input" type="email" required autoComplete="email" value={contacto.correo} onChange={(e) => setContacto({ ...contacto, correo: e.target.value })} />
           </label>
           <label className="pt-campo">
-            <span>Teléfono (opcional)</span>
-            <input className="pt-input" type="tel" autoComplete="tel" inputMode="tel" value={contacto.telefono} onChange={(e) => setContacto({ ...contacto, telefono: e.target.value })} />
+            <span>Teléfono {aDomicilio ? '' : '(opcional)'}</span>
+            <input className="pt-input" type="tel" autoComplete="tel" inputMode="tel" required={aDomicilio} value={contacto.telefono} onChange={(e) => setContacto({ ...contacto, telefono: e.target.value })} />
           </label>
         </section>
       )}
@@ -501,27 +586,67 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
       <section className="pt-card">
         <b>Entrega</b>
         <div className="ti-opciones">
-          <label className="ti-opcion is-on">
-            <input type="radio" name="entrega" defaultChecked />
+          <label className={`ti-opcion${!aDomicilio ? ' is-on' : ''}`}>
+            <input type="radio" name="entrega" checked={!aDomicilio} onChange={() => setEntrega('recoger')} />
             <span>
               <b>Recoger en la farmacia</b>
               <small>Te lo apartamos {sesion.horasApartado} h si pagas al recoger.</small>
             </span>
           </label>
-          <label className="ti-opcion is-off">
-            <input type="radio" name="entrega" disabled />
-            <span>
-              <b>A domicilio</b>
-              <small>Muy pronto.</small>
-            </span>
-          </label>
+          {sesion.domicilio.activo && (
+            <label className={`ti-opcion${aDomicilio ? ' is-on' : ''}${domicilioPosible ? '' : ' is-off'}`}>
+              <input type="radio" name="entrega" checked={aDomicilio} disabled={!domicilioPosible} onChange={() => setEntrega('domicilio')} />
+              <span>
+                <b>A domicilio</b>
+                <small>{domicilioPosible ? (sesion.domicilio.horario ?? 'Te lo llevamos en la zona de entrega.') : 'Los productos con receta se recogen en la farmacia.'}</small>
+              </span>
+            </label>
+          )}
         </div>
+        {aDomicilio && (
+          <div className="ti-direccion">
+            <label className="pt-campo">
+              <span>Calle y número</span>
+              <input className="pt-input" required autoComplete="street-address" value={dir.calle} onChange={(e) => setDir({ ...dir, calle: e.target.value })} />
+            </label>
+            <div className="ti-direccion__fila">
+              <label className="pt-campo">
+                <span>Código postal</span>
+                <input className="pt-input" required inputMode="numeric" autoComplete="postal-code" maxLength={5} value={dir.codigoPostal} onChange={(e) => setDir({ ...dir, codigoPostal: e.target.value.replace(/\D/g, '').slice(0, 5) })} />
+              </label>
+              <label className="pt-campo">
+                <span>Colonia</span>
+                <input className="pt-input" value={dir.colonia} onChange={(e) => setDir({ ...dir, colonia: e.target.value })} />
+              </label>
+            </div>
+            <label className="pt-campo">
+              <span>Referencias (opcional)</span>
+              <input className="pt-input" value={dir.referencias} onChange={(e) => setDir({ ...dir, referencias: e.target.value })} placeholder="Ej. portón verde, entre dos calles" />
+            </label>
+            {cp.length === 5 && cotVigente?.mensaje && <p className={`pt-chico${cotVigente.cubre && !(cotVigente.pedidoMinimo > 0 && subtotal < cotVigente.pedidoMinimo) ? '' : ' pt-rojo'}`}>{cotVigente.mensaje}</p>}
+            {sesion.tutor && !contacto.telefono && (
+              <label className="pt-campo">
+                <span>Teléfono para el repartidor</span>
+                <input className="pt-input" type="tel" required inputMode="tel" value={contacto.telefono} onChange={(e) => setContacto({ ...contacto, telefono: e.target.value })} />
+              </label>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="pt-card">
         <b>Pago</b>
         <div className="ti-opciones">
-          {sesion.pagarAlRecoger && (
+          {formas.includes('al_recibir') && (
+            <label className={`ti-opcion${formaPago === 'al_recibir' ? ' is-on' : ''}`}>
+              <input type="radio" name="pago" checked={formaPago === 'al_recibir'} onChange={() => setPago('al_recibir')} />
+              <span>
+                <b>Pagar al recibir</b>
+                <small>Le pagas al repartidor.</small>
+              </span>
+            </label>
+          )}
+          {formas.includes('al_recoger') && (
             <label className={`ti-opcion${formaPago === 'al_recoger' ? ' is-on' : ''}`}>
               <input type="radio" name="pago" checked={formaPago === 'al_recoger'} onChange={() => setPago('al_recoger')} />
               <span>
@@ -556,9 +681,11 @@ export function Carrito({ sesion }: { sesion: SesionTienda }) {
         <div className="pt-resumen__fila">
           <div className="pt-resumen__texto">
             <b>{pesos(total)}</b>
-            <span>{formaPago === 'en_linea' ? 'Pagas en línea' : 'Pagas al recoger'} · recoger en farmacia</span>
+            <span>
+              {formaPago === 'en_linea' ? 'Pagas en línea' : formaPago === 'al_recibir' ? 'Pagas al recibir' : 'Pagas al recoger'} · {aDomicilio ? 'a domicilio' : 'recoger en farmacia'}
+            </span>
           </div>
-          <button className="pt-btn pt-btn--acento" type="submit" disabled={enviando || sinOpcionPago}>
+          <button className="pt-btn pt-btn--acento" type="submit" disabled={enviando || sinOpcionPago || bloqueoDomicilio}>
             {enviando ? 'Enviando…' : formaPago === 'en_linea' ? 'Ir a pagar' : 'Hacer pedido'}
           </button>
         </div>
@@ -574,6 +701,12 @@ const PASOS: { estados: string[]; nombre: string }[] = [
   { estados: ['pagado', 'receta_por_validar'], nombre: 'Confirmado' },
   { estados: ['preparando'], nombre: 'Preparando' },
   { estados: ['listo_para_recoger', 'en_ruta'], nombre: 'Listo' },
+  { estados: ['entregado'], nombre: 'Entregado' },
+]
+const PASOS_DOMICILIO: { estados: string[]; nombre: string }[] = [
+  { estados: ['pago_pendiente', 'creado', 'pagado', 'receta_por_validar'], nombre: 'Recibido' },
+  { estados: ['preparando', 'listo_para_recoger'], nombre: 'Preparando' },
+  { estados: ['en_ruta'], nombre: 'En camino' },
   { estados: ['entregado'], nombre: 'Entregado' },
 ]
 
@@ -605,7 +738,8 @@ export function Seguimiento({ folio, token, recienPagado, nuevo }: { folio: stri
 
   if (res?.error) return <div className="pt-aviso pt-aviso--bad">{res.error}</div>
   if (!p) return <div className="pt-card ti-esqueleto" aria-busy="true" />
-  const idx = PASOS.findIndex((x) => x.estados.includes(p.estado))
+  const pasos = p.entrega === 'domicilio' ? PASOS_DOMICILIO : PASOS
+  const idx = pasos.findIndex((x) => x.estados.includes(p.estado))
   const cerrado = ['cancelado', 'expirado'].includes(p.estado)
   const puedePagar = !cerrado && p.pagoEnLinea && p.pago.estado !== 'pagado' && ['pago_pendiente', 'creado'].includes(p.estado)
   const puedeCancelar = !cerrado && p.pago.estado !== 'pagado' && ['pago_pendiente', 'creado'].includes(p.estado)
@@ -641,8 +775,8 @@ export function Seguimiento({ folio, token, recienPagado, nuevo }: { folio: stri
           <span className={`pt-pill ${cerrado ? 'pt-pill--bad' : p.estado === 'entregado' ? 'pt-pill--ok' : p.estado === 'pago_pendiente' ? 'pt-pill--warn' : 'pt-pill--info'}`}>{ESTADO_PEDIDO_LABEL[p.estado]}</span>
         </div>
         {!cerrado && (
-          <ol className="ti-pasos">
-            {PASOS.map((x, i) => (
+          <ol className={`ti-pasos ti-pasos--${pasos.length}`}>
+            {pasos.map((x, i) => (
               <li key={x.nombre} className={i < idx ? 'is-hecho' : i === idx ? 'is-ahora' : ''}>
                 <i aria-hidden="true" />
                 <span>{x.nombre}</span>
@@ -652,7 +786,14 @@ export function Seguimiento({ folio, token, recienPagado, nuevo }: { folio: stri
         )}
         {p.estado === 'pago_pendiente' && p.expiraEn && <p className="pt-chico">Falta el pago. Si no se completa antes del {fechaHora(p.expiraEn)}, el apartado se libera solo.</p>}
         {p.estado === 'creado' && p.expiraEn && <p className="pt-chico">Te lo apartamos hasta el {fechaHora(p.expiraEn)}. Pagas al recoger.</p>}
-        {p.estado === 'listo_para_recoger' && <p className="pt-chico">Ya puedes pasar por él a la farmacia. Menciona el folio {p.folio}.</p>}
+        {p.estado === 'listo_para_recoger' && p.entrega !== 'domicilio' && <p className="pt-chico">Ya puedes pasar por él a la farmacia. Menciona el folio {p.folio}.</p>}
+        {p.estado === 'en_ruta' && <p className="pt-chico">Va en camino{p.repartidor ? ` con ${p.repartidor.nombre}` : ''}. {p.pago.estado === 'pagado' ? 'Ya está pagado.' : `Ten listo el pago de ${pesos(p.total)}.`}</p>}
+        {p.direccion && (
+          <p className="pt-chico pt-tenue">
+            Entrega en {p.direccion.calle}
+            {p.direccion.colonia ? `, ${p.direccion.colonia}` : ''}, CP {p.direccion.codigoPostal}
+          </p>
+        )}
         {p.estado === 'expirado' && <p className="pt-chico">El apartado venció sin pago y los productos se liberaron. Puedes hacer un pedido nuevo.</p>}
         {p.estado === 'cancelado' && <p className="pt-chico">{p.motivoCancelacion ?? 'Pedido cancelado.'}</p>}
         {p.pago.estado === 'reembolso_pendiente' && <p className="pt-chico pt-rojo">Tu pago se reembolsará por el mismo medio. Si tienes dudas, escríbenos.</p>}
@@ -671,8 +812,14 @@ export function Seguimiento({ folio, token, recienPagado, nuevo }: { folio: stri
             <b className="ti-renglon__imp">{pesos(r.importe)}</b>
           </div>
         ))}
+        {p.entrega === 'domicilio' && (
+          <div className="ti-total ti-total--envio">
+            <span>Envío</span>
+            <b>{p.envio ? pesos(p.envio) : 'Gratis'}</b>
+          </div>
+        )}
         <div className="ti-total">
-          <span>Total {p.pago.estado === 'pagado' ? '(pagado)' : p.pago.forma === 'al_recoger' ? '(al recoger)' : ''}</span>
+          <span>Total {p.pago.estado === 'pagado' ? '(pagado)' : p.pago.forma === 'al_recoger' ? '(al recoger)' : p.pago.forma === 'al_recibir' ? '(al recibir)' : ''}</span>
           <b>{pesos(p.total)}</b>
         </div>
       </section>

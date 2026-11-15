@@ -98,13 +98,11 @@ export default function Configuracion() {
           <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
             <h2 className="fz-h2">Tienda en línea</h2>
             <div className="cl-grid cl-grid--3">
-              <Campo etiqueta="Pago en línea" ayuda={c.pasarelaActiva === 'prueba' ? 'Simulado: exige PAGOS_PRUEBA_SECRETO en Vercel. Nunca con clientes reales.' : 'Mercado Pago llega en la siguiente fase.'}>
+              <Campo etiqueta="Pago en línea" ayuda={c.pasarelaActiva === 'prueba' ? 'Simulado: exige PAGOS_PRUEBA_SECRETO en Vercel. Nunca con clientes reales.' : c.pasarelaActiva === 'mercadopago' ? 'Exige MERCADOPAGO_ACCESS_TOKEN y MERCADOPAGO_WEBHOOK_SECRET en Vercel.' : 'Sin pago en línea: se paga al recoger o al recibir.'}>
                 <Select valor={c.pasarelaActiva} onChange={(v) => setC({ ...c, pasarelaActiva: v as typeof c.pasarelaActiva })}>
                   <option value="ninguna">Sin pago en línea</option>
                   <option value="prueba">Pago de prueba (simulado)</option>
-                  <option value="mercadopago" disabled>
-                    Mercado Pago (próximamente)
-                  </option>
+                  <option value="mercadopago">Mercado Pago</option>
                 </Select>
               </Campo>
               <Campo etiqueta="Método de pago de lo cobrado en línea" ayuda="Su cuenta de Finanzas recibe esos cobros al entregar.">
@@ -125,7 +123,75 @@ export default function Configuracion() {
               <Check checked={c.tienda.pagarAlRecoger} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, pagarAlRecoger: v } })}>
                 Permitir pagar al recoger (el apartado dura las horas de arriba)
               </Check>
+              <Check checked={c.tienda.domicilioActivo} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, domicilioActivo: v } })}>
+                Entrega a domicilio
+              </Check>
             </div>
+            {c.tienda.domicilioActivo && (
+              <>
+                <div className="cl-grid cl-grid--3">
+                  <Campo etiqueta="Horario de entregas (lo ve el cliente)">
+                    <input className="fz-input" value={c.tienda.horarioEntrega ?? ''} onChange={(e) => setC({ ...c, tienda: { ...c.tienda, horarioEntrega: e.target.value || null } })} placeholder="Lunes a sábado, 10 a 19 h" />
+                  </Campo>
+                  <Campo etiqueta="Método para lo que cobra el repartidor" ayuda="Con su cuenta y «por confirmar»: se confirma al entregar.">
+                    <Select valor={c.tienda.metodoContraEntrega} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, metodoContraEntrega: v } })}>
+                      {!c.metodosPago.some((m) => m.clave === c.tienda.metodoContraEntrega) && <option value={c.tienda.metodoContraEntrega}>{c.tienda.metodoContraEntrega} (no existe: agrégalo abajo)</option>}
+                      {c.metodosPago.map((m) => (
+                        <option key={m.clave} value={m.clave}>
+                          {m.nombre}
+                        </option>
+                      ))}
+                    </Select>
+                  </Campo>
+                  <div className="cl-fieldset">
+                    <Check checked={c.tienda.pagarAlRecibir} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, pagarAlRecibir: v } })}>
+                      Permitir pagar al recibir
+                    </Check>
+                  </div>
+                </div>
+                <h3 className="fz-h3">Zonas de entrega</h3>
+                {c.tienda.zonas.length === 0 && <p className="fz-chico fz-tenue">Sin zonas no se ofrece el domicilio. Agrega una con sus códigos postales.</p>}
+                {c.tienda.zonas.map((z, i) => {
+                  const cambiar = (n: Partial<typeof z>) => setC({ ...c, tienda: { ...c.tienda, zonas: c.tienda.zonas.map((x, j) => (j === i ? { ...x, ...n } : x)) } })
+                  return (
+                    <div key={i} className="fa-zona">
+                      <div className="cl-grid cl-grid--3">
+                        <Campo etiqueta="Nombre">
+                          <input className="fz-input" value={z.nombre} onChange={(e) => cambiar({ nombre: e.target.value })} />
+                        </Campo>
+                        <Campo etiqueta="Envío ($)">
+                          <input className="fz-input" inputMode="decimal" value={z.envio} onChange={(e) => cambiar({ envio: Number(e.target.value) || 0 })} />
+                        </Campo>
+                        <Campo etiqueta="Pedido mínimo ($)">
+                          <input className="fz-input" inputMode="decimal" value={z.pedidoMinimo} onChange={(e) => cambiar({ pedidoMinimo: Number(e.target.value) || 0 })} />
+                        </Campo>
+                      </div>
+                      <div className="cl-grid cl-grid--3">
+                        <Campo etiqueta="Códigos postales" ayuda="Separados por coma o espacio.">
+                          <textarea className="fz-input" rows={2} value={z.codigosPostales.join(', ')} onChange={(e) => cambiar({ codigosPostales: e.target.value.split(/[^0-9]+/).filter(Boolean) })} />
+                        </Campo>
+                        <Campo etiqueta="Envío gratis desde ($)" ayuda="Vacío = nunca gratis.">
+                          <input className="fz-input" inputMode="decimal" value={z.gratisDesde ?? ''} onChange={(e) => cambiar({ gratisDesde: e.target.value ? Number(e.target.value) || 0 : null })} />
+                        </Campo>
+                        <div className="cl-fieldset">
+                          <Check checked={z.activa} onChange={(v) => cambiar({ activa: v })}>
+                            Activa
+                          </Check>
+                          <button type="button" className="fz-btn fz-btn--claro fz-btn--chico" onClick={() => setC({ ...c, tienda: { ...c.tienda, zonas: c.tienda.zonas.filter((_, j) => j !== i) } })}>
+                            Quitar zona
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div>
+                  <button type="button" className="fz-btn fz-btn--claro" onClick={() => setC({ ...c, tienda: { ...c.tienda, zonas: [...c.tienda.zonas, { nombre: `Zona ${c.tienda.zonas.length + 1}`, codigosPostales: [], envio: 0, pedidoMinimo: 0, gratisDesde: null, activa: true }] } })}>
+                    Agregar zona
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

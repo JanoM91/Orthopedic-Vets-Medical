@@ -1,6 +1,6 @@
 import React from 'react'
 import { sesionDeTienda } from '../../../../../lib/portal/sesionTienda'
-import { CabeceraTienda } from '../../../../../components/tienda/Cabecera'
+import { BarraTienda, CabeceraTienda } from '../../../../../components/tienda/Cabecera'
 import { Seguimiento } from '../../../../../components/tienda/Tienda'
 
 export const metadata = { title: 'Mi pedido', robots: { index: false } }
@@ -14,6 +14,7 @@ export default async function Pedido({ params, searchParams }: { params: Promise
       <main className="pt-main ti-main">
         <Seguimiento folio={folio} token={sp.t ?? ''} recienPagado={sp.pago === '1'} nuevo={sp.nuevo === '1'} />
       </main>
+      <BarraTienda sesion={sesion} />
     </>
   )
 }

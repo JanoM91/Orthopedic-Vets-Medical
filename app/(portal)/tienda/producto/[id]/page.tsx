@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 import { sesionDeTienda } from '../../../../../lib/portal/sesionTienda'
-import { CabeceraTienda } from '../../../../../components/tienda/Cabecera'
+import { BarraTienda, CabeceraTienda } from '../../../../../components/tienda/Cabecera'
 import { FichaProducto } from '../../../../../components/tienda/Tienda'
 import { Icono } from '../../../../../components/portal/comun'
 
@@ -16,6 +16,7 @@ export default async function Producto({ params }: { params: Promise<{ id: strin
         </Link>
         <FichaProducto id={Number(id) || 0} sesion={sesion} />
       </main>
+      <BarraTienda sesion={sesion} />
     </>
   )
 }

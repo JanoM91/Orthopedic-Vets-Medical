@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import React from 'react'
 import { Cabecera, Pie } from '../../../components/sitio/Piezas'
+import { BarraApp } from '../../../components/app/BarraApp'
 import { contenidoSitio } from '../../../lib/sitio/contenido'
 
 export const dynamic = 'force-dynamic'
@@ -16,6 +17,7 @@ export default async function Aviso() {
         {c.avisoPrivacidad ? c.avisoPrivacidad.split(/\n{2,}/).map((p, i) => <p key={i}>{p}</p>) : <p className="st-tenue">En preparación. Mientras tanto, escríbenos si tienes dudas sobre el uso de tus datos.</p>}
       </main>
       <Pie c={c} />
+      <BarraApp modo="visitante" activa={null} tienda={c.tienda} soloTelefono />
     </>
   )
 }

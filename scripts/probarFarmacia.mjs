@@ -1332,6 +1332,53 @@ async function main() {
   r = await invitado.get('/')
   ok(typeof r.data === 'string' && r.data.includes('href="/tienda"'), 'El sitio muestra «Tienda» con el módulo encendido', r.status)
 
+  /* ── recompra (fase 6a) ── */
+  console.log('\nRecompra (fase 6a)')
+  {
+    const hoyN = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10)
+    const masDias = (n) => { const d = new Date(hoyN + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+    const cronR = () => fetch(`${BASE}/api/farmacia/cron/diario`, { headers: { authorization: `Bearer ${ENV.CRON_SECRET}` } }).then(async (x) => ({ status: x.status, data: await x.json() }))
+    const pip = await crearProd({ nombre: `Pipeta recompra ${sufijo}`, linea: 'antiparasitario', grupo: 'III', unidadBase: 'pipeta', duracionDias: 1, publicadoTienda: true }, { nombre: 'Pipeta', factor: 1, precio: 100 }, [{ numero: `RC-${sufijo}`, caducidad: '2028-06-30', costo: 30, cantidad: 20 }])
+    ok(pip.prod?.duracionDias === 1, 'Producto con «duración por omisión» de 1 día por pipeta', pip.prod?.duracionDias)
+    r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: pip.pres.id, cantidad: 2 }], pagos: [{ metodo: 'efectivo', monto: 200 }] })
+    ok(r.status === 201, 'Venta de 2 pipetas para Max en mostrador', r.data)
+    r = await cronR()
+    ok(r.status === 200 && r.data.recompras >= 1 && r.data.avisosRecompra >= 1, 'Cron: calcula la recompra y manda el aviso (se acaba en 2 días; aviso 5 días antes)', r.data)
+    r = await portal.get('/api/tienda/mis-recompras')
+    const rc = (r.data ?? []).find((x) => x.producto.id === pip.prod.id)
+    ok(r.status === 200 && rc && rc.fechaEstimada === masDias(2) && rc.mascota?.id === max.id && rc.cantidad === 2 && rc.token?.length === 48, 'Portal: «se acaba» en 2 días, para Max, con su liga', rc ?? r.data)
+    r = await invitado.get(`/api/tienda/recompra/${rc.id}?t=${rc.token}`)
+    ok(r.status === 200 && r.data.presentacion?.id === pip.pres.id && r.data.presentacion.disponible && r.data.producto.enTienda && !r.data.producto.requiereReceta, '«Volver a pedir» sin sesión con la liga del correo', r.data)
+    ok(trazasDeCosto(r.data).length === 0, 'La liga de recompra no trae costos', trazasDeCosto(r.data))
+    r = await invitado.get(`/api/tienda/recompra/${rc.id}?t=${'0'.repeat(48)}`)
+    ok(r.status === 404, 'Con otro token: no existe', r.status)
+    r = await admin.get(`/api/far-recompras?depth=0&where[id][equals]=${rc.id}`)
+    const filaR = r.data?.docs?.[0]
+    ok(r.status === 200 && filaR?.avisadoPara === rc.fechaEstimada && filaR.token === undefined, 'API genérica: el equipo ve que ya se avisó, pero no el token', filaR)
+    r = await admin.post('/api/far-recompras', { clave: 'x' })
+    ok(r.status === 403, 'Nadie crea recompras por la API genérica', r.status)
+    r = await cronR()
+    r = await admin.get(`/api/far-recompras?depth=0&where[id][equals]=${rc.id}`)
+    ok(r.data?.docs?.[0]?.avisadoEn === filaR.avisadoEn, 'Otro cron el mismo día: no repite el aviso', r.data?.docs?.[0]?.avisadoEn)
+    r = await portal.get('/portal')
+    ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('Volver a pedir') && r.data.includes(`/tienda/recompra/${rc.id}`), 'Inicio del portal: «Volver a pedir» en Pendientes', r.status)
+    r = await invitado.get(`/tienda/recompra/${rc.id}?t=${rc.token}`)
+    ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('ti-main'), 'Página «Volver a pedir» renderiza', r.status)
+    r = await vendedor.post('/api/farmacia/ventas', { clave: clave(), mascotaId: max.id, renglones: [{ presentacionId: pip.pres.id, cantidad: 3 }], pagos: [{ metodo: 'efectivo', monto: 300 }] })
+    r = await cronR()
+    const tras = (await admin.get(`/api/far-recompras?depth=0&where[id][equals]=${rc.id}`)).data?.docs?.[0]
+    ok(r.data.avisosRecompra >= 1 && tras?.fechaEstimada === masDias(3) && tras.avisadoPara === masDias(3), 'Compró otra vez: nueva fecha (3 días) y nuevo aviso', tras)
+    r = await invitado.post(`/api/tienda/recompra/${rc.id}/baja`, { t: rc.token })
+    ok(r.status === 200 && r.data.activa === false, '«No me avises más» con la liga', r.data)
+    r = await portal.get('/api/tienda/mis-recompras')
+    ok(r.status === 200 && !(r.data ?? []).some((x) => x.id === rc.id), 'Dado de baja: ya no sale en el portal', r.data?.length)
+    r = await admin.post('/api/farmacia/configuracion', { tienda: { recompraActiva: false, recompraDiasAntes: 7 } })
+    ok(r.status === 200 && r.data.tienda.recompraActiva === false && r.data.tienda.recompraDiasAntes === 7, 'Configuración: apagar el aviso y cambiar los días', r.data?.tienda)
+    r = await admin.post('/api/farmacia/configuracion', { tienda: { recompraDiasAntes: 0 } })
+    ok(r.status === 400, 'Días de aviso fuera de rango: no', r.data)
+    await admin.post('/api/farmacia/configuracion', { tienda: { recompraActiva: true, recompraDiasAntes: 5 } })
+  }
+
   /* ── panel ── */
   console.log('\nPanel')
   for (const [ruta, texto] of [

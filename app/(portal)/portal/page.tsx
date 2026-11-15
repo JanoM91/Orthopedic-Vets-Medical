@@ -1,9 +1,11 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import React from 'react'
 import { portalCitas, proximasPorMascota } from '../../../lib/clinica/agenda'
 import { portalRefuerzosPendientes, portalResumen } from '../../../lib/clinica/servicio'
 import { pedidosDelTutor } from '../../../lib/farmacia/tienda'
+import { recomprasDelCliente, type RecompraVista } from '../../../lib/farmacia/recompra'
 import type { PedidoVista } from '../../../lib/farmacia/tiposTienda'
 import { partesLocales } from '../../../lib/localTime'
 import { leerModulos } from '../../../lib/modulos'
@@ -103,12 +105,14 @@ export default async function PortalInicio() {
   const tienda = Boolean(modulos.farmacia && modulos.tienda)
   const vivas = r.mascotas.filter((m) => m.estado !== 'fallecido')
   const ids = vivas.map((m) => m.id)
-  const [proximas, refuerzos, citas, pedidos, sesion] = await Promise.all([
+  const cabeceras = await headers()
+  const [proximas, refuerzos, citas, pedidos, sesion, recompras] = await Promise.all([
     proximasPorMascota(c, ids),
     portalRefuerzosPendientes(c, ids),
     portalCitas(c),
     tienda ? pedidosDelTutor(c.payload, c.tutor.id) : Promise.resolve([] as PedidoVista[]),
     tienda ? sesionDeTienda() : Promise.resolve(null),
+    tienda ? recomprasDelCliente(c.payload, cabeceras, r.cliente.id).catch(() => [] as RecompraVista[]) : Promise.resolve([] as RecompraVista[]),
   ])
   const hoy = hoyISO()
   const siguiente = [...proximas.values()].sort((a, b) => (a.dia + a.horaInicio).localeCompare(b.dia + b.horaInicio))[0] ?? null
@@ -136,6 +140,19 @@ export default async function PortalInicio() {
       titulo: 'Receta lista para surtir',
       detalle: `${rc.mascota ?? ''}${rc.mascota ? ' · ' : ''}${productos.map((p) => p.nombre).join(', ')}`,
       accion: { href: `/tienda?para=${rc.mascotaId}`, texto: 'Surtir', secundaria: true },
+    })
+  }
+  /* Recompra (Farmacia 6a): lo que se acaba en los próximos días, con «Volver a pedir» en un toque. */
+  /* Lo que es con receta ya sale arriba como «Receta lista para surtir». */
+  for (const rc of recompras.filter((x) => !x.producto.requiereReceta)) {
+    const ya = rc.fechaEstimada <= hoy
+    pendientes.push({
+      clave: `rcp-${rc.id}`,
+      tono: ya ? 'warn' : 'ok',
+      icono: 'bolsa',
+      titulo: `${rc.producto.nombre}${rc.mascota ? ` de ${rc.mascota.nombre}` : ''}`,
+      detalle: ya ? 'Ya se debió acabar' : `Se acaba alrededor del ${corta(rc.fechaEstimada)}`,
+      accion: { href: `/tienda/recompra/${rc.id}?t=${rc.token}`, texto: 'Volver a pedir', secundaria: true },
     })
   }
   const visibles = pendientes.slice(0, 5)

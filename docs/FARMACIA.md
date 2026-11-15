@@ -406,3 +406,28 @@ Solo presentación; la lógica, la API y las reglas de 5a/5b no cambiaron.
   - Repartidor y quién recibió.
   - Línea de tiempo vertical con la hora de cada paso, sacada del historial del pedido.
   - Aviso de cómo y cuánto se paga.
+
+## 17. Fase 6a · Recompra (15-nov-2026)
+
+Primera parte de la fase 6. Los planes van en la 6b.
+
+- **Cálculo:** cuando se vende un producto con **«duración por omisión»** (días que cubre una unidad base, p. ej. pipeta = 30), la fecha estimada en que se acaba es la fecha de la venta + unidades base × duración.
+  - No se usa la posología de la receta: nunca se interpretan dosis.
+  - Sin duración en el producto, no hay aviso.
+- **`far-recompras`:** una fila por quién compra + mascota + producto.
+  - Quién compra: el cliente de la clínica o, en la tienda, el correo del invitado.
+  - La compra más reciente manda.
+  - Solo la escribe `lib/farmacia/recompra.ts`. La API genérica deja leer al equipo que vende, sin el token, y responde 403 a crear, editar y borrar.
+- **Cron diario** (`/api/farmacia/cron/diario`): `cronRecompras()` recalcula con 400 días de ventas no anuladas.
+  - Manda un correo «¿Ya toca?» `recompraDiasAntes` días antes; por omisión, 5.
+  - El correo trae **Volver a pedir** (liga con token, sin sesión) y **No me avises más**.
+  - Un aviso por fecha estimada: si vuelve a comprar, la fecha cambia y vuelve a avisar.
+  - No avisa de lo que se acabó hace más de 7 días, de productos dados de baja o Grupo I, ni de mascotas fallecidas.
+  - Lo con receta (Grupo II) avisa sin liga de compra: «pídelo con su receta».
+- **Tienda:**
+  - `/tienda/recompra/:id?t=` muestra lo que compró, la cantidad y «Agregar y pagar». Lo pone en el carrito con la mascota elegida si es del tutor con sesión.
+  - API: `GET recompra/:id?t=`, `POST recompra/:id/baja`, `GET mis-recompras` (tutor).
+- **Portal:** en el inicio, Pendientes muestra lo que se acaba en los próximos 7 días con «Volver a pedir». Lo con receta no sale ahí: ya sale como receta lista para surtir.
+- **Configuración** → Tienda en línea: «Avisar por correo cuando se esté acabando…» (encendido por omisión) y los días de anticipación (1 a 30).
+- **Sin `RESEND_API_KEY`:** el adaptador solo deja el aviso en el registro, pero la fila queda como avisada para esa fecha.
+- **Migración:** `20261115_035641_farmacia_recompra` (tabla `far_recompras` con RLS y dos columnas en la configuración).

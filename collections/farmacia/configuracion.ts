@@ -171,6 +171,9 @@ export const FarmaciaConfiguracion: GlobalConfig = {
         { name: 'pagarAlRecibir', label: 'Permitir pagar al recibir (a domicilio)', type: 'checkbox', defaultValue: true },
         { name: 'metodoContraEntrega', label: 'Método de pago (clave) para lo cobrado por el repartidor', type: 'text', defaultValue: 'contra_entrega', admin: { description: 'Debe existir en «Métodos de pago», con su cuenta y «por confirmar»: se confirma cuando el repartidor entrega y cobra.' } },
         { name: 'horarioEntrega', label: 'Horario de entregas (texto para el cliente)', type: 'text' },
+        /* Fase 6a: aviso de recompra */
+        { name: 'recompraActiva', label: 'Avisar por correo cuando se esté acabando lo que compraron', type: 'checkbox', defaultValue: true, admin: { description: 'Usa la «duración por omisión» de cada producto (p. ej. pipeta = 30 días).' } },
+        { name: 'recompraDiasAntes', label: 'Días de anticipación del aviso', type: 'number', min: 1, max: 30, defaultValue: 5 },
         {
           name: 'zonas',
           label: 'Zonas de entrega',

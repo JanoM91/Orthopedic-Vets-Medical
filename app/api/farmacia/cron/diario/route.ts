@@ -5,10 +5,12 @@ import config from '@payload-config'
 import { cronDiario } from '@/lib/farmacia/alertas'
 import { revisarCron } from '@/lib/cron'
 import { expirarPedidos } from '@/lib/farmacia/tienda'
+import { cronRecompras } from '@/lib/farmacia/recompra'
 
 /**
  * Cron diario de la farmacia (fase 4): alertas, promociones por caducidad y
- * un solo correo resumen; también expira apartados vencidos de la tienda. Vercel Cron lo llama a las 14:00 UTC = 08:00 de
+ * un solo correo resumen; también expira apartados vencidos de la tienda y
+ * (fase 6a) recalcula las recompras y manda los avisos de «¿ya toca?». Vercel Cron lo llama a las 14:00 UTC = 08:00 de
  * México (vercel.json) con `Authorization: Bearer $CRON_SECRET`.
  * Sin CRON_SECRET responde 503 y no hace nada. Probar a mano:
  *   curl -H "Authorization: Bearer $CRON_SECRET" https://<dominio>/api/farmacia/cron/diario
@@ -27,7 +29,10 @@ export async function GET(req: NextRequest) {
       payload.logger.error(`[farmacia/cron] no se expiraron pedidos: ${String(e)}`)
       return 0
     })
-    return NextResponse.json({ ...(await cronDiario(payload)), pedidosExpirados }, { headers: { 'Cache-Control': 'no-store' } })
+    const resultado = await cronDiario(payload)
+    /* Recompra (6a): recalcula fechas y manda los avisos que tocan. Nunca tumba el cron. */
+    const recompra = await cronRecompras(payload)
+    return NextResponse.json({ ...resultado, pedidosExpirados, ...recompra }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e) {
     payload.logger.error(`[farmacia/cron] falló: ${String((e as Error)?.message ?? e)}`)
     return NextResponse.json({ error: 'El cron falló; revisa los registros.' }, { status: 500 })

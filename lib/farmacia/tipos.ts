@@ -143,6 +143,9 @@ export type ConfiguracionVista = {
     metodoContraEntrega: string
     horarioEntrega: string | null
     zonas: ZonaEntrega[]
+    /** Fase 6a: aviso de recompra por correo */
+    recompraActiva: boolean
+    recompraDiasAntes: number
   }
   exigirOriginalGrupoII: boolean
   metodosPago: MetodoPagoVista[]

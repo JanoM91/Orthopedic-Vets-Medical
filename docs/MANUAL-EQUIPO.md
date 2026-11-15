@@ -70,6 +70,8 @@ En computadora la pantalla va en dos columnas: el ticket a la izquierda y el cob
 
 **Reabasto** (Farmacia → Reabasto): lo que hay que pedir, por proveedor, ya en cajas completas. «Copiar pedido» o «WhatsApp» al proveedor.
 
+**Aviso de recompra** (Farmacia → Configuración → Tienda en línea): en cada producto que dura un tiempo llena **«Duración por omisión (días)»** (cuántos días cubre una unidad: pipeta = 30, tableta mensual = 30, bolsa de alimento = los días que suele durar). Al vender ese producto a un cliente con ficha (o en la tienda), el sistema calcula cuándo se acaba y, unos días antes (5 por omisión), le escribe con «Volver a pedir». No usa la receta ni calcula dosis.
+
 **Promociones**: el sistema propone descuento a lotes de venta libre por caducar; el encargado aprueba o rechaza.
 
 **Conteo físico** y **Ajustes y mermas**: siempre con motivo; todo queda en el kardex.

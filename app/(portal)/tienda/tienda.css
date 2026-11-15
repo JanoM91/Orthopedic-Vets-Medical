@@ -149,3 +149,109 @@
 .ti-cantidad button { width: 44px; height: 44px; border-radius: 12px; }
 .ti-buscar .pt-input { border-radius: 14px; }
 .ti-linea.is-on { background: var(--pt-primary); border-color: var(--pt-primary); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tienda dentro de la app (UX del cliente, fase 3, nov-2026; lienzo
+   «OVM · Experiencia del cliente»): «Para» en chips, asistente oscuro,
+   tarjetas con etiqueta y «+», ficha con barra de compra, carrito con
+   segmentos y desglose, seguimiento con línea de tiempo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* «Para» en una fila de chips */
+.ti-para { display: flex; flex-direction: column; gap: 6px; }
+.ti-para__fila { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ti-para__lbl { flex: none; font-size: 13px; font-weight: 700; color: #2a3a35; }
+.ti-para__chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding: 2px 16px 2px 0; min-width: 0; }
+.ti-para__chips::-webkit-scrollbar { display: none; }
+.ti-chip { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 3px 14px 3px 4px; border-radius: 999px; border: 1px solid #c9d4d0; background: #fff; color: var(--pt-ink); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.ti-chip .pt-avatar { width: 34px; height: 34px; font-size: 13px; }
+.ti-chip small { font-size: 12.5px; font-weight: 600; opacity: 0.8; }
+.ti-chip.is-on { background: var(--pt-primary); border-color: var(--pt-primary); color: #fff; }
+.ti-chip__i { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #effaf6; color: var(--pt-accent); }
+.ti-chip.is-on .ti-chip__i { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.ti-chip--quitar { width: 44px; padding: 0; justify-content: center; }
+.ti-chip--quitar .pt-i { width: 18px; height: 18px; }
+.ti-chip:focus-visible, .ti-mas:focus-visible, .ti-asistente__ir:focus-visible { outline: 3px solid var(--pt-menta); outline-offset: 2px; }
+@media (min-width: 900px) { .ti-para__chips { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; } }
+
+/* Asistente */
+.ti-asistente { gap: 10px; }
+.ti-asistente__cab { display: flex; align-items: center; gap: 8px; }
+.ti-chispa { color: var(--pt-menta); width: 22px; height: 22px; }
+.ti-asistente__fila { position: relative; }
+.ti-asistente__fila .pt-input { padding-right: 56px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; }
+.ti-asistente__fila .pt-input::placeholder { color: #b9d6cd; }
+.ti-asistente__fila .pt-input:focus { outline: 2px solid var(--pt-menta); border-color: transparent; }
+.ti-asistente__ir { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 11px; background: var(--pt-menta); color: var(--pt-primary); display: grid; place-items: center; cursor: pointer; }
+.ti-asistente__ir[disabled] { opacity: 0.55; cursor: not-allowed; }
+.ti-asistente p { font-size: 13px; }
+.ti-respuesta { background: #fff; color: var(--pt-ink); border-radius: 14px; padding: 12px; }
+
+/* Tarjeta de producto */
+.ti-prod { padding: 10px; gap: 6px; position: relative; border-color: #e1eae6; }
+.ti-prod__liga { position: relative; gap: 6px; }
+.ti-prod__tag { position: absolute; left: 8px; top: 8px; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(15, 47, 42, 0.12); }
+.ti-prod__nombre { font-size: 14.5px; -webkit-line-clamp: 2; line-clamp: 2; }
+.ti-prod__pres { font-size: 12.5px; color: var(--pt-muted); font-weight: 600; }
+.ti-prod__pie { flex-wrap: nowrap; }
+.ti-mas { flex: none; width: 44px; height: 44px; border: 0; border-radius: 13px; background: var(--pt-accent); color: #fff; display: grid; place-items: center; cursor: pointer; text-decoration: none; transition: background-color 0.15s ease; }
+.ti-mas .pt-i { width: 22px; height: 22px; stroke-width: 2.3; }
+.ti-mas.is-ok { background: var(--pt-primary); }
+.ti-mas--ver { background: #effaf6; color: var(--pt-accent); }
+
+/* Ficha */
+.ti-ficha { padding-bottom: 8px; }
+.ti-ficha__precio { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.ti-ficha__precio > b { font-size: 24px; font-variant-numeric: tabular-nums; }
+.ti-ficha__t { display: block; font-size: 14px; margin-bottom: 8px; }
+.ti-apto { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; font-size: 14px; }
+.ti-apto .pt-i { flex: none; width: 22px; height: 22px; stroke-width: 2.2; }
+.ti-apto--apto { background: #e3f8f2; color: #0b4f42; }
+.ti-apto--no_apto { background: var(--pt-bad-bg); color: var(--pt-bad); }
+.ti-apto--confirmar_peso { background: #fdf1dc; color: #6b4a07; }
+.ti-apto--sin_datos { background: #dbe9f7; color: #163a5c; }
+.ti-comprar { gap: 6px; }
+.ti-comprar .pt-resumen__fila { gap: 10px; }
+.ti-comprar .ti-comprar__btn { flex: 1; min-width: 0; }
+.ti-comprar .pt-enlace { min-height: 32px; }
+.ti-comprar__btn { white-space: nowrap; }
+@media (max-width: 379px) { .ti-comprar__precio { display: none; } .ti-comprar .ti-cantidad button { width: 40px; } }
+
+/* Carrito */
+.ti-opciones--dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ti-opciones--dos .ti-opcion { padding: 10px; }
+.ti-opciones--dos .ti-opcion small { font-size: 12px; }
+@media (max-width: 379px) { .ti-opciones--dos { grid-template-columns: minmax(0, 1fr); } }
+.ti-zona { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #e3f8f2; color: #0b4f42; font-size: 13.5px; }
+.ti-zona .pt-i { flex: none; width: 20px; height: 20px; }
+.ti-zona.is-no { background: var(--pt-bad-bg); color: var(--pt-bad); }
+.ti-resumen__lineas { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 14px; color: #2a3a35; padding: 0 2px; }
+.ti-resumen__lineas span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; }
+.ti-gratis { color: var(--pt-accent); font-weight: 700; }
+
+/* Seguimiento */
+.ti-estado { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 18px; background: var(--pt-primary); color: #fff; }
+.ti-estado h1 { font-size: 24px; line-height: 1.15; }
+.ti-estado p { font-size: 14px; color: #cfe9e1; overflow-wrap: anywhere; }
+.ti-estado__pill { align-self: flex-start; display: inline-flex; align-items: center; min-height: 26px; padding: 2px 10px; border-radius: 999px; background: var(--pt-menta); color: var(--pt-primary); font-size: 12.5px; font-weight: 800; }
+.ti-estado.is-cerrado { background: #3f4f4a; }
+.ti-estado.is-cerrado .ti-estado__pill { background: #e9eeec; color: #3f4f4a; }
+.ti-repartidor { flex-direction: row; align-items: center; gap: 12px; }
+.ti-repartidor > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.ti-tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ti-tl li { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 0 12px; padding-bottom: 14px; color: var(--pt-muted); }
+.ti-tl li:last-child { padding-bottom: 0; }
+.ti-tl li i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #e9eeec; color: #64748b; position: relative; z-index: 1; }
+.ti-tl li i .pt-i { width: 15px; height: 15px; stroke-width: 3; }
+.ti-tl li::after { content: ''; position: absolute; left: 13px; top: 30px; bottom: 0; width: 2px; background: #e1eae6; }
+.ti-tl li:last-child::after { display: none; }
+.ti-tl li > span { display: flex; flex-direction: column; padding-top: 3px; }
+.ti-tl li b { font-size: 15px; }
+.ti-tl li small { font-size: 12.5px; }
+.ti-tl li.is-hecho { color: var(--pt-ink); }
+.ti-tl li.is-hecho i { background: var(--pt-accent); color: #fff; }
+.ti-tl li.is-hecho::after { background: var(--pt-accent); }
+.ti-tl li.is-ahora { color: var(--pt-ink); }
+.ti-tl li.is-ahora i { background: var(--pt-menta); box-shadow: 0 0 0 4px #d0f5ea; }
+.ti-pago-aviso { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #fdf1dc; color: #5e3d06; font-size: 14px; }
+.ti-pago-aviso .pt-i { flex: none; width: 22px; height: 22px; }

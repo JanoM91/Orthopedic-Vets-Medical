@@ -12,6 +12,8 @@
 
 **Inicio:** arriba ves tu cita más cercana y tus pedidos en curso; debajo, **Pendientes**: vacunas vencidas o por vencer («Pedir refuerzo») y recetas listas para surtir. En **Perfil** están tus datos, tu ficha en la clínica y el contacto. En cada mascota, la pestaña **Compras** junta sus recetas y pedidos.
 
+**Tienda:** arriba eliges **para quién** compras (tus mascotas en chips; «Otra mascota» para especie y peso) y la tienda marca lo que le queda. El botón **+** agrega al carrito. En tu pedido ves cada paso con su hora y, a domicilio, quién te lo lleva.
+
 **Cómo moverte:** abajo siempre está la misma barra: **Inicio · Mascotas · Citas · Tienda · Perfil**. Si todavía no entras a tu cuenta, la barra dice **Inicio · Servicios · Citas · Tienda · Entrar**.
 
 ## Crear tu cuenta (una sola vez)

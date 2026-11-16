@@ -27,6 +27,7 @@ import React, { useCallback, useState } from 'react'
 import type { CatalogoClinica } from '../../../lib/clinica/tipos'
 import { api, Aviso, ClinicaCtx, Icono, iniciales } from './comun'
 import Agenda from './Agenda'
+import { Estetica } from './Estetica'
 import { FichaCliente, FormularioCliente } from './Cliente'
 import Importar from './Importar'
 import Inicio from './Inicio'
@@ -75,6 +76,7 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
   }
   else if (seccion === 'mascotas' && numero(id)) pantalla = <Expediente key={id} id={numero(id)!} pestana={query.ver ?? null} />
   else if (seccion === 'importar') pantalla = p.importar ? <Importar /> : <Aviso>Tu rol no incluye importar archivos.</Aviso>
+  else if (seccion === 'estetica') pantalla = catalogo.estetica?.activa && p.estetica ? <Estetica diaInicial={query.dia ?? null} /> : <Aviso>{catalogo.estetica?.activa ? 'Tu rol no incluye la estética.' : 'El módulo de Estética está apagado (Sistema → Instalación: módulos).'}</Aviso>
   else if (seccion === 'agenda') pantalla = p.agenda ? <Agenda diaInicial={query.dia ?? null} mascotaInicial={numero(query.mascota)} nuevaInicial={query.nueva === '1'} horaInicial={query.hora ?? null} recursoInicial={numero(query.recurso)} /> : <Aviso>Tu rol no incluye la agenda.</Aviso>
   else
     pantalla = (
@@ -97,6 +99,11 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
             {p.agenda && (
               <Link href={`${base}/agenda`} className={seccion === 'agenda' ? 'is-on' : ''}>
                 Agenda
+              </Link>
+            )}
+            {catalogo.estetica?.activa && p.estetica && (
+              <Link href={`${base}/estetica`} className={seccion === 'estetica' ? 'is-on' : ''}>
+                {catalogo.estetica.nombre}
               </Link>
             )}
             {p.editarPacientes && (
@@ -144,6 +151,12 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
               <Link href={`${base}/agenda`} className={seccion === 'agenda' ? 'is-on' : ''}>
                 <Icono n="lista" />
                 <span>Agenda</span>
+              </Link>
+            )}
+            {catalogo.estetica?.activa && p.estetica && (
+              <Link href={`${base}/estetica`} className={seccion === 'estetica' ? 'is-on' : ''}>
+                <Icono n="calendario" />
+                <span>Estética</span>
               </Link>
             )}
             {p.editarPacientes && (

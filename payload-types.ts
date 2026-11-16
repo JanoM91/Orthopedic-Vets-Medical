@@ -83,6 +83,8 @@ export interface Config {
     servicios: Servicio;
     citas: Cita;
     'est-adicionales': EstAdicional;
+    'est-fichas': EstFicha;
+    'est-fotos': EstFoto;
     tutores: Tutor;
     'far-productos': FarProducto;
     'far-presentaciones': FarPresentacion;
@@ -132,6 +134,8 @@ export interface Config {
     servicios: ServiciosSelect<false> | ServiciosSelect<true>;
     citas: CitasSelect<false> | CitasSelect<true>;
     'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
+    'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
+    'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
     tutores: TutoresSelect<false> | TutoresSelect<true>;
     'far-productos': FarProductosSelect<false> | FarProductosSelect<true>;
     'far-presentaciones': FarPresentacionesSelect<false> | FarPresentacionesSelect<true>;
@@ -302,6 +306,7 @@ export interface Rol {
     importar?: boolean | null;
     agenda?: boolean | null;
     configurarAgenda?: boolean | null;
+    estetica?: boolean | null;
   };
   /**
    * Casillas del módulo de Farmacia (docs/FARMACIA-PROMPT.md). Se revisan en el servidor en cada respuesta.
@@ -804,6 +809,9 @@ export interface Cita {
    */
   estetica?: {
     cotizada?: boolean | null;
+    fase?: ('recibida' | 'bano' | 'secado' | 'corte' | 'lista') | null;
+    faseEn?: string | null;
+    avisoListaEn?: string | null;
     talla?: ('chico' | 'mediano' | 'grande' | 'gigante') | null;
     precioBase?: number | null;
     total?: number | null;
@@ -871,6 +879,46 @@ export interface FinOperacion {
   anuladaPor?: (number | null) | User;
   anuladaEn?: string | null;
   claveIdempotencia?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-fichas".
+ */
+export interface EstFicha {
+  id: number;
+  cita: number | Cita;
+  mascota: number | Mascota;
+  dia: string;
+  queSeHizo?:
+    ('bano' | 'secado' | 'cepillado' | 'corte' | 'deslanado' | 'unas' | 'oidos' | 'glandulas' | 'dientes')[] | null;
+  corte?: string | null;
+  productos?: string | null;
+  comportamiento?: ('tranquila' | 'nerviosa' | 'bozal' | 'agresiva') | null;
+  hallazgos?: ('pulgas' | 'garrapatas' | 'heridas' | 'nudos' | 'piel' | 'oidos' | 'unas' | 'bultos' | 'otro')[] | null;
+  hallazgosNota?: string | null;
+  notaTutor?: string | null;
+  notaInterna?: string | null;
+  proximaSemanas?: number | null;
+  hallazgosAvisadosEn?: string | null;
+  realizadoPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-fotos".
+ */
+export interface EstFoto {
+  id: number;
+  cita: number | Cita;
+  mascota: number | Mascota;
+  momento: 'antes' | 'despues';
+  tipo: string;
+  datos: string;
+  bytes?: number | null;
+  subidaPor?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1725,6 +1773,14 @@ export interface PayloadLockedDocument {
         value: number | EstAdicional;
       } | null)
     | ({
+        relationTo: 'est-fichas';
+        value: number | EstFicha;
+      } | null)
+    | ({
+        relationTo: 'est-fotos';
+        value: number | EstFoto;
+      } | null)
+    | ({
         relationTo: 'tutores';
         value: number | Tutor;
       } | null)
@@ -1933,6 +1989,7 @@ export interface RolesSelect<T extends boolean = true> {
         importar?: T;
         agenda?: T;
         configurarAgenda?: T;
+        estetica?: T;
       };
   farmacia?:
     | T
@@ -2250,6 +2307,9 @@ export interface CitasSelect<T extends boolean = true> {
     | T
     | {
         cotizada?: T;
+        fase?: T;
+        faseEn?: T;
+        avisoListaEn?: T;
         talla?: T;
         precioBase?: T;
         total?: T;
@@ -2282,6 +2342,43 @@ export interface EstAdicionalesSelect<T extends boolean = true> {
   enLinea?: T;
   orden?: T;
   activo?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-fichas_select".
+ */
+export interface EstFichasSelect<T extends boolean = true> {
+  cita?: T;
+  mascota?: T;
+  dia?: T;
+  queSeHizo?: T;
+  corte?: T;
+  productos?: T;
+  comportamiento?: T;
+  hallazgos?: T;
+  hallazgosNota?: T;
+  notaTutor?: T;
+  notaInterna?: T;
+  proximaSemanas?: T;
+  hallazgosAvisadosEn?: T;
+  realizadoPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-fotos_select".
+ */
+export interface EstFotosSelect<T extends boolean = true> {
+  cita?: T;
+  mascota?: T;
+  momento?: T;
+  tipo?: T;
+  datos?: T;
+  bytes?: T;
+  subidaPor?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -29,6 +29,8 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia 
 
 **Estética** (si está encendida): al agendar un servicio de estética, el precio y el tiempo salen de la **talla** de la mascota (por su último peso, o la que fijes en «Editar datos»). Elige los **adicionales** (uñas, deslanado…) y ves el total antes de guardar. Ese total es el que se cobra al finalizar, aunque el precio cambie después. Si la mascota no tiene peso, la cita se agenda con «precio al recibirla»: **pésala al llegar**; sin peso o talla no se puede finalizar.
 
+**Tablero de estética** (Clínica → Estética, o «Estética» en el menú): las citas de estética del día por etapa. Toca **Recibir** cuando llega, luego **A baño**, **A secado**, **A corte** y **Lista**: al tutor le llega un correo y tienes el botón de **WhatsApp**. Cuando la recogen, **Entregar** (se cobra lo pactado). En **Ficha** anota qué se hizo, cómo se portó, lo que observaste (pulgas, heridas, bultos…; le llega al médico) y una nota para el tutor, y sube fotos de antes y después (hasta 3 de cada una). Si necesitó bozal, queda como alerta en su expediente.
+
 ## Médicos
 
 - **Expediente** (Clínica → mascota): arriba, los botones de lo que haces con el paciente enfrente: **WhatsApp** al tutor, **Receta**, **Nueva cita**, **Editar datos** y **+ Nueva nota**. «De un vistazo» resume cartilla (en rojo si hay un refuerzo vencido, con «Programar refuerzo»), último peso y cómo cambió, última nota y próxima cita. Las pestañas (resumen, cartilla, peso, notas, recetas, documentos, citas) cambian sin recargar y la dirección guarda dónde estás: «Atrás» regresa a la pestaña anterior y puedes compartir la liga a una pestaña.

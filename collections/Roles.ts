@@ -101,6 +101,7 @@ export const Roles: CollectionConfig = {
         { name: 'importar', label: 'Importar clientes y mascotas desde archivo (CSV o Excel)', type: 'checkbox', defaultValue: false },
         { name: 'agenda', label: 'Ver la agenda y gestionar citas (crear, confirmar, registrar llegada, finalizar, reprogramar, cancelar)', type: 'checkbox', defaultValue: false },
         { name: 'configurarAgenda', label: 'Configurar servicios, consultorios (recursos) y horario de atención', type: 'checkbox', defaultValue: false },
+        { name: 'estetica', label: 'Estética: tablero del día, ficha, fotos y entregar (si el módulo está encendido)', type: 'checkbox', defaultValue: false },
       ],
     },
     {

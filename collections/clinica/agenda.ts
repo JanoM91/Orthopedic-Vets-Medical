@@ -199,6 +199,14 @@ export const Citas: CollectionConfig = {
       admin: { description: 'Solo en servicios de estética con el módulo encendido. El cargo en Finanzas usa este total.' },
       fields: [
         { name: 'cotizada', label: 'Se cotizó por talla al agendar', type: 'checkbox', defaultValue: false },
+        {
+          type: 'row',
+          fields: [
+            { name: 'fase', label: 'Fase en el tablero de estética', type: 'select', options: [{ label: 'Recibida', value: 'recibida' }, { label: 'Baño', value: 'bano' }, { label: 'Secado', value: 'secado' }, { label: 'Corte y detalles', value: 'corte' }, { label: 'Lista para recoger', value: 'lista' }] },
+            { name: 'faseEn', label: 'Desde', type: 'date' },
+            { name: 'avisoListaEn', label: 'Aviso «lista» enviado', type: 'date' },
+          ],
+        },
         { type: 'row', fields: [{ name: 'talla', type: 'select', options: [{ label: 'Chica', value: 'chico' }, { label: 'Mediana', value: 'mediano' }, { label: 'Grande', value: 'grande' }, { label: 'Gigante', value: 'gigante' }] }, { name: 'precioBase', label: 'Precio del servicio', type: 'number' }, { name: 'total', label: 'Total', type: 'number' }] },
         {
           name: 'adicionales',

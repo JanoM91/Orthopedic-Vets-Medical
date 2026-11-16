@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import React, { useEffect } from 'react'
 
 export type EnlaceTrabajo = {
-  clave: 'hoy' | 'agenda' | 'pacientes' | 'mostrador' | 'farmacia' | 'finanzas'
+  clave: 'hoy' | 'agenda' | 'estetica' | 'pacientes' | 'mostrador' | 'farmacia' | 'finanzas'
   texto: string
   href: string
   /** Alertas abiertas de farmacia (solo se muestra si hay). */
@@ -24,6 +24,13 @@ const TRAZOS: Record<EnlaceTrabajo['clave'], React.ReactNode> = {
     <>
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
+    </>
+  ),
+  estetica: (
+    <>
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12" />
     </>
   ),
   pacientes: (

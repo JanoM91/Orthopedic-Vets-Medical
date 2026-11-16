@@ -12,6 +12,7 @@ import { FormularioCliente } from './Cliente'
 import RecetasMascota from '../farmacia/RecetasMascota'
 import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
+import { EsteticaExpediente } from './Estetica'
 import {
   api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
   TIPO_CARTILLA_LABEL, useCarga, useClinica,
@@ -596,6 +597,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
               </div>
             </div>
           </section>
+          {catalogo.estetica?.activa && <EsteticaExpediente mascotaId={m.id} />}
           <div className="cl-dos">
             <div className="fz-tarjeta cl-caja fz-stack fz-stack--chico">
               <h2 className="fz-h2">Datos</h2>

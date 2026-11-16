@@ -39,6 +39,7 @@ export default async function MenuTrabajo({ payload, user }: ServerProps) {
   const enlaces: EnlaceTrabajo[] = []
   if (p.panel) enlaces.push({ clave: 'hoy', texto: 'Hoy', href: rutaAdmin })
   if (modulos.clinica && p.clinica.agenda) enlaces.push({ clave: 'agenda', texto: 'Agenda', href: `${rutaAdmin}/clinica/agenda` })
+  if (modulos.clinica && modulos.estetica && p.clinica.estetica) enlaces.push({ clave: 'estetica', texto: 'Estética', href: `${rutaAdmin}/clinica/estetica` })
   if (modulos.clinica && usaClinica(p)) enlaces.push({ clave: 'pacientes', texto: 'Pacientes', href: `${rutaAdmin}/clinica` })
   if (conFarmacia && p.farmacia.vender) enlaces.push({ clave: 'mostrador', texto: 'Mostrador', href: `${rutaAdmin}/farmacia/vender` })
   if (conFarmacia) enlaces.push({ clave: 'farmacia', texto: 'Farmacia', href: `${rutaAdmin}/farmacia`, contador: alertas || undefined })

@@ -126,7 +126,17 @@ export default function Configuracion() {
               <Check checked={c.tienda.domicilioActivo} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, domicilioActivo: v } })}>
                 Entrega a domicilio
               </Check>
+              <Check checked={c.tienda.recompraActiva} onChange={(v) => setC({ ...c, tienda: { ...c.tienda, recompraActiva: v } })}>
+                Avisar por correo cuando se esté acabando lo que compraron (usa la «duración por omisión» de cada producto)
+              </Check>
             </div>
+            {c.tienda.recompraActiva && (
+              <div className="cl-grid cl-grid--3">
+                <Campo etiqueta="Días antes del aviso de recompra" ayuda="El correo sale estos días antes de la fecha estimada.">
+                  <input className="fz-input" type="number" inputMode="numeric" min={1} max={30} value={c.tienda.recompraDiasAntes} onChange={(e) => setC({ ...c, tienda: { ...c.tienda, recompraDiasAntes: Number(e.target.value) || 5 } })} />
+                </Campo>
+              </div>
+            )}
             {c.tienda.domicilioActivo && (
               <>
                 <div className="cl-grid cl-grid--3">

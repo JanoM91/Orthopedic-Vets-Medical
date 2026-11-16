@@ -191,7 +191,7 @@ const CONFIG_POR_OMISION: ConfiguracionVista = {
     { clave: 'transferencia', nombre: 'Transferencia', tipo: 'transferencia', cuentaId: null, porConfirmar: true, activo: true },
   ],
   pasarelaActiva: 'ninguna',
-  tienda: { pagarAlRecoger: true, metodoPagoEnLinea: 'en_linea', correosPedidos: null, domicilioActivo: false, pagarAlRecibir: true, metodoContraEntrega: 'contra_entrega', horarioEntrega: null, zonas: [] },
+  tienda: { pagarAlRecoger: true, metodoPagoEnLinea: 'en_linea', correosPedidos: null, domicilioActivo: false, pagarAlRecibir: true, metodoContraEntrega: 'contra_entrega', horarioEntrega: null, zonas: [], recompraActiva: true, recompraDiasAntes: 5 },
 }
 
 /** «91000, 91010 91020» → ['91000','91010','91020'] (5 dígitos, sin repetidos). */
@@ -231,6 +231,8 @@ function vistaConfiguracion(g: FarmaciaConfiguracion | null): ConfiguracionVista
       pagarAlRecibir: g.tienda?.pagarAlRecibir == null ? d.tienda.pagarAlRecibir : Boolean(g.tienda.pagarAlRecibir),
       metodoContraEntrega: t(g.tienda?.metodoContraEntrega) ?? d.tienda.metodoContraEntrega,
       horarioEntrega: t(g.tienda?.horarioEntrega),
+      recompraActiva: g.tienda?.recompraActiva == null ? d.tienda.recompraActiva : Boolean(g.tienda.recompraActiva),
+      recompraDiasAntes: num(g.tienda?.recompraDiasAntes, d.tienda.recompraDiasAntes),
       zonas: (g.tienda?.zonas ?? []).map((z) => ({
         nombre: z.nombre,
         codigosPostales: listaCP(z.codigosPostales),
@@ -285,6 +287,8 @@ export async function actualizarConfiguracion(ctx: Ctx, entrada: unknown): Promi
         pagarAlRecibir: z.boolean(),
         metodoContraEntrega: z.string().trim().toLowerCase().regex(/^[a-z0-9_-]{2,30}$/, 'La clave del método va sin espacios ni acentos.'),
         horarioEntrega: z.string().trim().max(200).nullable(),
+        recompraActiva: z.boolean(),
+        recompraDiasAntes: z.coerce.number().int().min(1, 'El aviso va de 1 a 30 días antes.').max(30, 'El aviso va de 1 a 30 días antes.'),
         zonas: z
           .array(
             z.object({

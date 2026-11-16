@@ -255,3 +255,9 @@
 .ti-tl li.is-ahora i { background: var(--pt-menta); box-shadow: 0 0 0 4px #d0f5ea; }
 .ti-pago-aviso { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #fdf1dc; color: #5e3d06; font-size: 14px; }
 .ti-pago-aviso .pt-i { flex: none; width: 22px; height: 22px; }
+
+/* Volver a pedir (Farmacia, fase 6a) */
+.ti-recompra { max-width: 560px; gap: 12px; }
+.ti-recompra h1 { font-size: 24px; }
+.ti-recompra__comprar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ti-recompra__comprar .pt-btn { flex: 1; min-width: 200px; }

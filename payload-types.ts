@@ -100,6 +100,7 @@ export interface Config {
     'far-pedidos': FarPedido;
     'far-pagos-eventos': FarPagoEvento;
     'far-evidencias': FarEvidencia;
+    'far-recompras': FarRecompra;
     'fin-cuentas': FinCuenta;
     'fin-categorias': FinCategoria;
     'fin-actividades': FinActividad;
@@ -146,6 +147,7 @@ export interface Config {
     'far-pedidos': FarPedidosSelect<false> | FarPedidosSelect<true>;
     'far-pagos-eventos': FarPagosEventosSelect<false> | FarPagosEventosSelect<true>;
     'far-evidencias': FarEvidenciasSelect<false> | FarEvidenciasSelect<true>;
+    'far-recompras': FarRecomprasSelect<false> | FarRecomprasSelect<true>;
     'fin-cuentas': FinCuentasSelect<false> | FinCuentasSelect<true>;
     'fin-categorias': FinCategoriasSelect<false> | FinCategoriasSelect<true>;
     'fin-actividades': FinActividadesSelect<false> | FinActividadesSelect<true>;
@@ -1443,6 +1445,31 @@ export interface FarEvidencia {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-recompras".
+ */
+export interface FarRecompra {
+  id: number;
+  clave: string;
+  cliente?: (number | null) | Cliente;
+  correo?: string | null;
+  nombre?: string | null;
+  mascota?: (number | null) | Mascota;
+  producto: number | FarProducto;
+  presentacion: number | FarPresentacion;
+  cantidad: number;
+  unidades: number;
+  ultimaVenta: number | FarVenta;
+  ultimaCompra: string;
+  fechaEstimada: string;
+  avisadoPara?: string | null;
+  avisadoEn?: string | null;
+  activa?: boolean | null;
+  token: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-movimientos".
  */
 export interface FinMovimiento {
@@ -1646,6 +1673,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'far-evidencias';
         value: number | FarEvidencia;
+      } | null)
+    | ({
+        relationTo: 'far-recompras';
+        value: number | FarRecompra;
       } | null)
     | ({
         relationTo: 'fin-cuentas';
@@ -2604,6 +2635,30 @@ export interface FarEvidenciasSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-recompras_select".
+ */
+export interface FarRecomprasSelect<T extends boolean = true> {
+  clave?: T;
+  cliente?: T;
+  correo?: T;
+  nombre?: T;
+  mascota?: T;
+  producto?: T;
+  presentacion?: T;
+  cantidad?: T;
+  unidades?: T;
+  ultimaVenta?: T;
+  ultimaCompra?: T;
+  fechaEstimada?: T;
+  avisadoPara?: T;
+  avisadoEn?: T;
+  activa?: T;
+  token?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "fin-cuentas_select".
  */
 export interface FinCuentasSelect<T extends boolean = true> {
@@ -2957,6 +3012,11 @@ export interface FarmaciaConfiguracion {
      */
     metodoContraEntrega?: string | null;
     horarioEntrega?: string | null;
+    /**
+     * Usa la «duración por omisión» de cada producto (p. ej. pipeta = 30 días).
+     */
+    recompraActiva?: boolean | null;
+    recompraDiasAntes?: number | null;
     zonas?:
       | {
           nombre: string;
@@ -3135,6 +3195,8 @@ export interface FarmaciaConfiguracionSelect<T extends boolean = true> {
         pagarAlRecibir?: T;
         metodoContraEntrega?: T;
         horarioEntrega?: T;
+        recompraActiva?: T;
+        recompraDiasAntes?: T;
         zonas?:
           | T
           | {

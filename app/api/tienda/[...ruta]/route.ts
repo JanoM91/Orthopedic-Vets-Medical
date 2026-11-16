@@ -4,6 +4,7 @@ import config from '@payload-config'
 
 import { firmarPrueba, proveedorPago } from '@/lib/farmacia/pagos'
 import { ErrorFarmacia } from '@/lib/farmacia/servicio'
+import { bajaRecompra, recompraPublica, recomprasDelCliente } from '@/lib/farmacia/recompra'
 import { sugerirProductos } from '@/lib/farmacia/sugerir'
 import { cancelarPorCliente, catalogoTienda, cotizarEnvio, crearPedido, pagarPedido, pedidosDelTutor, productoTienda, recibirAviso, seguimiento, sesionTienda } from '@/lib/farmacia/tienda'
 import { ErrorConCodigo } from '@/lib/farmacia/util'
@@ -26,6 +27,9 @@ import { rateLimit } from '@/lib/rateLimit'
  *   POST pedidos/:folio/cancelar        { t, motivo? }
  *   POST pedidos/:folio/pagar           { t } → { url } de la pasarela
  *   POST webhook/:proveedor             aviso de la pasarela (firma obligatoria; Mercado Pago: x-signature)
+ *   GET  recompra/:id?t=<token>         «Volver a pedir» desde el correo (6a)
+ *   POST recompra/:id/baja              { t } «No me avises más» (6a)
+ *   GET  mis-recompras                  tutor con sesión: lo que se le acaba pronto (6a)
  *   POST pago-prueba/:folio             { t, ref, resultado } SOLO con PAGOS_PRUEBA_SECRETO:
  *                                       firma el aviso y lo pasa por el mismo camino que uno real.
  */
@@ -87,6 +91,13 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       return json(await pedidosDelTutor(payload, t.tutor.id))
     }
     if (a === 'pedidos' && b && !c) return json(await seguimiento(payload, b, q.get('t') ?? ''))
+    if (a === 'recompra' && b && !c) return json(await recompraPublica(payload, req.headers, Number(b) || 0, q.get('t') ?? ''))
+    if (a === 'mis-recompras' && !b) {
+      const t = await contextoTutor(payload, req.headers)
+      if (!t) return json({ error: 'Entra al portal.' }, 401)
+      const cid = typeof t.tutor.cliente === 'object' ? t.tutor.cliente?.id : t.tutor.cliente
+      return json(cid ? await recomprasDelCliente(payload, req.headers, cid) : [])
+    }
   }
 
   if (metodo === 'POST') {
@@ -96,6 +107,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
       const d = await leerJson(req)
       return json(await cancelarPorCliente(payload, b, String(d.t ?? ''), typeof d.motivo === 'string' ? d.motivo : null))
     }
+    if (a === 'recompra' && b && c === 'baja') return json(await bajaRecompra(payload, Number(b) || 0, String((await leerJson(req)).t ?? '')))
     if (a === 'pedidos' && b && c === 'pagar') return json(await pagarPedido(payload, b, String((await leerJson(req)).t ?? '')))
     if (a === 'pago-prueba' && b && !c) {
       const prov = proveedorPago('prueba')

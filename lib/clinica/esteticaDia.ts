@@ -1,3 +1,4 @@
+import { MAX_FOTO_BYTES } from '../fotosBase64'
 import type { Payload } from 'payload'
 import { z } from 'zod'
 
@@ -280,7 +281,7 @@ export async function guardarFicha(ctx: Ctx, citaId: number, entrada: unknown): 
 /* ───────────────────────────── fotos ───────────────────────────── */
 
 const TIPOS_FOTO = /^image\/(jpeg|png|webp)$/i
-const MAX_FOTO = 600 * 1024
+const MAX_FOTO = MAX_FOTO_BYTES
 const MAX_POR_MOMENTO = 3
 
 export async function subirFotoEstetica(ctx: Ctx, citaId: number, momento: string, archivo: File | null): Promise<FichaVista> {

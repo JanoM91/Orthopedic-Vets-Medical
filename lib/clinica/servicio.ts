@@ -1,3 +1,4 @@
+import { MAX_FOTO_BYTES } from '../fotosBase64'
 import type { Payload, PayloadRequest, Where } from 'payload'
 import { commitTransaction, createLocalReq, initTransaction, killTransaction } from 'payload'
 import { get as blobGet, put as blobPut } from '@vercel/blob'
@@ -720,7 +721,7 @@ export async function borrarNota(ctx: Ctx, id: number): Promise<void> {
 /* ───────────────────────────── foto de la mascota ───────────────────────────── */
 
 /* La pantalla la reduce a ~640 px en JPEG antes de subirla; aquí solo se pone un tope. */
-const MAX_FOTO = 600 * 1024
+const MAX_FOTO = MAX_FOTO_BYTES
 const TIPOS_FOTO = /^image\/(jpeg|png|webp)$/i
 
 async function guardarFoto(payload: Payload, mascotaId: number, archivo: File, por: string): Promise<string> {

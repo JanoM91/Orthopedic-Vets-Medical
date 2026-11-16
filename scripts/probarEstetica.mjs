@@ -253,7 +253,8 @@ async function main() {
   const jpeg = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64')
   const subirFoto = (momento) => {
     const fd = new FormData()
-    fd.append('archivo', new Blob([jpeg], { type: 'image/jpeg' }), 'f.jpg')
+    /* De tamaño real (300 KB): el tope de texto de Payload rechazaba más de ~30 KB (17-nov-2026). */
+    fd.append('archivo', new Blob([jpeg, crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(40000))], { type: 'image/jpeg' }), 'f.jpg')
     fd.append('momento', momento)
     return estilista.llamar('POST', `/api/clinica/estetica/citas/${cOso.id}/fotos`, fd)
   }

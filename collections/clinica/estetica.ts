@@ -1,6 +1,7 @@
 import type { CollectionConfig, GlobalConfig } from 'payload'
 import { esPersonal } from '../../lib/permisos'
 import { equipoCon, nadie } from './acceso'
+import { MAX_FOTO_BASE64 } from '../../lib/fotosBase64'
 
 /**
  * Estética (módulo activable «estetica», nov-2026). Submarca de la clínica
@@ -151,7 +152,7 @@ export const EstFotos: CollectionConfig = {
     { name: 'mascota', type: 'relationship', relationTo: 'mascotas', required: true, index: true },
     { name: 'momento', type: 'select', required: true, options: [{ label: 'Antes', value: 'antes' }, { label: 'Después', value: 'despues' }] },
     { name: 'tipo', type: 'text', required: true },
-    { name: 'datos', type: 'textarea', required: true },
+    { name: 'datos', type: 'textarea', required: true, maxLength: MAX_FOTO_BASE64 },
     { name: 'bytes', type: 'number' },
     { name: 'subidaPor', type: 'text' },
   ],

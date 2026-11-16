@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { APIError } from 'payload'
 import { esPersonal } from '../../lib/permisos'
 import { equipoCon, leerEquipoOTutor, nadie, porMascotaDelCliente, validarFechaOpcional } from './acceso'
+import { MAX_FOTO_BASE64 } from '../../lib/fotosBase64'
 
 /**
  * Expediente de la mascota (octubre de 2026): cartilla, notas clínicas y documentos.
@@ -252,7 +253,7 @@ export const MasFotos: CollectionConfig = {
   fields: [
     { name: 'mascota', type: 'relationship', relationTo: 'mascotas', required: true, unique: true, index: true },
     { name: 'tipo', label: 'Tipo de contenido', type: 'text', required: true },
-    { name: 'datos', label: 'Imagen (base64)', type: 'textarea', required: true },
+    { name: 'datos', label: 'Imagen (base64)', type: 'textarea', required: true, maxLength: MAX_FOTO_BASE64 },
     { name: 'bytes', type: 'number' },
     { name: 'subidaPor', label: 'Subida por', type: 'text' },
   ],

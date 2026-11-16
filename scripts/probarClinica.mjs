@@ -439,6 +439,16 @@ async function main() {
   ok(r.status === 400, 'Una foto demasiado pesada se rechaza')
   r = await tutor.post(`/api/clinica/portal/mascotas/${luna.id}/foto`, foto())
   ok(r.status === 200 && r.data.foto, 'El tutor pone foto a Luna desde el portal')
+  /* Foto de tamaño real (17-nov-2026): antes, una foto de más de ~30 KB chocaba con el tope de 40 000 caracteres de Payload. */
+  {
+    const real = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), (await import('node:crypto')).randomBytes(320 * 1024)])
+    r = await tutor.post(`/api/clinica/portal/mascotas/${luna.id}/foto`, foto('image/jpeg', real))
+    ok(r.status === 200 && r.data.foto, 'El tutor sube una foto de tamaño real (320 KB)', r.status === 200 ? null : r.data)
+    r = await tutor.llamar('GET', r.data?.foto || `/api/clinica/fotos/mascotas/${luna.id}`)
+    ok(r.status === 200 && (r.headers.get('content-type') || '').startsWith('image/jpeg'), 'Y se ve (imagen JPEG)', r.status)
+    r = await recepcion.post(`/api/clinica/mascotas/${toby.id}/foto`, foto('image/jpeg', real))
+    ok(r.status === 200, 'El equipo también sube una foto de tamaño real', r.status === 200 ? null : r.data)
+  }
   r = await tutor.get('/api/clinica/portal/resumen')
   ok(r.data.mascotas.every((m) => m.foto), 'Resumen del portal: las dos mascotas con foto', r.data.mascotas?.map((m) => m.foto))
   r = await tutor.get('/api/clinica/portal/citas')

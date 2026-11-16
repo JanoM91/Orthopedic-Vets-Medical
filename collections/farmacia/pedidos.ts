@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { esPersonal, permisosDe } from '../../lib/permisos'
 import { moduloActivo } from '../../lib/modulos'
 import { folioParaId, nadie } from './acceso'
+import { MAX_FOTO_BASE64 } from '../../lib/fotosBase64'
 
 /**
  * Pedidos de la tienda en línea (Farmacia, fase 5a, nov-2026) y eventos de la
@@ -49,7 +50,7 @@ export const FarEvidencias: CollectionConfig = {
   fields: [
     { name: 'pedido', type: 'relationship', relationTo: 'far-pedidos', required: true, unique: true, index: true },
     { name: 'tipo', type: 'text', required: true },
-    { name: 'datos', type: 'textarea', required: true },
+    { name: 'datos', type: 'textarea', required: true, maxLength: MAX_FOTO_BASE64 },
     { name: 'bytes', type: 'number' },
     { name: 'subidaPor', type: 'text' },
   ],

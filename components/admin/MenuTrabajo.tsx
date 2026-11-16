@@ -37,7 +37,9 @@ export default async function MenuTrabajo({ payload, user }: ServerProps) {
   }
 
   const enlaces: EnlaceTrabajo[] = []
-  if (p.panel) enlaces.push({ clave: 'hoy', texto: 'Hoy', href: rutaAdmin })
+  /* La estilista (solo estética) no tiene «Hoy»: el tablero la manda a Estética (components/admin/Tablero.tsx). */
+  const soloEstetica = modulos.clinica && modulos.estetica && p.clinica.estetica && !p.clinica.agenda && !usaFinanzas(p) && !conFarmacia
+  if (p.panel && !soloEstetica) enlaces.push({ clave: 'hoy', texto: 'Hoy', href: rutaAdmin })
   if (modulos.clinica && p.clinica.agenda) enlaces.push({ clave: 'agenda', texto: 'Agenda', href: `${rutaAdmin}/clinica/agenda` })
   if (modulos.clinica && modulos.estetica && p.clinica.estetica) enlaces.push({ clave: 'estetica', texto: 'Estética', href: `${rutaAdmin}/clinica/estetica` })
   if (modulos.clinica && usaClinica(p)) enlaces.push({ clave: 'pacientes', texto: 'Pacientes', href: `${rutaAdmin}/clinica` })

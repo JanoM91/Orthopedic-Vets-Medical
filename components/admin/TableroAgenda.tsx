@@ -16,6 +16,8 @@ export type FilaAgenda = {
   lugar: string
   estado: EstadoCitaVista
   siguientes: EstadoCitaVista[]
+  /** Cita de estética con tablero disponible: sus pasos se dan ahí (llevan la etapa y el aviso «lista»). */
+  tableroEstetica?: string | null
 }
 
 /**
@@ -85,12 +87,17 @@ export function AgendaDeHoy({ filas, base, verExpediente }: { filas: FilaAgenda[
               <span className={`cl-st cl-st--${f.estado}`}>{ESTADO_CITA_LABEL[f.estado]}</span>
             </span>
             <span className="hoy__accion-cita">
-              {paso && (
+              {f.tableroEstetica && f.estado !== 'finalizada' && (
+                <Link className="fz-btn fz-btn--claro fz-btn--chico" href={f.tableroEstetica}>
+                  En el tablero
+                </Link>
+              )}
+              {paso && !f.tableroEstetica && (
                 <button type="button" className="fz-btn fz-btn--claro fz-btn--chico" disabled={ocupado === f.id} onClick={() => void avanzar(f, paso.estado)}>
                   {ocupado === f.id ? 'Guardando…' : paso.texto}
                 </button>
               )}
-              {f.estado === 'atencion' && verExpediente && (
+              {f.estado === 'atencion' && verExpediente && !f.tableroEstetica && (
                 <Link className="fz-btn fz-btn--chico hoy__accion" href={`${base}/mascotas/${f.mascotaId}?ver=notas`}>
                   Abrir nota
                 </Link>

@@ -1416,3 +1416,115 @@ input[type='time']::-webkit-date-and-time-value {
 .fa-cobrado { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--fz-linea, #d9e4e0); border-radius: 10px; cursor: pointer; }
 .fa-cobrado input { width: 20px; height: 20px; accent-color: #0b6b59; }
 .fa-zona { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; }
+
+/* ─── Hoy · estética del día y pendientes de la tienda (UX del panel 1, nov-2026) ─── */
+.hoy__principal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.hoy__est-etapas {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@container hoy-agenda (min-width: 520px) {
+  .hoy__est-etapas {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.hoy__est-etapa {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--mx-sand);
+  font-size: 12.5px;
+  color: var(--mx-muted);
+}
+.hoy__est-etapa b {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-ink);
+}
+.hoy__est-etapa--lista {
+  background: #e3f8f2;
+  color: #0b6b59;
+}
+.hoy__est-etapa--lista b {
+  color: #0b6b59;
+}
+.hoy__est-etapa.is-cero {
+  opacity: 0.6;
+}
+.hoy__est-fila {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'hora quien quien'
+    'hora chip accion';
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--mx-line);
+  font-size: 14px;
+}
+.hoy__est-fila:first-child {
+  border-top: 0;
+}
+.hoy__est-fila .hoy__est-chip {
+  grid-area: chip;
+  justify-self: start;
+}
+.hoy__est-fila > :last-child {
+  grid-area: accion;
+  justify-self: end;
+}
+@container hoy-agenda (min-width: 620px) {
+  .hoy__est-fila {
+    grid-template-columns: 52px minmax(0, 1fr) 150px 116px;
+    grid-template-areas: 'hora quien chip accion';
+  }
+}
+.hoy__est-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #eef2f6;
+  color: #334155;
+}
+.hoy__est-chip--bano,
+.hoy__est-chip--secado,
+.hoy__est-chip--corte,
+.hoy__est-chip--recibida {
+  background: #e6effa;
+  color: #1f4f7a;
+}
+.hoy__est-chip--lista {
+  background: #e3f8f2;
+  color: #0b6b59;
+}
+.hoy__est-mas {
+  padding: 8px 0 0;
+  border-top: 1px solid var(--mx-line);
+  font-size: 13.5px;
+}
+.hoy__tipo--estetica {
+  background: #e6effa;
+  color: #1f4f7a;
+}
+.cl-est-vacio {
+  flex-direction: column;
+}
+.cl-est-vacio p {
+  margin: 0;
+}

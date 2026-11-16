@@ -21,10 +21,15 @@ const SIGUIENTE: Partial<Record<EtapaEstetica, { a: EtapaEstetica; texto: string
   corte: { a: 'lista', texto: 'Lista' },
   lista: { a: 'entregada', texto: 'Entregar' },
 }
+const sumarDias = (d: string, n: number) => {
+  const x = new Date(d + 'T12:00:00Z')
+  x.setUTCDate(x.getUTCDate() + n)
+  return x.toISOString().slice(0, 10)
+}
 const pesos = (n: number) => `$${n.toLocaleString('es-MX', { maximumFractionDigits: 2 })}`
 
 export function Estetica({ diaInicial }: { diaInicial: string | null }) {
-  const { catalogo } = useClinica()
+  const { catalogo, base } = useClinica()
   const [dia, setDia] = useState(diaInicial ?? hoyISO())
   const t = useCarga(() => api.get<TableroEstetica>('estetica', { dia }), [dia])
   const [abierta, setAbierta] = useState<TarjetaEstetica | null>(null)
@@ -52,14 +57,14 @@ export function Estetica({ diaInicial }: { diaInicial: string | null }) {
           <p className="fz-eyebrow">Estética</p>
           <h1 className="fz-h1">{datos?.marca ?? 'Estética'} · {dia === hoyISO() ? 'hoy' : fecha(dia)}</h1>
         </div>
-        <div className="fz-acciones-fin">
-          <InputFecha valor={dia} onChange={(v) => v && setDia(v)} />
-          {catalogo.permisos.superadmin && (
+        {datos?.faltaRoles && (
+          <div className="fz-acciones-fin">
             <Boton
               chico
               onClick={async () => {
                 try {
                   setArranque((await api.post<{ hecho: string[] }>('estetica/arranque')).hecho.join(' · '))
+                  t.poner({ ...datos, faltaRoles: false })
                 } catch (e) {
                   setArranque(e instanceof Error ? e.message : 'No se pudo.')
                 }
@@ -67,14 +72,38 @@ export function Estetica({ diaInicial }: { diaInicial: string | null }) {
             >
               Preparar roles
             </Boton>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+      <div className="cl-agenda__dia">
+        <Boton chico onClick={() => setDia(sumarDias(dia, -1))} aria-label="Día anterior">
+          ‹
+        </Boton>
+        <InputFecha valor={dia} onChange={(v) => v && setDia(v)} />
+        <Boton chico onClick={() => setDia(sumarDias(dia, 1))} aria-label="Día siguiente">
+          ›
+        </Boton>
+        {dia !== hoyISO() && (
+          <Boton chico onClick={() => setDia(hoyISO())}>
+            Hoy
+          </Boton>
+        )}
+      </div>
+      {datos?.faltaRoles && !arranque && <Aviso tono="info">Falta preparar los roles: crea «Estilista» y da la estética a Dueño, Administración y Recepción.</Aviso>}
       {arranque && <Aviso tono="info">{arranque}</Aviso>}
       {error && <Aviso tono="malo">{error}</Aviso>}
       {t.error && <Aviso tono="malo">{t.error}</Aviso>}
       {!datos && !t.error && <p className="fz-tenue">Cargando…</p>}
-      {datos && datos.tarjetas.length === 0 && <Aviso tono="ok">No hay citas de estética este día.</Aviso>}
+      {datos && datos.tarjetas.length === 0 && (
+        <div className="fz-tarjeta fz-vacio cl-est-vacio">
+          <p>No hay citas de estética {dia === hoyISO() ? 'hoy' : 'este día'}.</p>
+          {catalogo.permisos.agenda && (
+            <Link className="fz-btn fz-btn--claro fz-btn--chico" href={`${base}/agenda?dia=${dia}`}>
+              Ir a la agenda
+            </Link>
+          )}
+        </div>
+      )}
       {datos && datos.tarjetas.length > 0 && (
         <div className="cl-est-tablero">
           {etapas.map((e) => {

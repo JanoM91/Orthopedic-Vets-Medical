@@ -14,13 +14,14 @@ import { sesionTutor } from '../../../../../lib/portal/sesion'
 import { contactoClinica } from '../../../../../lib/sitio/contacto'
 import { ligaRefuerzo as ligaDeRefuerzo } from '../../../../../lib/portal/refuerzo'
 import { leerModulos } from '../../../../../lib/modulos'
+import { portalEsteticas } from '../../../../../lib/clinica/esteticaPortal'
 import { pedidosDelTutor } from '../../../../../lib/farmacia/tienda'
 import { sesionDeTienda } from '../../../../../lib/portal/sesionTienda'
 import { ComprasMascota, FilaPedido, FilaReceta, pedidoActivo, surtible } from '../../../../../components/portal/Compras'
 
 export const dynamic = 'force-dynamic'
 
-const TABS = ['resumen', 'cartilla', 'citas', 'compras', 'peso', 'documentos'] as const
+const TABS = ['resumen', 'cartilla', 'citas', 'estetica', 'compras', 'peso', 'documentos'] as const
 type Tab = (typeof TABS)[number]
 const TONO_CARTILLA: Record<EstadoCartilla, 'ok' | 'warn' | 'bad' | 'info' | 'gris'> = { vencida: 'bad', proxima: 'warn', al_dia: 'ok', sin_fecha: 'gris', historial: 'gris' }
 
@@ -54,6 +55,9 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
   const puedePedir = m.estado !== 'fallecido' && Boolean(c.tutor.cliente)
   const ligaRefuerzo = (x: (typeof d.cartilla)[number]) => ligaDeRefuerzo(m.id, x, citas.servicios)
   const citasMascota = { proximas: citas.proximas.filter((x) => x.mascota.id === m.id), pasadas: citas.pasadas.filter((x) => x.mascota.id === m.id) }
+  /* Estética (E3): historial entregado y próximo baño; la pestaña solo existe con el módulo encendido. */
+  const estetica = modulos.estetica && (tab === 'resumen' || tab === 'estetica') ? await portalEsteticas(c, m.id).catch(() => null) : null
+  const conEstetica = Boolean(modulos.clinica && modulos.estetica)
   const documentosHabilitados = Boolean(process.env.CLINICA_BLOB_READ_WRITE_TOKEN || process.env.FINANZAS_BLOB_READ_WRITE_TOKEN)
 
   return (
@@ -93,6 +97,7 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
               ['resumen', 'Resumen'],
               ['cartilla', `Cartilla (${d.cartilla.length})`],
               ['citas', `Citas${citasMascota.proximas.length ? ` (${citasMascota.proximas.length})` : ''}`],
+              ...(conEstetica ? [['estetica', 'Estética'] as [Tab, string]] : []),
               ...(conTienda ? [['compras', 'Compras'] as [Tab, string]] : []),
               ['peso', `Peso (${d.pesos.length})`],
               ['documentos', `Documentos (${d.documentos.length})`],
@@ -179,6 +184,62 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
           </>
         )}
 
+        {tab === 'resumen' && estetica?.proximo && m.estado !== 'fallecido' && (
+          <div className="pt-card pt-est-proximo">
+            <span>
+              <b>{estetica.proximo.servicio}</b> · le toca alrededor del {fecha(estetica.proximo.fecha)}
+            </span>
+            <Link href={estetica.proximo.ligaCita} className="pt-btn pt-btn--acento pt-btn--chico">
+              Pedir cita
+            </Link>
+          </div>
+        )}
+        {tab === 'estetica' && (
+          <section className="pt-seccion">
+            <div className="pt-seccion__cab">
+              <h2>{estetica?.marca ?? 'Estética'}</h2>
+              {m.estado !== 'fallecido' && (
+                <Link href={estetica?.proximo?.ligaCita ?? `/portal/citas/nueva?mascota=${m.id}`} className="pt-btn pt-btn--acento pt-btn--chico">
+                  Pedir cita
+                </Link>
+              )}
+            </div>
+            {estetica?.proximo && <p className="pt-chico">Su próximo baño: alrededor del {fecha(estetica.proximo.fecha)}.</p>}
+            {!estetica?.lista.length && <p className="pt-tenue pt-chico">Aquí verás lo que le hicimos, las fotos de antes y después y nuestras notas.</p>}
+            {estetica?.lista.map((x) => (
+              <article key={x.citaId} className="pt-card pt-est">
+                <p className="pt-chico pt-tenue">
+                  {fecha(x.dia)} · {x.servicio}
+                </p>
+                {x.queSeHizo.length > 0 && <p>{x.queSeHizo.join(' · ')}</p>}
+                {x.notaTutor && <p className="pt-est__nota">{x.notaTutor}</p>}
+                {x.hallazgos.length > 0 && (
+                  <div className="pt-aviso pt-aviso--warn">
+                    <span>
+                      <b>Observamos:</b> {x.hallazgos.join(', ').toLowerCase()}
+                      {x.hallazgosNota ? `. ${x.hallazgosNota}` : ''}. Ya lo sabe el equipo médico; si te preocupa, pide una consulta.
+                    </span>
+                  </div>
+                )}
+                {x.fotos.length > 0 && (
+                  <div className="pt-est__fotos">
+                    {(['antes', 'despues'] as const).map((mo) =>
+                      x.fotos
+                        .filter((f) => f.momento === mo)
+                        .map((f) => (
+                          <figure key={f.id}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={f.url} alt={`${m.nombre} ${mo === 'antes' ? 'antes' : 'después'}`} loading="lazy" />
+                            <figcaption>{mo === 'antes' ? 'Antes' : 'Después'}</figcaption>
+                          </figure>
+                        )),
+                    )}
+                  </div>
+                )}
+              </article>
+            ))}
+          </section>
+        )}
         {tab === 'compras' && conTienda && <ComprasMascota mascota={{ id: m.id, nombre: m.nombre }} pedidos={pedidosMascota} recetas={recetasMascota} />}
         {tab === 'compras' && !conTienda && <p className="pt-tenue">La tienda en línea no está disponible.</p>}
 

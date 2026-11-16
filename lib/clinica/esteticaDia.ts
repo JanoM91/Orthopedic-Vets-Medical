@@ -1,7 +1,7 @@
 import type { Payload } from 'payload'
 import { z } from 'zod'
 
-import type { Cita, EstFicha, EstFoto, Mascota } from '../../payload-types'
+import type { Cita, EstFicha, EstFoto, Mascota, Rol } from '../../payload-types'
 import { COMPORTAMIENTO, HALLAZGOS, QUE_SE_HIZO } from '../../collections/clinica/estetica'
 import { folioParaId } from '../../collections/clinica/acceso'
 import { enlaceWhatsApp } from '../whatsapp'
@@ -46,8 +46,7 @@ export const ETAPAS: { clave: EtapaEstetica; nombre: string }[] = [
   { clave: 'lista', nombre: 'Lista para recoger' },
   { clave: 'entregada', nombre: 'Entregada' },
 ]
-const FASES = ['recibida', 'bano', 'secado', 'corte', 'lista'] as const
-type Fase = (typeof FASES)[number]
+type Fase = 'recibida' | 'bano' | 'secado' | 'corte' | 'lista'
 
 export type FotoVista = { id: number; momento: 'antes' | 'despues'; url: string }
 export type FichaVista = {
@@ -66,7 +65,7 @@ export type FichaVista = {
   fotos: FotoVista[]
 }
 export type TarjetaEstetica = { cita: CitaVista; etapa: EtapaEstetica; faseEn: string | null; avisoListaEn: string | null; whatsappLista: string | null; ficha: { hallazgos: string[]; fotos: number; comportamiento: string | null } | null }
-export type TableroEstetica = { dia: string; marca: string; etapas: typeof ETAPAS; tarjetas: TarjetaEstetica[] }
+export type TableroEstetica = { dia: string; marca: string; etapas: typeof ETAPAS; tarjetas: TarjetaEstetica[]; /** Solo para quien administra usuarios: faltan el rol Estilista o la casilla en Dueño, Administración o Recepción. */ faltaRoles: boolean }
 export type OpcionesFicha = { queSeHizo: readonly { label: string; value: string }[]; comportamiento: readonly { label: string; value: string }[]; hallazgos: readonly { label: string; value: string }[] }
 export const OPCIONES_FICHA: OpcionesFicha = { queSeHizo: QUE_SE_HIZO, comportamiento: COMPORTAMIENTO, hallazgos: HALLAZGOS }
 
@@ -134,7 +133,8 @@ export async function tableroEstetica(ctx: Ctx, dia: string): Promise<TableroEst
   const r = await ctx.payload.find({ collection: 'citas', depth: 1, pagination: false, overrideAccess: true, sort: 'inicio', where: { and: [{ dia: { equals: dia } }, { estado: { in: ['solicitada', 'confirmada', 'llegada', 'atencion', 'finalizada'] } }] } })
   const citas = r.docs.filter(esDeEstetica)
   const { fichas, fotos } = await fichasYFotos(ctx.payload, citas.map((c) => c.id))
-  return { dia, marca, etapas: ETAPAS, tarjetas: citas.map((c) => tarjeta(c, ctx.hoy, marca, fichas, fotos)) }
+  const faltaRoles = ctx.p.gestionarUsuarios ? (await rolesPendientes(ctx.payload)).length > 0 : false
+  return { dia, marca, etapas: ETAPAS, tarjetas: citas.map((c) => tarjeta(c, ctx.hoy, marca, fichas, fotos)), faltaRoles }
 }
 
 const esquemaMover = z.object({ a: z.enum(['recibida', 'bano', 'secado', 'corte', 'lista', 'entregada']) })
@@ -364,15 +364,27 @@ export async function arranqueEstetica(ctx: Ctx): Promise<{ hecho: string[] }> {
   if (!ctx.p.gestionarUsuarios) throw new ErrorClinica(403, 'Los roles los preparan los dueños o el superadministrador.')
   const { ESTILISTA } = await import('../finanzas/servicio')
   const hecho: string[] = []
-  const roles = await ctx.payload.find({ collection: 'roles', depth: 0, pagination: false, overrideAccess: true })
-  if (!roles.docs.some((r) => r.nombre === ESTILISTA.nombre)) {
-    await ctx.payload.create({ collection: 'roles', overrideAccess: true, data: ESTILISTA as never })
-    hecho.push('Rol «Estilista» creado')
-  }
-  for (const r of roles.docs.filter((x) => ['Dueño', 'Administración', 'Recepción'].includes(x.nombre) && !x.clinica?.estetica)) {
-    await ctx.payload.update({ collection: 'roles', id: r.id, overrideAccess: true, data: { clinica: { ...(r.clinica ?? {}), estetica: true } } })
-    hecho.push(`«Estética» en ${r.nombre}`)
+  for (const x of await rolesPendientes(ctx.payload)) {
+    if (x.crear) {
+      await ctx.payload.create({ collection: 'roles', overrideAccess: true, data: ESTILISTA as never })
+      hecho.push('Rol «Estilista» creado')
+    } else {
+      await ctx.payload.update({ collection: 'roles', id: x.rol.id, overrideAccess: true, data: { clinica: { ...(x.rol.clinica ?? {}), estetica: true } } })
+      hecho.push(`«Estética» en ${x.rol.nombre}`)
+    }
   }
   return { hecho: hecho.length ? hecho : ['Ya estaba listo'] }
+}
+
+type RolPendiente = { crear: true } | { crear: false; rol: Rol }
+
+/** Qué le falta a los roles para la estética: el rol Estilista o la casilla en Dueño, Administración o Recepción. */
+export async function rolesPendientes(payload: Payload): Promise<RolPendiente[]> {
+  const { ESTILISTA } = await import('../finanzas/servicio')
+  const roles = await payload.find({ collection: 'roles', depth: 0, pagination: false, overrideAccess: true })
+  const r: RolPendiente[] = []
+  if (!roles.docs.some((x) => x.nombre === ESTILISTA.nombre)) r.push({ crear: true })
+  for (const x of roles.docs.filter((y) => ['Dueño', 'Administración', 'Recepción'].includes(y.nombre) && !y.clinica?.estetica)) r.push({ crear: false, rol: x })
+  return r
 }
 

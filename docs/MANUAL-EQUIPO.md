@@ -6,9 +6,9 @@
 
 `/admin` con tu correo y contraseña. En el teléfono funciona igual (agrégalo a la pantalla de inicio). La sesión dura 7 días; si pierdes el teléfono, avisa para que cierren tus sesiones.
 
-Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia y Finanzas (solo lo que tu rol usa). Los catálogos (Sistema, Clínica, Farmacia, Finanzas) quedan plegados debajo; ábrelos con un clic y se quedan como los dejes.
+Arriba del menú está **Trabajo**: Hoy, Agenda, Estética, Pacientes, Mostrador, Farmacia y Finanzas (solo lo que tu rol usa). Los catálogos (Sistema, Clínica, Farmacia, Finanzas) quedan plegados debajo; ábrelos con un clic y se quedan como los dejes.
 
-**Hoy** (`/admin`) es el tablero del día: citas de hoy, en clínica, por confirmar, ventas de mostrador y cobros pendientes; la agenda de hoy con el siguiente paso de cada cita («Confirmar», «Llegó», «Atender», «Abrir nota»), acciones rápidas y pendientes. Finalizar y «No asistió» se hacen en la agenda, donde piden confirmación.
+**Hoy** (`/admin`) es el tablero del día: citas de hoy, en clínica, por confirmar, ventas de mostrador y cobros pendientes; la agenda de hoy con el siguiente paso de cada cita («Confirmar», «Llegó», «Atender», «Abrir nota»), acciones rápidas y pendientes (cobros, farmacia, pedidos de la tienda, planes detenidos y mascotas listas para recoger). Finalizar y «No asistió» se hacen en la agenda, donde piden confirmación. Con la estética encendida, Hoy trae su bloque: cuántas van por llegar, en proceso, listas y entregadas, y las del día con su etapa y el WhatsApp de las listas; las citas de estética de la agenda de hoy se avanzan «En el tablero». La estilista entra directo a su tablero.
 
 ## Recepción
 
@@ -29,7 +29,7 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia 
 
 **Estética** (si está encendida): al agendar un servicio de estética, el precio y el tiempo salen de la **talla** de la mascota (por su último peso, o la que fijes en «Editar datos»). Elige los **adicionales** (uñas, deslanado…) y ves el total antes de guardar. Ese total es el que se cobra al finalizar, aunque el precio cambie después. Si la mascota no tiene peso, la cita se agenda con «precio al recibirla»: **pésala al llegar**; sin peso o talla no se puede finalizar.
 
-**Tablero de estética** (Clínica → Estética, o «Estética» en el menú): las citas de estética del día por etapa. Toca **Recibir** cuando llega, luego **A baño**, **A secado**, **A corte** y **Lista**: al tutor le llega un correo y tienes el botón de **WhatsApp**. Cuando la recogen, **Entregar** (se cobra lo pactado). En **Ficha** anota qué se hizo, cómo se portó, lo que observaste (pulgas, heridas, bultos…; le llega al médico) y una nota para el tutor, y sube fotos de antes y después (hasta 3 de cada una). Si necesitó bozal, queda como alerta en su expediente.
+**Tablero de estética** (Clínica → Estética, o «Estética» en el menú): las citas de estética del día por etapa. Toca **Recibir** cuando llega, luego **A baño**, **A secado**, **A corte** y **Lista**: al tutor le llega un correo y tienes el botón de **WhatsApp**. Cuando la recogen, **Entregar** (se cobra lo pactado). En **Ficha** anota qué se hizo, cómo se portó, lo que observaste (pulgas, heridas, bultos…; le llega al médico) y una nota para el tutor, y sube fotos de antes y después (hasta 3 de cada una). Si necesitó bozal, queda como alerta en su expediente. Llena **«Próximo baño sugerido»**: con eso le llega al tutor el recordatorio «¿ya le toca su baño?».
 
 ## Médicos
 

@@ -66,6 +66,8 @@ Después de cambiar variables: **Deployments → … → Redeploy** de la últim
 5. **Inventario inicial**: con la primera compra (XML de la factura) o con ajustes positivos por lote y caducidad.
 6. **Tienda en línea (opcional)**: Instalación → módulos → encender «Tienda». En Farmacia → Configuración: horas de apartado, «pagar al recoger» y correos que reciben los pedidos. Para pago en línea, un método de pago con clave `en_linea` y su cuenta de Finanzas. En cada producto que se venda en línea, marcar «Publicado en la tienda» (el Grupo I nunca aparece). Con la pasarela «Pago de prueba» solo se ensaya; para cobrar de verdad, «Mercado Pago» con sus dos variables.
 7. **A domicilio (opcional)**: en Configuración → Tienda en línea, «Entrega a domicilio», horario y una zona por colonia o área con sus códigos postales, envío, mínimo y «gratis desde». Agrega un método de pago `contra_entrega` (tipo «otro», «por confirmar», cuenta = caja del repartidor). Da de alta al repartidor en Usuarios con el rol «Repartidor».
+8. **Recompra y planes (opcional)**: en cada producto que dura un tiempo, llena «Duración por omisión (días)» (pipeta = 30). El aviso «¿Ya toca?» viene encendido. Los **planes de compra** se encienden en Configuración → Tienda en línea (descuento anual, entregas, días antes, categoría de anticipos); necesitan pago en línea y conviene acordar antes con el dueño la política de cancelación del plan anual.
+9. **Reportes**: Farmacia → Más → Reportes (encargado y dueño). Revisa que «Valor del inventario» coincida con lo que esperas después de cargar el inventario inicial. Manual del equipo de farmacia: `docs/MANUAL-FARMACIA.md`.
 
 ## 6. Prueba con el equipo (30 minutos)
 

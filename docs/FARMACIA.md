@@ -463,3 +463,26 @@ Segunda parte de la fase 6. El tutor con cuenta **vinculada** contrata, para una
 - Cancelar en el panel una **entrega** del plan anual no la repone sola.
 - **Mercado Pago:** las suscripciones están probadas contra un simulador con los campos del SDK oficial (mercadopago@3.6). Hay que probarlas con credenciales de prueba reales antes de encenderlas; los nombres de los avisos de suscripción no están confirmados en la documentación pública.
 - Si llega un cobro con el plan detenido (la pausa no alcanzó), queda en el historial y se avisa al equipo para reembolsar o surtir al reanudar.
+
+## 19. Fase 7 · Reportes y manual (15-nov-2026)
+
+- **`lib/farmacia/reportes.ts`:** una forma única (`Reporte`: columnas con formato, filas e indicadores). La pantalla y el CSV salen de la misma respuesta.
+  - `ventas`: por día (mostrador, tienda, descuentos, envíos, total), ticket promedio, cobrado por método y entregas de planes anuales.
+  - `productos`: unidades e importe por producto; con «Ver costos», costo (unidades × costo del lote FEFO), margen y margen %.
+  - `rotacion`: vendidas, promedio diario, existencia hoy, días de cobertura y última venta.
+  - `caducidades`: lotes con existencia que caducan hasta «Hasta» (90 días por omisión), con estado; con «Ver costos», valor en riesgo.
+  - `inventario`: solo con «Ver costos»; existencia, lotes, costo promedio y valor (misma cuenta que el catálogo).
+  - `libro`: el libro de control del Grupo I.
+  - `planes`: anticipos de planes anuales (cobrado, entregado, por entregar) con `resumenAnticipos()`.
+- **Permisos:** todos piden «Reportes»; costos y márgenes además «Ver costos» (sin ella no viene ninguna llave de costo).
+- **Periodo:** por omisión del 1 del mes a hoy; máximo 400 días (salvo caducidades y planes, que solo usan «Hasta»). Ventas anuladas no cuentan.
+- **CSV:** UTF-8 con BOM, nombre `farmacia-<tipo>-<periodo>.csv`; texto que empieza con `=`, `+`, `-` o `@` se antepone con `'` para que la hoja de cálculo no lo ejecute.
+- **API:** `GET /api/farmacia/reportes/:tipo?desde=&hasta=` y `…/:tipo/csv`. **Panel:** Farmacia → Más → Reportes.
+- **Manual del equipo:** `docs/MANUAL-FARMACIA.md` (día, semana, mes, roles, reportes y dudas). `docs/ARRANQUE.md` (pasos 8 y 9) y `docs/MANUAL-EQUIPO.md` lo enlazan.
+- **Instalación sin Clínica:** la prueba apaga Clínica con Farmacia, Tienda y Finanzas encendidos y verifica venta de mostrador con Finanzas, todos los reportes y el catálogo de la tienda.
+- Sin migración.
+
+### Pendientes de la fase 7
+
+- Reportes por periodo largo leen las ventas completas del rango (hasta 400 días): suficiente para una farmacia; si el volumen crece, pasarlos a consultas agregadas en SQL.
+- La prueba de «instalación nueva solo con Farmacia, Tienda y Finanzas» se hace apagando Clínica dentro de la misma prueba; no hay una corrida separada desde una base sin Clínica nunca encendida.

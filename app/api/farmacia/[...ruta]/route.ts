@@ -26,6 +26,7 @@ import {
 } from '@/lib/farmacia/servicio'
 import { importarProductos, plantillaProductosXlsx } from '@/lib/farmacia/importacion'
 import { accionPlan, planesPanel } from '@/lib/farmacia/planes'
+import { reporte, reporteCsv } from '@/lib/farmacia/reportes'
 import { avanzarPedido, entregarDomicilio, entregarPedido, enviarPedido, evidencia, misEntregas, noEntregado, pedidoPanel, pedidosPanel, reembolsarPedido, repartidores } from '@/lib/farmacia/tienda'
 import {
   actualizarCompra,
@@ -131,6 +132,8 @@ import { aceptarReorden, alertas, cerrarAlerta, decidirPromocion, promociones, r
  *   POST recetas/externa  (JSON o multipart: datos + archivo)
  *   POST recetas/:id/firmar | validar | original | cancelar
  *   GET  libro?desde=&hasta= · libro/csv        libro de control del Grupo I
+ *   GET  reportes/:tipo?desde=&hasta= · reportes/:tipo/csv   (fase 7) ventas, productos,
+ *        rotacion, caducidades, inventario, libro, planes
  *   GET  cierre?fecha=&cuenta= · POST cierre · GET cierres
  *
  * Fase 4 · alertas, reabasto y promociones (el cron vive en cron/diario/route.ts):
@@ -237,6 +240,11 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'recetas' && !b) return json(await recetas(ctx, { estado: q.get('estado'), mascotaId: q.get('mascota') ? idDeRuta(q.get('mascota')!) : null, q: q.get('q'), originalPendiente: q.get('original') === 'true' }))
     if (a === 'recetas' && b && c === 'archivo') return archivoReceta(ctx, idDeRuta(b))
     if (a === 'recetas' && b && !c) return json(await receta(ctx, idDeRuta(b)))
+    if (a === 'reportes' && b && c === 'csv') {
+      const r = await reporteCsv(ctx, b, { desde: q.get('desde'), hasta: q.get('hasta') })
+      return new Response(r.csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${r.nombre}"`, 'Cache-Control': 'private, no-store' } })
+    }
+    if (a === 'reportes' && b && !c) return json(await reporte(ctx, b, { desde: q.get('desde'), hasta: q.get('hasta') }))
     if (a === 'libro' && b === 'csv') {
       return new Response(await libroControlCsv(ctx, { desde: q.get('desde'), hasta: q.get('hasta') }), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="libro-control-grupo-I.csv"', 'Cache-Control': 'private, no-store' } })
     }

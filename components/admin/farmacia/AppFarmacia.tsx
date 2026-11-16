@@ -20,6 +20,9 @@
  *   alertas · reabasto · promociones   fase 4
  *   pedidos                 pedidos de la tienda en línea (fase 5a)
  *   entregas                «Mis entregas» del repartidor (fase 5b)
+ *   planes                  planes de compra de los tutores (fase 6b)
+ *   reportes?tipo=          ventas, productos y margen, rotación, caducidades,
+ *                           valor del inventario, libro de control, planes (fase 7)
  *   importar                importación con plantilla
  *   configuracion           parámetros, proveedores, almacenes
  *
@@ -40,6 +43,7 @@ import { FichaReceta, NuevaRecetaExterna, Recetas } from './Recetas'
 import Vender from './Vender'
 import { Entregas, FichaPedido, Pedidos } from './Pedidos'
 import { Planes } from './Planes'
+import { Reportes } from './Reportes'
 import { FichaVenta, Ventas } from './Ventas'
 import Importar from './Importar'
 import Inicio from './Inicio'
@@ -86,6 +90,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
   else if (seccion === 'pedidos' && !(p.vender || p.asignarRepartidor)) pantalla = <Aviso>Tu rol no incluye los pedidos de la tienda.</Aviso>
   else if (seccion === 'pedidos' && !id) pantalla = <Pedidos grupo={query.grupo ?? null} />
   else if (seccion === 'pedidos' && numero(id)) pantalla = <FichaPedido key={id} id={numero(id)!} />
+  else if (seccion === 'reportes') pantalla = p.reportes ? <Reportes tipo={query.tipo ?? null} /> : <Aviso>Los reportes los consultan el encargado y el dueño.</Aviso>
   else if (seccion === 'planes') pantalla = catalogo.modulos.tienda && p.vender ? <Planes grupo={query.grupo ?? null} /> : <Aviso>Tu rol no incluye los planes de la tienda.</Aviso>
   else if (seccion === 'cierre') pantalla = <Cierre />
   else if (seccion === 'alertas') pantalla = <Alertas tipo={query.tipo ?? null} />
@@ -135,6 +140,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
       extra: catalogo.hoy.promocionesPropuestas && p.aprobar ? <span className="fa-contador">{catalogo.hoy.promocionesPropuestas}</span> : null,
       mas: true,
     },
+    { ver: p.reportes, href: `${base}/reportes`, on: seccion === 'reportes', texto: 'Reportes', mas: true },
     { ver: catalogo.modulos.tienda && p.vender, href: `${base}/planes`, on: seccion === 'planes', texto: 'Planes de compra', mas: true },
     { ver: p.ajustes, href: `${base}/conteo`, on: seccion === 'conteo', texto: 'Conteo', mas: true },
     { ver: p.cierreDia && catalogo.configuracion.cierreDiaActivo, href: `${base}/cierre`, on: seccion === 'cierre', texto: 'Cierre del día', mas: true },
@@ -194,6 +200,7 @@ export default function AppFarmacia({ catalogo: inicial, ruta, query, rutaAdmin,
                 [true, `${base}/productos`, esProductos, 'buscar', 'Productos'],
                 [true, `${base}/inventario`, seccion === 'inventario', 'bandeja', 'Inventario'],
                 [p.recibirCompras, `${base}/compras`, seccion === 'compras', 'archivo', 'Compras'],
+                [p.reportes, `${base}/reportes`, seccion === 'reportes', 'lista', 'Reportes'],
                 [p.configurar, `${base}/configuracion`, seccion === 'configuracion', 'ajustes', 'Ajustes'],
               ] as [boolean, string, boolean, Parameters<typeof Icono>[0]['n'], string][]
             ).filter(([v]) => v)

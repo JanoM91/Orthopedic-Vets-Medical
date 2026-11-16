@@ -36,6 +36,8 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia 
 
 ## Farmacia
 
+El manual completo del equipo de farmacia (día, semana, mes, reportes) está en `docs/MANUAL-FARMACIA.md`. Aquí, lo esencial.
+
 **Mostrador** (Trabajo → Mostrador, o Farmacia → Mostrador; en Farmacia → Inicio es el botón principal «Vender»)
 En computadora la pantalla va en dos columnas: el ticket a la izquierda y el cobro siempre visible a la derecha. En el celular, el ticket arriba y la barra «Cobrar» abajo.
 1. Escanea el código (lector o cámara) o busca por nombre.
@@ -73,6 +75,8 @@ En computadora la pantalla va en dos columnas: el ticket a la izquierda y el cob
 **Aviso de recompra** (Farmacia → Configuración → Tienda en línea): en cada producto que dura un tiempo llena **«Duración por omisión (días)»** (cuántos días cubre una unidad: pipeta = 30, tableta mensual = 30, bolsa de alimento = los días que suele durar). Al vender ese producto a un cliente con ficha (o en la tienda), el sistema calcula cuándo se acaba y, unos días antes (5 por omisión), le escribe con «Volver a pedir». No usa la receta ni calcula dosis.
 
 **Planes de compra** (Farmacia → Configuración → Tienda en línea → «Planes de compra»): el tutor con cuenta vinculada puede pedir que se le prepare un producto cada cierto tiempo (se calcula con la «Duración por omisión»). Hay dos formas: **pago en cada entrega** (se cobra solo con la tarjeta del tutor) o **anual** (paga por adelantado varias entregas con descuento). Cada entrega te llega a **Pedidos** ya pagada, con la pastilla del plan: prepárala y entrégala como cualquier pedido; si es anual, «Entregar» no cobra. En **Farmacia → Más → Planes de compra** ves los planes, lo que falta por entregar de los anuales y los que están **en pausa**: el sistema pausa un plan si a la mascota ya no le corresponde el producto (peso, edad, alergias) o si falta receta. Cuando se resuelva, toca **Reanudar**. Cancelar un plan anual ya pagado lo hace el encargado o el dueño; el reembolso se decide con la política de la farmacia.
+
+**Reportes** (Farmacia → Más → Reportes; encargado y dueño): ventas, productos y margen, rotación, caducidades, valor del inventario, libro de control y planes anuales, con «Descargar CSV». Sin «Ver costos» no aparecen costos ni márgenes.
 
 **Promociones**: el sistema propone descuento a lotes de venta libre por caducar; el encargado aprueba o rechaza.
 

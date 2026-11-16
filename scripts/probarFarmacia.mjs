@@ -1215,7 +1215,8 @@ async function main() {
   const fd = new FormData()
   fd.append('recibio', 'Señora Ana')
   fd.append('cobrado', 'true')
-  fd.append('foto', new Blob([jpeg], { type: 'image/jpeg' }), 'entrega.jpg')
+  /* De tamaño real (~300 KB): el tope de texto de Payload rechazaba más de ~30 KB (17-nov-2026). */
+  fd.append('foto', new Blob([jpeg, crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(65536)), crypto.getRandomValues(new Uint8Array(40000))], { type: 'image/jpeg' }), 'entrega.jpg')
   r = await repartidor.llamar('POST', `/api/farmacia/pedidos/${ped7.id}/entregado`, fd)
   ok(r.status === 200 && r.data.estado === 'entregado' && r.data.entregaDomicilio?.recibio === 'Señora Ana' && r.data.entregaDomicilio.conFoto && r.data.pago.estado === 'pagado', 'Entregado con foto: recibió, cobrado y pagado', r.data)
   r = await vendedor.get(`/api/farmacia/ventas/${venta7}`)

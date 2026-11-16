@@ -1,3 +1,4 @@
+import { MAX_FOTO_BYTES } from '../fotosBase64'
 import crypto from 'crypto'
 import type { Payload, PayloadRequest, Where } from 'payload'
 import { commitTransaction, createLocalReq, initTransaction, killTransaction } from 'payload'
@@ -990,7 +991,7 @@ export async function noEntregado(ctx: Ctx, id: number, entrada: unknown): Promi
   return vistaPanel(ctx, n)
 }
 
-const TOPE_FOTO = 600 * 1024
+const TOPE_FOTO = MAX_FOTO_BYTES
 
 async function guardarEvidencia(ctx: Ctx, pedidoId: number, foto: File) {
   if (!/^image\/(jpeg|png|webp)$/.test(foto.type)) throw invalido('La foto debe ser JPG, PNG o WebP.')

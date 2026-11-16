@@ -32,7 +32,8 @@ Ninguna.
 - `npx tsc --noEmit`, `npm run build` y `npm run lint` sin errores.
 - Playwright a 1280 y 1600 px: riel de 72 px, menú desplegado de 275 px al pasar el cursor, sin desplazamiento horizontal de la página y el «fijo» se conserva al recargar.
 - A 390 y 1024 px el menú cerrado sigue oculto e `inert`, como antes.
-- Las pruebas completas y la auditoría de pantallas están en la entrega.
+- Ciclo limpio con las tres ramas: `test:clinica` 175/175, `test:estetica` 90/90 y `test:farmacia` 510/510; build con Postgres detenido sin errores.
+- `auditoria-front.mjs` (ahora incluye Estética y Puesta a punto) en 10 tamaños: 100 páginas, 0 hallazgos.
 
 ## Riesgos y pendientes
 

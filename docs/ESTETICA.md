@@ -8,7 +8,7 @@ Plan acordado con Jano el 15-nov-2026, en tres ramas apiladas:
 | --- | --- | --- |
 | **E1** | Precio y duración **por talla**, adicionales y cobro con lo pactado | Hecha (`feat/estetica-1-precios`) |
 | **E2** | Tablero del día (recibida → baño → secado → corte → lista), ficha con hallazgos, fotos antes y después, aviso «lista para recoger» | Hecha (`feat/estetica-2-tablero`) |
-| **E3** | Portal: historial de estética con fotos y recordatorio «¿ya le toca su baño?» | Pendiente |
+| **E3** | Portal: historial de estética con fotos y recordatorio «¿ya le toca su baño?» | Hecha (`feat/estetica-3-portal`) |
 
 Decisión de Jano (15-nov-2026): se cobra **solo por talla** (no por tipo de pelo).
 
@@ -100,3 +100,35 @@ Decisión de Jano (15-nov-2026): se cobra **solo por talla** (no por tipo de pel
 | Lógica | `lib/clinica/esteticaDia.ts` (tablero, mover, ficha, fotos, expediente, arranque); `aplicarEstado()` en `agenda.ts` (mismas transiciones y cargo, sin pedir «Agenda»); avisos en `lib/clinica/avisos.ts` |
 | Pantallas | `components/admin/clinica/Estetica.tsx` (tablero, ficha y fotos; `EsteticaExpediente` para el Resumen) |
 | Migración | `20261116_*_estetica_tablero` (tablas con RLS) |
+
+## 3. E3 · Portal del tutor y «¿ya le toca su baño?»
+
+### Lo que ve el tutor
+
+- **Ficha de la mascota → pestaña «Estética»** (solo con el módulo encendido). Muestra las estéticas **entregadas** (cita finalizada) con:
+  - qué se hizo y la nota para el tutor;
+  - lo observado, con el aviso «Ya lo sabe el equipo médico; si te preocupa, pide una consulta»;
+  - las fotos de antes y después.
+- **Nunca** ve la nota interna ni el comportamiento. La alerta de manejo «necesitó bozal» sí la ve, como cualquier alerta de manejo de su mascota.
+- **Resumen de la mascota:** «Baño · le toca alrededor del …» con **Pedir cita**.
+- **Inicio → Pendientes:** el baño que toca en los próximos 7 días (o que ya pasó, hasta 30 días), con **Pedir cita** ya llenado (mascota y servicio de la última estética). Desaparece en cuanto hay otra cita de estética por venir.
+- API: `GET portal/mascotas/:id/estetica`. Solo sus mascotas: otra cuenta recibe 403 o 404. Las fotos siguen pasando por `GET estetica/fotos/:id`, que revisa al tutor.
+
+### Próximo baño y recordatorio
+
+- **Próximo baño** = día de la última estética entregada + «próximo baño sugerido» de su ficha. Si la ficha no lo trae, se usan las **semanas por omisión** de «Estética: marca y tallas». Sin ninguna de las dos, no hay próximo baño.
+- **Correo «¿Ya le toca su baño a …?»:** lo manda el cron de la clínica (`/api/clinica/cron/recordatorios`, 18:00, el mismo de la víspera de las citas).
+  - Sale desde 3 días antes de la fecha hasta 14 días después.
+  - Solo si la mascota está activa, no tiene otra cita de estética por venir y el tutor acepta avisos por correo.
+  - **Una vez por estética** (`est-fichas.recordatorioEnviadoEn`).
+  - Trae «Pedir cita» y WhatsApp.
+  - Se apaga en la configuración («Mandar ¿ya le toca su baño?»).
+- La respuesta del cron trae `estetica: { revisadas, enviados }`.
+
+### Código
+
+| Qué | Dónde |
+| --- | --- |
+| Lógica | `lib/clinica/esteticaPortal.ts` (historial, próximo baño, Pendientes, cron); correo en `lib/clinica/avisos.ts` (`avisarBanoEstetica`) |
+| Pantallas | `app/(portal)/portal/mascotas/[id]/page.tsx` (pestaña y tarjeta), `app/(portal)/portal/page.tsx` (Pendientes) |
+| Migración | `20261116_*_estetica_portal` (columnas, sin tablas nuevas) |

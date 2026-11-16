@@ -32,6 +32,7 @@ type Datos = {
   nacimientoEstimado: boolean
   microchip: string
   alergias: string
+  tallaEstetica: '' | 'chico' | 'mediano' | 'grande' | 'gigante'
   alertasManejo: string
   medicoTratante: number | null
   tutores: TutorSel[]
@@ -41,11 +42,11 @@ type Datos = {
 }
 const vacio = (): Datos => ({
   nombre: '', especie: 'perro', especieOtra: '', raza: '', sexo: 'desconocido', esterilizado: 'desconocido', color: '', fechaNacimiento: '', nacimientoEstimado: false,
-  microchip: '', alergias: '', alertasManejo: '', medicoTratante: null, tutores: [], estado: 'activo', notasInternas: '', pesoKg: '',
+  microchip: '', alergias: '', tallaEstetica: '', alertasManejo: '', medicoTratante: null, tutores: [], estado: 'activo', notasInternas: '', pesoKg: '',
 })
 const desde = (m: MascotaVista): Datos => ({
   nombre: m.nombre, especie: m.especie, especieOtra: m.especieOtra ?? '', raza: m.raza ?? '', sexo: m.sexo, esterilizado: m.esterilizado, color: m.color ?? '',
-  fechaNacimiento: m.fechaNacimiento ?? '', nacimientoEstimado: m.nacimientoEstimado, microchip: m.microchip ?? '', alergias: m.alergias ?? '', alertasManejo: m.alertasManejo.join('\n'),
+  fechaNacimiento: m.fechaNacimiento ?? '', nacimientoEstimado: m.nacimientoEstimado, microchip: m.microchip ?? '', alergias: m.alergias ?? '', tallaEstetica: m.tallaEstetica ?? '', alertasManejo: m.alertasManejo.join('\n'),
   medicoTratante: m.medicoTratante?.id ?? null, tutores: m.tutores.map((t) => ({ clienteId: t.clienteId, nombre: t.nombre, telefono: t.telefono, principal: t.principal, parentesco: t.parentesco ?? '' })),
   estado: m.estado, notasInternas: m.notasInternas ?? '', pesoKg: '',
 })
@@ -138,6 +139,8 @@ export function FormularioMascota({ existente, clienteInicial, onGuardado, onCan
       const cuerpo = {
         ...d,
         alertasManejo: d.alertasManejo.split('\n').map((s) => s.trim()).filter(Boolean),
+        /* Sin el módulo de estética no se toca la talla guardada. */
+        tallaEstetica: catalogo.estetica?.activa ? d.tallaEstetica : undefined,
         tutores: d.tutores.map((t) => ({ clienteId: t.clienteId, principal: t.principal, parentesco: t.parentesco || undefined })),
         pesoKg: d.pesoKg ? Number(d.pesoKg.replace(',', '.')) : null,
       }
@@ -246,6 +249,17 @@ export function FormularioMascota({ existente, clienteInicial, onGuardado, onCan
               ))}
             </select>
           </Campo>
+          {catalogo.estetica?.activa && (
+            <Campo etiqueta={`Talla para ${catalogo.estetica.nombre}`} ayuda="Vacío: se calcula con su último peso.">
+              <select className="fz-input" value={d.tallaEstetica} onChange={(e) => set('tallaEstetica', e.target.value as Datos['tallaEstetica'])}>
+                <option value="">Por su peso</option>
+                <option value="chico">Chica</option>
+                <option value="mediano">Mediana</option>
+                <option value="grande">Grande</option>
+                <option value="gigante">Gigante</option>
+              </select>
+            </Campo>
+          )}
           {!existente && (
             <Campo etiqueta="Peso de hoy (kg)" ayuda="Opcional. Queda como primer registro de peso.">
               <input className="fz-input" inputMode="decimal" value={d.pesoKg} onChange={(e) => set('pesoKg', e.target.value)} />

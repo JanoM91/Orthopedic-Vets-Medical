@@ -191,6 +191,7 @@ export function vistaMascota(m: Mascota, hoy: string, ultimoPeso: MasPeso | null
     edad: edadDesde(m.fechaNacimiento, hoy),
     microchip: t(m.microchip),
     alergias: t(m.alergias),
+    tallaEstetica: m.tallaEstetica ?? null,
     alertasManejo: (m.alertasManejo ?? []).map((a) => a.texto).filter(Boolean),
     medicoTratante: persona(m.medicoTratante),
     tutores: (m.tutores ?? []).map((x) => {
@@ -267,10 +268,11 @@ const vistaDocumento = (d: MasDocumento): DocumentoVista => ({
 
 export async function catalogo(ctx: Ctx): Promise<CatalogoClinica> {
   exigir(ctx, 'verPacientes', 'Tu rol no incluye pacientes.')
-  const [usuarios, clientes, mascotas] = await Promise.all([
+  const [usuarios, clientes, mascotas, est] = await Promise.all([
     ctx.payload.find({ collection: 'users', depth: 0, pagination: false, overrideAccess: true, sort: 'name' }),
     ctx.payload.count({ collection: 'clientes', overrideAccess: true }),
     ctx.payload.count({ collection: 'mascotas', overrideAccess: true }),
+    import('./estetica').then((x) => x.configEstetica(ctx.payload)),
   ])
   return {
     permisos: { ...ctx.p.clinica, superadmin: ctx.p.superadmin, panel: ctx.p.panel },
@@ -282,6 +284,7 @@ export async function catalogo(ctx: Ctx): Promise<CatalogoClinica> {
     tiposDocumento: TIPOS_DOCUMENTO,
     documentosHabilitados: Boolean(tokenBlobOpcional()),
     totales: { clientes: clientes.totalDocs, mascotas: mascotas.totalDocs },
+    estetica: { activa: est.activa, nombre: est.nombreMarca },
   }
 }
 
@@ -454,6 +457,8 @@ const esquemaMascota = z.object({
   nacimientoEstimado: z.boolean().optional().default(false),
   microchip: z.string().trim().max(40).optional().default(''),
   alergias: z.string().trim().max(1000).optional().default(''),
+  /** Estética: talla fijada a mano ('' o null = por peso). Sin la propiedad, no se toca. */
+  tallaEstetica: z.union([z.enum(['chico', 'mediano', 'grande', 'gigante']), z.literal(''), z.null()]).optional(),
   alertasManejo: z.array(z.string().trim().max(200)).optional().default([]),
   medicoTratante: z.number().int().positive().nullable().optional(),
   tutores: z.array(z.object({ clienteId: z.number().int().positive(), principal: z.boolean().optional(), parentesco: z.string().trim().max(60).optional() })).min(1, 'La mascota necesita al menos un tutor.'),
@@ -478,6 +483,7 @@ async function datosMascota(ctx: Ctx, d: z.infer<typeof esquemaMascota>) {
     nacimientoEstimado: d.nacimientoEstimado,
     microchip: d.microchip || null,
     alergias: d.alergias || null,
+    ...(d.tallaEstetica !== undefined ? { tallaEstetica: d.tallaEstetica || null } : {}),
     alertasManejo: d.alertasManejo.filter(Boolean).map((texto) => ({ texto })),
     medicoTratante: d.medicoTratante ?? null,
     tutores: d.tutores.map((x) => ({ cliente: x.clienteId, principal: Boolean(x.principal), parentesco: x.parentesco || null })),

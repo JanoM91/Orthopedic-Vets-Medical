@@ -82,6 +82,7 @@ export interface Config {
     recursos: Recurso;
     servicios: Servicio;
     citas: Cita;
+    'est-adicionales': EstAdicional;
     tutores: Tutor;
     'far-productos': FarProducto;
     'far-presentaciones': FarPresentacion;
@@ -130,6 +131,7 @@ export interface Config {
     recursos: RecursosSelect<false> | RecursosSelect<true>;
     servicios: ServiciosSelect<false> | ServiciosSelect<true>;
     citas: CitasSelect<false> | CitasSelect<true>;
+    'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
     tutores: TutoresSelect<false> | TutoresSelect<true>;
     'far-productos': FarProductosSelect<false> | FarProductosSelect<true>;
     'far-presentaciones': FarPresentacionesSelect<false> | FarPresentacionesSelect<true>;
@@ -169,6 +171,7 @@ export interface Config {
   globals: {
     'fin-configuracion': FinConfiguracion;
     'agenda-configuracion': AgendaConfiguracion;
+    'estetica-configuracion': EsteticaConfiguracion;
     'sitio-configuracion': SitioConfiguracion;
     'farmacia-configuracion': FarmaciaConfiguracion;
     'instalacion-configuracion': InstalacionConfiguracion;
@@ -176,6 +179,7 @@ export interface Config {
   globalsSelect: {
     'fin-configuracion': FinConfiguracionSelect<false> | FinConfiguracionSelect<true>;
     'agenda-configuracion': AgendaConfiguracionSelect<false> | AgendaConfiguracionSelect<true>;
+    'estetica-configuracion': EsteticaConfiguracionSelect<false> | EsteticaConfiguracionSelect<true>;
     'sitio-configuracion': SitioConfiguracionSelect<false> | SitioConfiguracionSelect<true>;
     'farmacia-configuracion': FarmaciaConfiguracionSelect<false> | FarmaciaConfiguracionSelect<true>;
     'instalacion-configuracion': InstalacionConfiguracionSelect<false> | InstalacionConfiguracionSelect<true>;
@@ -412,6 +416,10 @@ export interface Mascota {
   fechaNacimiento?: string | null;
   nacimientoEstimado?: boolean | null;
   microchip?: string | null;
+  /**
+   * Vacío: se calcula con su último peso.
+   */
+  tallaEstetica?: ('chico' | 'mediano' | 'grande' | 'gigante') | null;
   /**
    * Se muestran como alerta en todo el sistema.
    */
@@ -677,6 +685,28 @@ export interface Servicio {
    * Si se captura, al finalizar la cita se registra una entrada por cobrar en Finanzas.
    */
   precio?: number | null;
+  /**
+   * Con el módulo de Estética encendido, el precio y el tiempo salen de la talla de la mascota (por su peso) y se le pueden sumar adicionales.
+   */
+  estetica?: boolean | null;
+  /**
+   * Una talla sin precio usa el «Precio» de arriba.
+   */
+  preciosTalla?: {
+    chico?: number | null;
+    mediano?: number | null;
+    grande?: number | null;
+    gigante?: number | null;
+  };
+  /**
+   * Una talla sin duración usa la «Duración» de arriba.
+   */
+  duracionTalla?: {
+    chico?: number | null;
+    mediano?: number | null;
+    grande?: number | null;
+    gigante?: number | null;
+  };
   recursoPorDefecto: number | Recurso;
   /**
    * A qué actividad se asigna el cargo (Consulta, Cirugía, Estética…).
@@ -769,6 +799,24 @@ export interface Cita {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Solo en servicios de estética con el módulo encendido. El cargo en Finanzas usa este total.
+   */
+  estetica?: {
+    cotizada?: boolean | null;
+    talla?: ('chico' | 'mediano' | 'grande' | 'gigante') | null;
+    precioBase?: number | null;
+    total?: number | null;
+    adicionales?:
+      | {
+          adicional?: (number | null) | EstAdicional;
+          nombre: string;
+          precio: number;
+          duracionMin?: number | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
   cargoFinanzas?: (number | null) | FinOperacion;
   /**
    * Lo escribe el recordatorio diario (un solo correo por cita).
@@ -776,6 +824,24 @@ export interface Cita {
   recordatorioEnviadoEn?: string | null;
   creadoPor?: (number | null) | User;
   creadoPorTutor?: (number | null) | Tutor;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Se suman al precio y al tiempo de un servicio de estética.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-adicionales".
+ */
+export interface EstAdicional {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  precio: number;
+  duracionMin?: number | null;
+  enLinea?: boolean | null;
+  orden?: number | null;
+  activo?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1655,6 +1721,10 @@ export interface PayloadLockedDocument {
         value: number | Cita;
       } | null)
     | ({
+        relationTo: 'est-adicionales';
+        value: number | EstAdicional;
+      } | null)
+    | ({
         relationTo: 'tutores';
         value: number | Tutor;
       } | null)
@@ -1948,6 +2018,7 @@ export interface MascotasSelect<T extends boolean = true> {
   fechaNacimiento?: T;
   nacimientoEstimado?: T;
   microchip?: T;
+  tallaEstetica?: T;
   alergias?: T;
   alertasManejo?:
     | T
@@ -2118,6 +2189,23 @@ export interface ServiciosSelect<T extends boolean = true> {
   indicaciones?: T;
   duracionMin?: T;
   precio?: T;
+  estetica?: T;
+  preciosTalla?:
+    | T
+    | {
+        chico?: T;
+        mediano?: T;
+        grande?: T;
+        gigante?: T;
+      };
+  duracionTalla?:
+    | T
+    | {
+        chico?: T;
+        mediano?: T;
+        grande?: T;
+        gigante?: T;
+      };
   recursoPorDefecto?: T;
   area?: T;
   categoriaFinanzas?: T;
@@ -2158,10 +2246,42 @@ export interface CitasSelect<T extends boolean = true> {
         detalle?: T;
         id?: T;
       };
+  estetica?:
+    | T
+    | {
+        cotizada?: T;
+        talla?: T;
+        precioBase?: T;
+        total?: T;
+        adicionales?:
+          | T
+          | {
+              adicional?: T;
+              nombre?: T;
+              precio?: T;
+              duracionMin?: T;
+              id?: T;
+            };
+      };
   cargoFinanzas?: T;
   recordatorioEnviadoEn?: T;
   creadoPor?: T;
   creadoPorTutor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-adicionales_select".
+ */
+export interface EstAdicionalesSelect<T extends boolean = true> {
+  nombre?: T;
+  descripcion?: T;
+  precio?: T;
+  duracionMin?: T;
+  enLinea?: T;
+  orden?: T;
+  activo?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2971,6 +3091,33 @@ export interface AgendaConfiguracion {
   createdAt?: string | null;
 }
 /**
+ * Nombre de la estética y límites de peso de cada talla. Los precios van en cada servicio de estética.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "estetica-configuracion".
+ */
+export interface EsteticaConfiguracion {
+  id: number;
+  /**
+   * Ej. el nombre de tu estética. Vacío: «Estética».
+   */
+  nombreMarca?: string | null;
+  /**
+   * Opcional. Ej. /marcas/mi-estetica.png
+   */
+  logo?: string | null;
+  /**
+   * Hasta cuántos kilos es cada talla. Más que «Grande» es «Gigante».
+   */
+  tallas?: {
+    chicoHasta?: number | null;
+    medianoHasta?: number | null;
+    grandeHasta?: number | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * Lo que ven los visitantes en la página principal.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3160,9 +3307,13 @@ export interface InstalacionConfiguracion {
     clinica?: boolean | null;
     farmacia?: boolean | null;
     /**
-     * Todavía no existe la tienda: la casilla se guarda para cuando esté construida.
+     * Necesita Farmacia.
      */
     tienda?: boolean | null;
+    /**
+     * Necesita Clínica. Apagada, la estética se agenda como cualquier servicio.
+     */
+    estetica?: boolean | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -3197,6 +3348,24 @@ export interface AgendaConfiguracionSelect<T extends boolean = true> {
   cancelacionHoras?: T;
   correoAvisos?: T;
   recordatoriosActivos?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "estetica-configuracion_select".
+ */
+export interface EsteticaConfiguracionSelect<T extends boolean = true> {
+  nombreMarca?: T;
+  logo?: T;
+  tallas?:
+    | T
+    | {
+        chicoHasta?: T;
+        medianoHasta?: T;
+        grandeHasta?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -3349,6 +3518,7 @@ export interface InstalacionConfiguracionSelect<T extends boolean = true> {
         clinica?: T;
         farmacia?: T;
         tienda?: T;
+        estetica?: T;
       };
   updatedAt?: T;
   createdAt?: T;

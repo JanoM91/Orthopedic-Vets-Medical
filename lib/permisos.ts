@@ -113,7 +113,7 @@ const OPERACIONES = ['read', 'create', 'update', 'delete', 'readVersions'] as co
 const CON_REGLAS_PROPIAS = new Set(['users', 'roles'])
 /** Colecciones de la clínica: sus reglas (collections/clinica/acceso.ts) ya distinguen equipo, tutores y visitantes. */
 export const COLECCIONES_CLINICA = new Set(['clientes', 'mascotas', 'tutores', 'codigos-vinculacion', 'importaciones', 'recursos', 'servicios', 'citas'])
-export const esColeccionClinica = (slug: string): boolean => COLECCIONES_CLINICA.has(slug) || slug.startsWith('mas-')
+export const esColeccionClinica = (slug: string): boolean => COLECCIONES_CLINICA.has(slug) || slug.startsWith('mas-') || slug.startsWith('est-')
 
 /** Colecciones de la farmacia (collections/farmacia/*): reglas propias por permiso del rol. */
 export const esColeccionFarmacia = (slug: string): boolean => slug.startsWith('far-')
@@ -128,7 +128,7 @@ export function protegerColeccion(c: CollectionConfig): CollectionConfig {
 }
 
 export function protegerGlobal(g: GlobalConfig): GlobalConfig {
-  if (g.slug.startsWith('fin-') || g.slug === 'agenda-configuracion' || g.slug === 'sitio-configuracion' || g.slug === 'farmacia-configuracion' || g.slug === 'instalacion-configuracion') return g
+  if (g.slug.startsWith('fin-') || g.slug === 'agenda-configuracion' || g.slug === 'estetica-configuracion' || g.slug === 'sitio-configuracion' || g.slug === 'farmacia-configuracion' || g.slug === 'instalacion-configuracion') return g
   const access = { ...(g.access ?? {}) } as NonNullable<GlobalConfig['access']>
   for (const op of ['read', 'update', 'readVersions'] as const) {
     ;(access as Record<string, Access>)[op] = envolver((g.access as Record<string, Access> | undefined)?.[op])

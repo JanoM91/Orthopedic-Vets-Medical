@@ -30,7 +30,7 @@ export default async function Servicios() {
                     <h3>{s.nombre}</h3>
                   </div>
                   <p className="st-tenue st-chico">
-                    ≈ {s.duracionMin} min{s.precio ? ` · $${s.precio.toLocaleString('es-MX')}` : ''}
+                    ≈ {s.duracionMin} min{s.precio ? ` · ${s.desde ? 'desde ' : ''}$${s.precio.toLocaleString('es-MX')}` : ''}
                     {!s.enLinea ? ' · se agenda por teléfono' : ''}
                   </p>
                   {s.descripcion && <p>{s.descripcion}</p>}

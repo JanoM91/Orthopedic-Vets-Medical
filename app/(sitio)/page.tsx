@@ -101,7 +101,7 @@ export default async function Inicio() {
                     <InsigniaServicio clave={s.icono} grande />
                     <b>{s.nombre}</b>
                     <span className="st-servicio__det">
-                      ≈ {s.duracionMin} min{s.precio ? ` · $${s.precio.toLocaleString('es-MX')}` : ''}
+                      ≈ {s.duracionMin} min{s.precio ? ` · ${s.desde ? 'desde ' : ''}$${s.precio.toLocaleString('es-MX')}` : ''}
                     </span>
                     {s.descripcion && <span className="st-servicio__txt">{s.descripcion}</span>}
                     <span className="st-servicio__ir">

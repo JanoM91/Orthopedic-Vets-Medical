@@ -8,6 +8,8 @@ import { api, Avatar, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, Confirmar, Erro
 import { diaLocal, partesLocales } from '../../../lib/localTime'
 import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
+import type { CatalogoEstetica } from '../../../lib/clinica/agenda'
+import type { Cotizacion } from '../../../lib/clinica/estetica'
 
 /**
  * Agenda del panel: un día, una columna por recurso (espacio), las citas como
@@ -34,7 +36,7 @@ const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', '
 const diaLargo = (d: string) => `${DIAS[new Date(d + 'T12:00:00Z').getUTCDay()]} ${fecha(d)}`
 const esHora = (h: string | null | undefined): h is string => Boolean(h && /^([01]\d|2[0-3]):[0-5]\d$/.test(h))
 
-type Catalogo = { recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda }
+type Catalogo = { recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda; estetica?: CatalogoEstetica }
 /** Hora y espacio con que se abre «Nueva cita» (clic en una celda vacía o regreso del alta de mascota). */
 type Preparada = { dia?: string; hora?: string | null; recurso?: number | null }
 
@@ -493,7 +495,17 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
         <dt>Servicio</dt>
         <dd>
           {cita.servicio.nombre}
-          {precioServicio ? ` · ${pesos(precioServicio)}` : ''}
+          {cita.estetica ? (
+            <>
+              {cita.estetica.nombreTalla ? ` · talla ${cita.estetica.nombreTalla.toLowerCase()}` : ' · talla por confirmar'}
+              {cita.estetica.adicionales.length ? ` · ${cita.estetica.adicionales.map((x) => x.nombre).join(', ')}` : ''}
+              {cita.estetica.total != null ? ` · ${pesos(cita.estetica.total)}` : ''}
+            </>
+          ) : precioServicio ? (
+            ` · ${pesos(precioServicio)}`
+          ) : (
+            ''
+          )}
         </dd>
         <dt>Hora</dt>
         <dd>
@@ -703,10 +715,11 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
 
 /* ───────────────────────────── elegir día y hora ───────────────────────────── */
 
-function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, horaInicial = null, ignorarCita, onElegir, onCancelar, portal }: { catalogo: Catalogo; servicioId: number; recursoId: number | null; diaInicial: string; horaInicial?: string | null; ignorarCita?: number; onElegir: (dia: string, hora: string, recursoId: number | null) => void; onCancelar?: () => void; portal?: boolean }) {
+function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, horaInicial = null, ignorarCita, onElegir, onCancelar, portal, estetica }: { catalogo: Catalogo; servicioId: number; recursoId: number | null; diaInicial: string; horaInicial?: string | null; ignorarCita?: number; onElegir: (dia: string, hora: string, recursoId: number | null) => void; onCancelar?: () => void; portal?: boolean; estetica?: { mascota: number; adicionales: number[] } }) {
   const [dia, setDia] = useState(diaInicial)
   const [recurso, setRecurso] = useState<number | null>(recursoId)
-  const disp = useCarga(() => api.get<DisponibilidadDia>(portal ? 'portal/citas/disponibilidad' : 'agenda/disponibilidad', { servicio: servicioId, dia, recurso, ignorar: ignorarCita }), [servicioId, dia, recurso, ignorarCita])
+  const ests = estetica ? `${estetica.mascota}|${estetica.adicionales.join(',')}` : ''
+  const disp = useCarga(() => api.get<DisponibilidadDia>(portal ? 'portal/citas/disponibilidad' : 'agenda/disponibilidad', { servicio: servicioId, dia, recurso, ignorar: ignorarCita, mascota: ests ? ests.split('|')[0] : null, adicionales: ests ? ests.split('|')[1] || null : null }), [servicioId, dia, recurso, ignorarCita, ests])
   const [hora, setHora] = useState<string | null>(horaInicial)
   /* Una hora puesta de antemano (clic en la celda) solo vale si está libre para este servicio, día y espacio. */
   const hueco = disp.datos?.abierto ? disp.datos.huecos.find((h) => h.hora === hora) : undefined
@@ -772,6 +785,7 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
   const [confirmar, setConfirmar] = useState(true)
   const [notas, setNotas] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [adicionales, setAdicionales] = useState<number[]>([])
   useEffect(() => {
     if (!mascotaInicial) return
     api.get<{ mascota: { id: number; nombre: string; especie: string; tutores: { nombre: string }[] } }>(`mascotas/${mascotaInicial}`).then((e) => setMascota({ id: e.mascota.id, nombre: e.mascota.nombre, especie: e.mascota.especie, tutor: e.mascota.tutores.map((t) => t.nombre).join(', ') }), () => undefined)
@@ -785,6 +799,7 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
     return () => clearTimeout(t)
   }, [q])
   const serv = catalogo.servicios.find((s) => s.id === servicio)
+  const esEstetica = Boolean(serv?.estetica && catalogo.estetica?.activa)
   const recursoPrep = recursoInicial ? catalogo.recursos.find((r) => r.id === recursoInicial) ?? null : null
   /* Alta de mascota que regresa a esta agenda con la misma hora y el mismo espacio (AppClinica: ?volver=agenda). */
   const hrefAlta = `${base}/mascotas/nueva?${new URLSearchParams({ volver: 'agenda', dia: diaInicial, ...(horaInicial ? { hora: horaInicial } : {}), ...(recursoInicial ? { recurso: String(recursoInicial) } : {}) }).toString()}`
@@ -847,11 +862,12 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
               <option value="">—</option>
               {catalogo.servicios.filter((s) => s.activo).map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.nombre} · {s.duracionMin} min{s.precio ? ` · $${s.precio}` : ''}
+                  {s.nombre} · {s.estetica && catalogo.estetica?.activa ? `por talla${s.precioDesde ? ` · desde $${s.precioDesde}` : ''}` : `${s.duracionMin} min${s.precio ? ` · $${s.precio}` : ''}`}
                 </option>
               ))}
             </select>
           </Campo>
+          {serv && esEstetica && catalogo.estetica && <EsteticaNuevaCita estetica={catalogo.estetica} servicioId={serv.id} mascotaId={mascota.id} elegidos={adicionales} onElegidos={setAdicionales} />}
           <Campo etiqueta="Notas internas">
             <input className="fz-input" value={notas} onChange={(e) => setNotas(e.target.value)} />
           </Campo>
@@ -861,18 +877,49 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
           <ErrorForm error={error} />
           {serv && (
             <SelectorHorario
-              key={serv.id}
+              key={`${serv.id}|${adicionales.join(',')}`}
               catalogo={catalogo}
               servicioId={serv.id}
+              estetica={esEstetica ? { mascota: mascota.id, adicionales } : undefined}
               recursoId={recursoInicial}
               diaInicial={diaInicial}
               horaInicial={horaInicial}
               onElegir={(d, h, r) =>
-                api.post<CitaVista>('agenda/citas', { mascotaId: mascota.id, servicioId: serv.id, dia: d, hora: h, recursoId: r, confirmar, notasInternas: notas }).then(onListo, (e) => setError(e instanceof Error ? e.message : 'No se pudo agendar.'))
+                api.post<CitaVista>('agenda/citas', { mascotaId: mascota.id, servicioId: serv.id, dia: d, hora: h, recursoId: r, confirmar, notasInternas: notas, ...(esEstetica ? { adicionales } : {}) }).then(onListo, (e) => setError(e instanceof Error ? e.message : 'No se pudo agendar.'))
               }
             />
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+/** Estética al agendar: adicionales y precio por la talla de la mascota (lo decide el servidor). */
+function EsteticaNuevaCita({ estetica, servicioId, mascotaId, elegidos, onElegidos }: { estetica: CatalogoEstetica; servicioId: number; mascotaId: number; elegidos: number[]; onElegidos: (ids: number[]) => void }) {
+  const cot = useCarga(() => api.get<Cotizacion>('agenda/cotizar', { servicio: servicioId, mascota: mascotaId, adicionales: elegidos.join(',') || null }), [servicioId, mascotaId, elegidos.join(',')])
+  const c = cot.datos
+  return (
+    <div className="fz-stack fz-stack--chico cl-estetica">
+      {estetica.adicionales.length > 0 && (
+        <Campo etiqueta="Adicionales">
+          <div className="cl-chips">
+            {estetica.adicionales.map((a) => {
+              const on = elegidos.includes(a.id)
+              return (
+                <button key={a.id} type="button" className={`cl-chip${on ? ' is-on' : ''}`} aria-pressed={on} onClick={() => onElegidos(on ? elegidos.filter((x) => x !== a.id) : [...elegidos, a.id].sort((x, y) => x - y))}>
+                  {a.nombre} · +{pesos(a.precio)}
+                </button>
+              )
+            })}
+          </div>
+        </Campo>
+      )}
+      {cot.error && <ErrorForm error={cot.error} />}
+      {c && (
+        <p className="cl-cotizacion">
+          {c.talla ? `Talla ${({ chico: 'chica', mediano: 'mediana', grande: 'grande', gigante: 'gigante' } as const)[c.talla]}${c.origenTalla === 'peso' && c.pesoKg ? ` (${c.pesoKg} kg)` : c.origenTalla === 'fijada' ? ' (fijada)' : ''}` : 'Sin peso: talla por confirmar'} · {c.duracionMin} min · <b>{c.total != null ? pesos(c.total) : 'precio al recibirla'}</b>
+        </p>
       )}
     </div>
   )

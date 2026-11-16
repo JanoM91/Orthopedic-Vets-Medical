@@ -42,7 +42,7 @@ export default async function Servicios() {
                   <h2>{s.nombre}</h2>
                   <p className="pt-chico pt-tenue">
                     <Icono n="reloj" /> {duracion(s.duracionMin)}
-                    {s.precio ? ` · desde $${s.precio.toLocaleString('es-MX')}` : ''}
+                    {s.precioDesde ? ` · desde $${s.precioDesde.toLocaleString('es-MX')}` : ''}
                   </p>
                 </div>
               </div>

@@ -15,6 +15,7 @@
     "migrate:status": "payload migrate:status",
     "test:finanzas": "node --experimental-strip-types --no-warnings scripts/probarFinanzas.mjs",
     "test:clinica": "node scripts/probarClinica.mjs",
+    "test:estetica": "node scripts/probarEstetica.mjs",
     "test:farmacia": "node scripts/probarFarmacia.mjs"
   },
   "dependencies": {

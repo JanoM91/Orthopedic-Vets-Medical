@@ -44,6 +44,8 @@ export type MascotaVista = {
   edad: string | null
   microchip: string | null
   alergias: string | null
+  /** Talla para estética fijada a mano (null = por peso). */
+  tallaEstetica: 'chico' | 'mediano' | 'grande' | 'gigante' | null
   alertasManejo: string[]
   medicoTratante: PersonaBreve | null
   tutores: TutorDeMascota[]
@@ -139,6 +141,8 @@ export type CatalogoClinica = {
   tiposDocumento: { label: string; value: string }[]
   documentosHabilitados: boolean
   totales: { clientes: number; mascotas: number }
+  /** Módulo de estética encendido (talla de la mascota) y nombre de la estética. */
+  estetica: { activa: boolean; nombre: string }
 }
 
 /* ───────── importación ───────── */
@@ -234,6 +238,11 @@ export type ServicioVista = {
   icono: ClaveIcono
   /** Lo guardado en el catálogo («auto» si no se fijó). */
   iconoFijado: string
+  /** Estética (módulo encendido y servicio marcado): precio y duración por talla. */
+  estetica: boolean
+  /** El menor precio entre tallas (estética) o el precio (los demás). */
+  precioDesde: number | null
+  preciosTalla: { chico: number | null; mediano: number | null; grande: number | null; gigante: number | null } | null
 }
 export type ConfiguracionAgenda = {
   horario: { dia: number; abierto: boolean; de: string; a: string }[]
@@ -267,6 +276,8 @@ export type CitaVista = {
   motivoCancelacion: string | null
   historial: { estado: string; fecha: string; por: string | null; detalle: string | null }[]
   cargoFinanzas: number | null
+  /** Estética: lo pactado al agendar (total null = por confirmar). */
+  estetica: { talla: 'chico' | 'mediano' | 'grande' | 'gigante' | null; nombreTalla: string | null; precioBase: number | null; total: number | null; adicionales: { nombre: string; precio: number }[] } | null
   esHoy: boolean
   siguientes: EstadoCitaVista[]
   creadoEn: string

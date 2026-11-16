@@ -53,11 +53,13 @@ import {
   catalogoAgenda,
   cita,
   citasDeMascota,
+  cotizarEquipo,
   crearCita,
   disponibilidadEquipo,
   portalCalendario,
   portalCancelar,
   portalCitas,
+  portalCotizar,
   portalCrearCita,
   portalDisponibilidad,
   portalReprogramar,
@@ -99,7 +101,8 @@ import {
  *   GET  agenda/catalogo                       recursos, servicios y configuración (horario, reglas)
  *   POST agenda/arranque                       recursos y servicios sugeridos (una sola vez)
  *   GET  agenda?dia=AAAA-MM-DD                 citas del día y solicitudes por confirmar
- *   GET  agenda/disponibilidad?servicio&dia&recurso&ignorar
+ *   GET  agenda/disponibilidad?servicio&dia&recurso&ignorar&mascota&adicionales
+ *   GET  agenda/cotizar?servicio&mascota&adicionales=1,2   estética: talla, precio y duración
  *   POST agenda/citas                          crear (mascotaId, servicioId, dia, hora, recursoId?, confirmar?)
  *   GET  agenda/citas/:id
  *   POST agenda/citas/:id/estado               { estado, motivo? }
@@ -115,7 +118,8 @@ import {
  *   POST portal/vincular                       { codigo }
  *   POST portal/mascotas/:id/documentos        aportar un archivo (queda pendiente de revisión)
  *   GET  portal/citas                          próximas y pasadas, servicios y mascotas para pedir
- *   GET  portal/citas/disponibilidad?servicio&dia&ignorar
+ *   GET  portal/citas/disponibilidad?servicio&dia&ignorar&mascota&adicionales
+ *   GET  portal/citas/cotizar?servicio&mascota&adicionales   estética (solo sus mascotas y adicionales «en línea»)
  *   POST portal/citas                          { mascotaId, servicioId, dia, hora, notasTutor? }
  *   POST portal/citas/:id/reprogramar | cancelar
  *   GET  portal/citas/calendario?servicio&desde&hasta&ignorar   días libres, llenos y cerrados (calendario del mes)
@@ -127,6 +131,14 @@ import {
  */
 
 export const dynamic = 'force-dynamic'
+
+/** Estética: `mascota` y `adicionales=1,2` para calcular duración y precio. */
+function extraDe(q: URLSearchParams): { mascotaId: number | null; adicionales: number[] } | undefined {
+  const m = Number(q.get('mascota'))
+  const ads = (q.get('adicionales') ?? '').split(',').map(Number).filter((x) => Number.isInteger(x) && x > 0)
+  if (!(m > 0) && !ads.length) return undefined
+  return { mascotaId: m > 0 ? m : null, adicionales: ads }
+}
 export const maxDuration = 60
 
 type Contexto = { params: Promise<{ ruta?: string[] }> }
@@ -191,11 +203,15 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
     if (a === 'citas' && !b) return json(await portalCitas(c))
     if (a === 'citas' && b === 'disponibilidad') {
       const q = req.nextUrl.searchParams
-      return json(await portalDisponibilidad(c, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined))
+      return json(await portalDisponibilidad(c, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined, extraDe(q)))
     }
     if (a === 'citas' && b === 'calendario') {
       const q = req.nextUrl.searchParams
-      return json(await portalCalendario(c, idDeRuta(q.get('servicio') ?? undefined), q.get('desde') ?? '', q.get('hasta') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined))
+      return json(await portalCalendario(c, idDeRuta(q.get('servicio') ?? undefined), q.get('desde') ?? '', q.get('hasta') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined, extraDe(q)))
+    }
+    if (a === 'citas' && b === 'cotizar') {
+      const q = req.nextUrl.searchParams
+      return json(await portalCotizar(c, idDeRuta(q.get('servicio') ?? undefined), extraDe(q) ?? {}))
     }
   } else {
     if (a === 'vincular' && !b) return json(await vincular(c, await leerJson(req)))
@@ -253,7 +269,10 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'agenda' && !b) return json(await agendaDelDia(ctx, q.get('dia') ?? ctx.hoy))
     if (a === 'agenda' && b === 'catalogo') return json(await catalogoAgenda(payload))
     if (a === 'agenda' && b === 'disponibilidad') {
-      return json(await disponibilidadEquipo(ctx, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? ctx.hoy, q.get('recurso') ? idDeRuta(q.get('recurso')!) : null, q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined))
+      return json(await disponibilidadEquipo(ctx, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? ctx.hoy, q.get('recurso') ? idDeRuta(q.get('recurso')!) : null, q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined, extraDe(q)))
+    }
+    if (a === 'agenda' && b === 'cotizar') {
+      return json(await cotizarEquipo(ctx, idDeRuta(q.get('servicio') ?? undefined), extraDe(q) ?? {}))
     }
     if (a === 'agenda' && b === 'citas' && c) return json(await cita(ctx, idDeRuta(c)))
     if (a === 'mascotas' && b && c === 'citas') return json(await citasDeMascota(ctx, idDeRuta(b)))

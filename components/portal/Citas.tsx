@@ -8,6 +8,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useRef, useState } from 'react'
+import type { CatalogoEstetica } from '../../lib/clinica/agenda'
+import type { Cotizacion } from '../../lib/clinica/estetica'
 import type { CitaVista, DiaCalendario, DisponibilidadDia, ServicioVista } from '../../lib/clinica/tipos'
 import { ESTADO_CITA_LABEL } from '../../lib/clinica/tipos'
 import { diaLocal } from '../../lib/localTime'
@@ -54,17 +56,17 @@ const moverMes = (mes: string, n: number) => {
  * servicio. Solo libre u ocupado: nunca de quién son las citas. Los días
  * pasados, cerrados o fuera de la ventana no se pueden elegir.
  */
-export function Calendario({ servicioId, ignorarCita, dia, onDia, diasAdelante }: { servicioId: number; ignorarCita?: number; dia: string | null; onDia: (d: string) => void; diasAdelante: number }) {
+export function Calendario({ servicioId, ignorarCita, dia, onDia, diasAdelante, consulta = '' }: { servicioId: number; ignorarCita?: number; dia: string | null; onDia: (d: string) => void; diasAdelante: number; consulta?: string }) {
   const [mes, setMes] = useState((dia ?? hoy()).slice(0, 7))
   /* La respuesta lleva la clave de lo que se pidió: si cambia el mes, se ve «cargando» sin borrar el estado dentro del efecto. */
-  const clave = `${servicioId}|${mes}|${ignorarCita ?? ''}`
+  const clave = `${servicioId}|${mes}|${ignorarCita ?? ''}|${consulta}`
   const [res, setRes] = useState<{ clave: string; dias: DiaCalendario[] | null; error: string | null } | null>(null)
   const dias = res?.clave === clave ? res.dias : null
   const error = res?.clave === clave ? res.error : null
   const elegidoAuto = useRef(false)
   useEffect(() => {
     let vivo = true
-    pedir<DiaCalendario[]>(`/api/clinica/portal/citas/calendario?servicio=${servicioId}&desde=${mes}-01&hasta=${finDeMes(mes)}${ignorarCita ? `&ignorar=${ignorarCita}` : ''}`).then(
+    pedir<DiaCalendario[]>(`/api/clinica/portal/citas/calendario?servicio=${servicioId}&desde=${mes}-01&hasta=${finDeMes(mes)}${ignorarCita ? `&ignorar=${ignorarCita}` : ''}${consulta}`).then(
       (r) => {
         if (!vivo) return
         setRes({ clave, dias: r, error: null })
@@ -146,14 +148,14 @@ export function Calendario({ servicioId, ignorarCita, dia, onDia, diasAdelante }
 }
 
 /** Horas de un día: libres para elegir y ocupadas tachadas, por mañana y tarde. */
-export function Horas({ servicioId, dia, ignorarCita, hora, onHora }: { servicioId: number; dia: string; ignorarCita?: number; hora: string | null; onHora: (h: string | null) => void }) {
-  const clave = `${servicioId}|${dia}|${ignorarCita ?? ''}`
+export function Horas({ servicioId, dia, ignorarCita, hora, onHora, consulta = '' }: { servicioId: number; dia: string; ignorarCita?: number; hora: string | null; onHora: (h: string | null) => void; consulta?: string }) {
+  const clave = `${servicioId}|${dia}|${ignorarCita ?? ''}|${consulta}`
   const [res, setRes] = useState<{ clave: string; disp: DisponibilidadDia | null; error: string | null } | null>(null)
   const disp = res?.clave === clave ? res.disp : null
   const error = res?.clave === clave ? res.error : null
   useEffect(() => {
     let vivo = true
-    pedir<DisponibilidadDia>(`/api/clinica/portal/citas/disponibilidad?servicio=${servicioId}&dia=${dia}${ignorarCita ? `&ignorar=${ignorarCita}` : ''}`).then(
+    pedir<DisponibilidadDia>(`/api/clinica/portal/citas/disponibilidad?servicio=${servicioId}&dia=${dia}${ignorarCita ? `&ignorar=${ignorarCita}` : ''}${consulta}`).then(
       (r) => {
         if (!vivo) return
         setRes({ clave, disp: r, error: null })
@@ -205,15 +207,15 @@ export function Horas({ servicioId, dia, ignorarCita, hora, onHora }: { servicio
 }
 
 /** Calendario + horas + barra fija con el resumen y el botón (pedir y reprogramar). */
-export function ElegirHorario({ servicioId, diaInicial, ignorarCita, etiqueta, resumen, diasAdelante, onElegir, extra }: { servicioId: number; diaInicial: string | null; ignorarCita?: number; etiqueta: string; resumen?: string; diasAdelante: number; onElegir: (dia: string, hora: string) => Promise<void>; extra?: React.ReactNode }) {
+export function ElegirHorario({ servicioId, diaInicial, ignorarCita, etiqueta, resumen, diasAdelante, onElegir, extra, consulta }: { servicioId: number; diaInicial: string | null; ignorarCita?: number; etiqueta: string; resumen?: string; diasAdelante: number; onElegir: (dia: string, hora: string) => Promise<void>; extra?: React.ReactNode; consulta?: string }) {
   const [dia, setDia] = useState<string | null>(diaInicial)
   const [hora, setHora] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   return (
     <div className="pt-form">
-      <Calendario servicioId={servicioId} ignorarCita={ignorarCita} dia={dia} diasAdelante={diasAdelante} onDia={(d) => { setDia(d); setHora(null) }} />
-      {dia && <Horas servicioId={servicioId} dia={dia} ignorarCita={ignorarCita} hora={hora} onHora={setHora} />}
+      <Calendario servicioId={servicioId} ignorarCita={ignorarCita} dia={dia} diasAdelante={diasAdelante} consulta={consulta} onDia={(d) => { setDia(d); setHora(null) }} />
+      {dia && <Horas servicioId={servicioId} dia={dia} ignorarCita={ignorarCita} hora={hora} onHora={setHora} consulta={consulta} />}
       {extra}
       <div className="pt-resumen">
         {error && <div className="pt-aviso pt-aviso--bad">{error}</div>}
@@ -248,14 +250,68 @@ export function ElegirHorario({ servicioId, diaInicial, ignorarCita, etiqueta, r
 
 type MascotaElegible = { id: number; nombre: string; especie: string; foto: string | null }
 
-export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial, notaInicial, anticipacionHoras, diasAdelante }: { mascotas: MascotaElegible[]; servicios: ServicioVista[]; mascotaInicial: number | null; servicioInicial: number | null; notaInicial?: string; anticipacionHoras: number; diasAdelante: number }) {
+const pesos = (n: number) => `$${n.toLocaleString('es-MX', { maximumFractionDigits: 2 })}`
+
+/** Estética: adicionales para elegir y el precio para la talla de la mascota. */
+function EleccionEstetica({ estetica, servicioId, mascotaId, elegidos, onElegidos }: { estetica: CatalogoEstetica; servicioId: number; mascotaId: number; elegidos: number[]; onElegidos: (ids: number[]) => void }) {
+  const clave = `${servicioId}|${mascotaId}|${elegidos.join(',')}`
+  const [res, setRes] = useState<{ clave: string; c: Cotizacion | null; error: string | null } | null>(null)
+  useEffect(() => {
+    let vivo = true
+    const [sv, m, ads] = clave.split('|')
+    pedir<Cotizacion>(`/api/clinica/portal/citas/cotizar?servicio=${sv}&mascota=${m}${ads ? `&adicionales=${ads}` : ''}`).then(
+      (c) => vivo && setRes({ clave, c, error: null }),
+      (e) => vivo && setRes({ clave, c: null, error: e instanceof Error ? e.message : 'Error' }),
+    )
+    return () => {
+      vivo = false
+    }
+  }, [clave])
+  const c = res?.clave === clave ? res.c : null
+  return (
+    <div className="pt-estetica">
+      {estetica.adicionales.length > 0 && (
+        <>
+          <p className="pt-chico">
+            <b>¿Le agregamos algo?</b>
+          </p>
+          <div className="pt-chips pt-adicionales" role="group" aria-label="Adicionales">
+            {estetica.adicionales.map((a) => {
+              const on = elegidos.includes(a.id)
+              return (
+                <button key={a.id} type="button" aria-pressed={on} className={`pt-chip-adicional${on ? ' is-on' : ''}`} onClick={() => onElegidos(on ? elegidos.filter((x) => x !== a.id) : [...elegidos, a.id].sort((x, y) => x - y))} title={a.descripcion ?? undefined}>
+                  {on && <Icono n="check" />} {a.nombre} · +{pesos(a.precio)}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+      {res?.error && res.clave === clave && <div className="pt-aviso pt-aviso--bad">{res.error}</div>}
+      {c && (
+        <div className="pt-cotizacion">
+          <span>
+            {c.talla ? `Talla ${({ chico: 'chica', mediano: 'mediana', grande: 'grande', gigante: 'gigante' } as const)[c.talla]}` : 'Talla por confirmar'} · ≈ {c.duracionMin} min
+          </span>
+          <b>{c.total != null ? pesos(c.total) : 'Precio al recibirla'}</b>
+          {c.total == null && <small>Sin su peso aún: la talla y el precio se confirman al llegar.</small>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial, notaInicial, anticipacionHoras, diasAdelante, estetica }: { mascotas: MascotaElegible[]; servicios: ServicioVista[]; mascotaInicial: number | null; servicioInicial: number | null; notaInicial?: string; anticipacionHoras: number; diasAdelante: number; estetica?: CatalogoEstetica }) {
   const router = useRouter()
   const [mascota, setMascota] = useState<number>(mascotas.some((m) => m.id === mascotaInicial) ? mascotaInicial! : mascotas[0]?.id ?? 0)
   const [servicio, setServicio] = useState<number>(servicios.some((x) => x.id === servicioInicial) ? servicioInicial! : 0)
   const [notas, setNotas] = useState(notaInicial ?? '')
   const [hecha, setHecha] = useState<CitaVista | null>(null)
+  const [adicionales, setAdicionales] = useState<number[]>([])
   const s = servicios.find((x) => x.id === servicio)
   const m = mascotas.find((x) => x.id === mascota)
+  const esEstetica = Boolean(s?.estetica && estetica?.activa)
+  const consulta = esEstetica ? `&mascota=${mascota}${adicionales.length ? `&adicionales=${adicionales.join(',')}` : ''}` : ''
   if (hecha)
     return (
       <div className="pt-card pt-hecha">
@@ -266,6 +322,12 @@ export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial
         <p>
           <b>{hecha.servicio.nombre}</b> para <b>{hecha.mascota.nombre}</b>: {diaLargo(hecha.dia)}, {hecha.horaInicio}.
         </p>
+        {hecha.estetica && (
+          <p className="pt-chico">
+            {[hecha.estetica.nombreTalla ? `Talla ${hecha.estetica.nombreTalla.toLowerCase()}` : null, ...hecha.estetica.adicionales.map((a) => a.nombre)].filter(Boolean).join(' · ')}
+            {hecha.estetica.total != null ? ` · ${pesos(hecha.estetica.total)}` : ' · precio al recibirla'}
+          </p>
+        )}
         <div className="pt-aviso pt-aviso--info">La clínica la confirmará y te avisará. Si necesitas cambiarla, puedes hacerlo desde «Mis citas».</div>
         <Link href="/portal/citas" className="pt-btn pt-btn--primario">
           Ver mis citas
@@ -300,7 +362,8 @@ export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial
               <span className="pt-opcion-servicio__t">
                 <b>{x.nombre}</b>
                 <span>
-                  {x.duracionMin} min{x.reservaEnLinea === 'valoracion' ? ' · con valoración' : ''}
+                  {x.estetica && estetica?.activa ? `${estetica.nombre}${x.precioDesde ? ` · desde ${pesos(x.precioDesde)}` : ''}` : `${x.duracionMin} min`}
+                  {x.reservaEnLinea === 'valoracion' ? ' · con valoración' : ''}
                 </span>
               </span>
             </button>
@@ -315,9 +378,10 @@ export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial
               </p>
             )}
             {s.reservaEnLinea === 'valoracion' && <p className="pt-chico pt-tenue">Requiere valoración previa: la clínica revisa tu solicitud y te confirma o te propone una consulta primero.</p>}
-            {s.precio ? <p className="pt-chico">Precio de referencia: ${s.precio.toLocaleString('es-MX')}</p> : null}
+            {!esEstetica && s.precio ? <p className="pt-chico">Precio de referencia: ${s.precio.toLocaleString('es-MX')}</p> : null}
           </div>
         )}
+        {s && esEstetica && estetica && m && <EleccionEstetica estetica={estetica} servicioId={s.id} mascotaId={m.id} elegidos={adicionales} onElegidos={setAdicionales} />}
       </section>
 
       <section className="pt-paso">
@@ -326,8 +390,9 @@ export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial
         </h2>
         {s ? (
           <ElegirHorario
-            key={s.id}
+            key={`${s.id}|${consulta}`}
             servicioId={s.id}
+            consulta={consulta}
             diaInicial={sumarDias(hoy(), 1)}
             diasAdelante={diasAdelante}
             etiqueta="Pedir cita"
@@ -339,7 +404,7 @@ export function NuevaCita({ mascotas, servicios, mascotaInicial, servicioInicial
               </label>
             }
             onElegir={async (d, h) => {
-              const c = await pedir<CitaVista>('/api/clinica/portal/citas', { mascotaId: mascota, servicioId: s.id, dia: d, hora: h, notasTutor: notas })
+              const c = await pedir<CitaVista>('/api/clinica/portal/citas', { mascotaId: mascota, servicioId: s.id, dia: d, hora: h, notasTutor: notas, ...(esEstetica ? { adicionales } : {}) })
               setHecha(c)
               window.scrollTo({ top: 0, behavior: 'smooth' })
               router.refresh()

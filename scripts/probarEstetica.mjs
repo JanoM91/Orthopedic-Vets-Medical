@@ -303,6 +303,15 @@ async function main() {
     ok([303, 307, 308].includes(resp.status) && destino.includes('/admin/clinica/estetica'), 'La estilista que abre Hoy llega a su tablero de estética', { status: resp.status, destino })
   }
 
+  console.log('\nPuesta a punto (UX del panel 2)')
+  r = await admin.get('/admin/puesta-a-punto')
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('Puesta a punto') && r.data.includes('Servicios con precio por talla') && r.data.includes('Roles de estética') && /\d+ de \d+ listos|Todo listo/.test(r.data), 'Puesta a punto: el superadmin ve la lista con la sección de estética', r.status)
+  ok(!/re_[A-Za-z0-9]{8}|sk-ant-|TEST-\d/.test(r.data), 'Puesta a punto: ninguna llave sale en la página (solo presencia)')
+  r = await recepcion.get('/admin/puesta-a-punto')
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('la revisan los dueños') && !r.data.includes('Servicios con precio por talla'), 'Puesta a punto: Recepción no la ve', r.status)
+  r = await admin.get('/admin')
+  ok(typeof r.data === 'string' && r.data.includes('/admin/puesta-a-punto'), 'Hoy: liga a la puesta a punto para el superadmin', r.status)
+
   console.log('\nPortal: historial y «¿ya le toca su baño?» (E3)')
   r = await tutor.get(`/api/clinica/portal/mascotas/${oso.id}/estetica`)
   const eOso = r.data?.lista?.[0]

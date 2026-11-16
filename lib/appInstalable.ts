@@ -83,7 +83,7 @@ export function manifest(i: Instalacion) {
 
 /* ───────── títulos de la pestaña en el panel ───────── */
 
-const CLINICA: Record<string, string> = { agenda: 'Agenda', clientes: 'Tutores', mascotas: 'Pacientes', importar: 'Importar pacientes' }
+const CLINICA: Record<string, string> = { agenda: 'Agenda', clientes: 'Tutores', mascotas: 'Pacientes', importar: 'Importar pacientes', estetica: 'Estética' }
 const FARMACIA: Record<string, string> = {
   vender: 'Mostrador',
   productos: 'Productos',
@@ -96,6 +96,10 @@ const FARMACIA: Record<string, string> = {
   alertas: 'Alertas',
   importar: 'Importar catálogo',
   configuracion: 'Configuración',
+  pedidos: 'Pedidos',
+  entregas: 'Mis entregas',
+  planes: 'Planes de compra',
+  reportes: 'Reportes',
 }
 
 /**
@@ -108,6 +112,7 @@ export function tituloPanel(segments: string[] | undefined): string | null {
   if (s.length === 0) return de('Hoy')
   if (s[0] === 'clinica') return de(CLINICA[s[1] ?? ''] ?? 'Pacientes')
   if (s[0] === 'farmacia') return de(FARMACIA[s[1] ?? ''] ?? 'Farmacia')
+  if (s[0] === 'puesta-a-punto') return de('Puesta a punto')
   if (s[0] === 'login') return de('Entrar')
   if (s[0] === 'logout') return de('Salir')
   if (s[0] === 'forgot') return de('Recuperar contraseña')

@@ -1528,3 +1528,142 @@ input[type='time']::-webkit-date-and-time-value {
 .cl-est-vacio p {
   margin: 0;
 }
+
+/* ─── Puesta a punto (UX del panel 2, nov-2026) ─── */
+.pap.fz-app {
+  max-width: 980px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+  container-type: inline-size;
+  container-name: pap;
+}
+.pap__cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pap__avance,
+.pap__seccion {
+  padding: 16px 18px;
+}
+.pap__barra,
+.hoy__pap-barra {
+  margin-top: 10px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--mx-sand);
+  overflow: hidden;
+}
+.pap__barra span,
+.hoy__pap-barra span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0b6b59;
+}
+.pap__titulo {
+  margin-bottom: 4px;
+}
+.pap__cuenta {
+  min-width: 40px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #fdf1dc;
+  color: #8a5a0a;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pap__cuenta.is-completa {
+  background: #e3f8f2;
+  color: #0b6b59;
+}
+.pap__pasos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pap__paso {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'estado estado'
+    'texto accion';
+  gap: 6px 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--mx-line);
+}
+.pap__paso:first-child {
+  border-top: 0;
+}
+@container pap (min-width: 620px) {
+  .pap__paso {
+    grid-template-columns: 84px minmax(0, 1fr) auto;
+    grid-template-areas: 'estado texto accion';
+  }
+}
+.pap__estado {
+  grid-area: estado;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pap__estado::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.pap__estado--listo {
+  background: #e3f8f2;
+  color: #0b6b59;
+}
+.pap__estado--falta {
+  background: #fdecee;
+  color: #a1262f;
+}
+.pap__estado--revisa {
+  background: #fdf1dc;
+  color: #8a5a0a;
+}
+.pap__estado--opcional {
+  background: #eef2f6;
+  color: #475569;
+}
+.pap__texto {
+  grid-area: texto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.pap__paso > :last-child {
+  grid-area: accion;
+  justify-self: end;
+}
+.pap__paso.is-listo .pap__texto b {
+  font-weight: 500;
+}
+.hoy__pap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hoy__pap .fz-btn {
+  margin-top: 10px;
+  align-self: flex-start;
+}

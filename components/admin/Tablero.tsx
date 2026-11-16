@@ -16,6 +16,7 @@ import type { OperacionVista } from '../../lib/finanzas/tipos'
 import { diaLocal, partesLocales } from '../../lib/localTime'
 import { leerModulos } from '../../lib/modulos'
 import { esSoloCaptura, permisosDe, usaClinica, usaFarmacia, usaFinanzas } from '../../lib/permisos'
+import { puestaAPunto } from '../../lib/puestaAPunto'
 import { fechaLarga } from '../../lib/whatsapp'
 import { AgendaDeHoy, type FilaAgenda } from './TableroAgenda'
 
@@ -79,7 +80,7 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
   if (conEstetica && !conAgenda && !conFinanzas && !conFarmacia) redirect(`${rutaAdmin}/clinica/estetica`)
   const conPlanes = conFarmacia && modulos.tienda && p.farmacia.vender
 
-  const [agenda, farmacia, finanzas, estetica, planesDetenidos] = await Promise.all([
+  const [agenda, farmacia, finanzas, estetica, planesDetenidos, puesta] = await Promise.all([
     conAgenda
       ? intentar(async () => {
           const ctx = await contextoClinica(req)
@@ -111,6 +112,8 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
         })
       : null,
     conPlanes ? intentar(async () => (await req.payload.count({ collection: 'far-planes', overrideAccess: true, where: { estado: { equals: 'detenido' } } })).totalDocs) : null,
+    /* Puesta a punto (UX del panel 2): solo para quien administra usuarios. */
+    p.gestionarUsuarios ? intentar(() => puestaAPunto(req.payload, modulos, rutaAdmin)) : null,
   ])
 
   const ahora = new Date()
@@ -370,9 +373,25 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
                 )}
               </section>
             )}
+            {puesta?.ok && puesta.datos.pendientes > 0 && (
+              <section className="fz-tarjeta hoy__caja hoy__pap" aria-labelledby="hoy-pap">
+                <h2 className="fz-h2" id="hoy-pap">
+                  Puesta a punto
+                </h2>
+                <span className="fz-chico fz-tenue">
+                  {puesta.datos.listos} de {puesta.datos.total} listos · {plural(puesta.datos.pendientes, 'paso pendiente', 'pasos pendientes')}
+                </span>
+                <div className="hoy__pap-barra" aria-hidden="true">
+                  <span style={{ width: `${Math.round((puesta.datos.listos / Math.max(1, puesta.datos.total)) * 100)}%` }} />
+                </div>
+                <Link className="fz-btn fz-btn--claro fz-btn--chico" href={`${rutaAdmin}/puesta-a-punto?ver=pendientes`}>
+                  Ver qué falta
+                </Link>
+              </section>
+            )}
             {p.gestionarUsuarios && (
               <p className="fz-chico fz-tenue hoy__admin">
-                Administración: <Link href={`${rutaAdmin}/collections/users`}>Usuarios</Link> · <Link href={`${rutaAdmin}/collections/roles`}>Roles</Link>
+                Administración: <Link href={`${rutaAdmin}/collections/users`}>Usuarios</Link> · <Link href={`${rutaAdmin}/collections/roles`}>Roles</Link> · <Link href={`${rutaAdmin}/puesta-a-punto`}>Puesta a punto</Link>
               </p>
             )}
           </div>

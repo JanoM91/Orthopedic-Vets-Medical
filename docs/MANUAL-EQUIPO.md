@@ -10,6 +10,8 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Estética, Pacientes, Mostrador
 
 **Hoy** (`/admin`) es el tablero del día: citas de hoy, en clínica, por confirmar, ventas de mostrador y cobros pendientes; la agenda de hoy con el siguiente paso de cada cita («Confirmar», «Llegó», «Atender», «Abrir nota»), acciones rápidas y pendientes (cobros, farmacia, pedidos de la tienda, planes detenidos y mascotas listas para recoger). Finalizar y «No asistió» se hacen en la agenda, donde piden confirmación. Con la estética encendida, Hoy trae su bloque: cuántas van por llegar, en proceso, listas y entregadas, y las del día con su etapa y el WhatsApp de las listas; las citas de estética de la agenda de hoy se avanzan «En el tablero». La estilista entra directo a su tablero.
 
+**Puesta a punto** (dueños y superadmin; liga en Hoy): qué falta para operar con datos reales —horario, precios, contacto del sitio, aviso de privacidad, métodos de pago, catálogo…— con un botón a cada pantalla. «Solo lo pendiente» esconde lo que ya está.
+
 ## Recepción
 
 **Agenda** (Trabajo → Agenda)

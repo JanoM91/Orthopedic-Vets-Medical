@@ -628,6 +628,50 @@ async function main() {
   ok(r.status === 200 && h2.includes('Jornada de prueba') && h2.includes('Quiero mi lugar') && h2.includes(encodeURIComponent('campaña «Jornada de prueba»')), 'Raíz: la campaña vigente aparece con su botón de WhatsApp')
   r = await admin.post('/api/globals/sitio-configuracion', { ...basico, campana: { activa: true, titulo: 'Jornada de prueba', hasta: '31/12/2099' } })
   ok(r.status === 400, 'La fecha de la campaña se valida (AAAA-MM-DD)', r.status)
+  /* Reserva de primera vez (nov-2026): solicitud que recepción confirma. */
+  console.log('\nReserva de primera vez')
+  ok(h2.includes('href="/reservar"'), 'Raíz: «Reserva tu primera cita» lleva a /reservar')
+  r = await fetch(`${BASE}/reservar`)
+  let hr = await r.text()
+  ok(r.status === 200 && hr.includes('Reserva tu primera cita') && hr.includes('name="whatsapp"') && hr.includes('Consulta general'), '/reservar muestra el formulario con los servicios del catálogo')
+  const pedir = (cuerpo, ip) => fetch(`${BASE}/api/sitio/solicitudes`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, body: JSON.stringify(cuerpo) }).then(async (x) => ({ status: x.status, data: await x.json().catch(() => null) }))
+  const srv1 = (await admin.get('/api/servicios?limit=1&where[activo][equals]=true')).data?.docs?.[0]
+  const sol = { nombre: 'Visitante Nuevo', whatsapp: '228 111 2233', mascota: 'Canela', especie: 'perro', servicioId: srv1?.id, diaPreferido: '2099-05-04', turno: 'manana', nota: 'Cojea de una pata', privacidad: true }
+  r = await pedir({ ...sol, whatsapp: '12345' }, '10.9.0.1')
+  ok(r.status === 400, 'Solicitud con WhatsApp incompleto se rechaza', r.status)
+  r = await pedir({ ...sol, privacidad: false }, '10.9.0.1')
+  ok(r.status === 400, 'Solicitud sin aceptar el aviso de privacidad se rechaza', r.status)
+  r = await pedir({ ...sol, diaPreferido: '2020-01-01' }, '10.9.0.1')
+  ok(r.status === 400, 'Solicitud con un día pasado se rechaza', r.status)
+  r = await pedir({ ...sol, sitioWeb: 'http://robot.example' }, '10.9.0.1')
+  let cuantas = (await admin.get('/api/solicitudes?limit=1')).data?.totalDocs
+  ok(r.status === 201 && cuantas === 0, 'El campo trampa descarta al robot sin guardar nada', cuantas)
+  r = await pedir(sol, '10.9.0.1')
+  const folioSol = r.data?.folio
+  ok(r.status === 201 && /^SOL-\d{5}$/.test(folioSol ?? ''), 'Un visitante sin cuenta deja su solicitud', r.data)
+  r = await pedir(sol, '10.9.0.1')
+  cuantas = (await admin.get('/api/solicitudes?limit=1')).data?.totalDocs
+  ok(r.status === 201 && r.data?.folio === folioSol && cuantas === 1, 'Enviar dos veces no duplica la solicitud', cuantas)
+  r = await admin.get('/api/solicitudes?limit=1')
+  const sdoc = r.data?.docs?.[0]
+  ok(sdoc?.estado === 'nueva' && sdoc.whatsapp === '2281112233' && sdoc.servicioNombre === srv1?.nombre && sdoc.origen === 'Campaña: Jornada de prueba' && sdoc.folio === folioSol, 'La solicitud guarda WhatsApp limpio, servicio, campaña de origen y folio', sdoc)
+  const antesCitas = (await admin.get('/api/citas?limit=1')).data?.totalDocs
+  const antesClientes = (await admin.get('/api/clientes?limit=1')).data?.totalDocs
+  r = await pedir({ ...sol, whatsapp: '2281112244', nombre: 'Otra Persona' }, '10.9.0.1')
+  ok(r.status === 201 && (await admin.get('/api/citas?limit=1')).data?.totalDocs === antesCitas && (await admin.get('/api/clientes?limit=1')).data?.totalDocs === antesClientes, 'Una solicitud no crea citas ni fichas de cliente')
+  r = await new Sesion().get('/api/solicitudes')
+  ok(r.status === 403 || r.status === 401 || (r.data?.docs ?? []).length === 0, 'Un visitante no lee las solicitudes')
+  r = await new Sesion().post('/api/solicitudes', { nombre: 'X', whatsapp: '2280000000', mascota: 'Y', especie: 'perro' })
+  ok(r.status === 403 || r.status === 401, 'La API genérica no crea solicitudes', r.status)
+  r = await admin.llamar('PATCH', `/api/solicitudes/${sdoc?.id}`, { estado: 'contactada', notaInterna: 'Quedó para el jueves' })
+  ok(r.status === 200 && r.data?.doc?.estado === 'contactada', 'El equipo marca la solicitud como contactada', r.status)
+  r = await admin.llamar('DELETE', `/api/solicitudes/${sdoc?.id}`)
+  ok(r.status === 403, 'Una solicitud no se borra', r.status)
+  let ultimo = 0
+  for (let i = 0; i < 6; i++) ultimo = (await pedir({ ...sol, whatsapp: `22855500${String(i).padStart(2, '0')}` }, '10.9.0.77')).status
+  ok(ultimo === 429, 'La sexta solicitud en una hora desde la misma conexión se frena', ultimo)
+  r = await fetch(`${BASE}/admin`, { headers: { cookie: admin.cookie } })
+  ok((await r.text()).includes('de primera cita por atender'), '«Hoy» avisa de las solicitudes por atender')
   r = await fetch(`${BASE}/robots.txt`)
   ok(r.status === 200 && (await r.text()).includes('Disallow: /admin'), 'robots.txt excluye el panel')
   r = await fetch(`${BASE}/finanzas`, { redirect: 'manual' })

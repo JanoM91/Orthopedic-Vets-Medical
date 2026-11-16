@@ -142,19 +142,25 @@ export function BotonesCita({ c, servicio }: { c: ContenidoSitio; servicio?: str
 }
 
 /**
- * «¿Primera vez?» (fase 6): pedir cita en línea exige cuenta y ficha vinculada.
- * Quien llega por primera vez tiene la salida por WhatsApp con mensaje listo.
+ * «¿Primera vez?»: pedir cita en línea exige cuenta y ficha vinculada. Quien
+ * llega por primera vez deja una solicitud en `/reservar` (nov-2026) o
+ * escribe por WhatsApp con el mensaje listo.
  */
-export function PrimeraVez({ c, servicio }: { c: ContenidoSitio; servicio?: string }) {
+export function PrimeraVez({ c, servicio, servicioId }: { c: ContenidoSitio; servicio?: string; servicioId?: number }) {
   const liga = enlaceWhatsApp(c.contacto.whatsapp, mensajes.primeraVez(c.marca.nombre, servicio))
-  if (!liga) return null
   return (
     <p className="st-primera">
-      ¿Primera vez?{' '}
-      <a href={liga} target="_blank" rel="noreferrer">
-        Escríbenos por WhatsApp
-      </a>{' '}
-      y te agendamos.
+      ¿Primera vez? <Link href={servicioId ? `/reservar?servicio=${servicioId}` : '/reservar'}>Reserva sin crear cuenta</Link>
+      {liga && (
+        <>
+          {' '}
+          o{' '}
+          <a href={liga} target="_blank" rel="noreferrer">
+            escríbenos por WhatsApp
+          </a>
+        </>
+      )}
+      .
     </p>
   )
 }

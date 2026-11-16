@@ -16,6 +16,7 @@ import { MasCartilla, MasDocumentos, MasFotos, MasNotas } from './collections/cl
 import { CodigosVinculacion, Importaciones, Tutores } from './collections/clinica/tutores'
 import { AgendaConfiguracion, Citas, Recursos, Servicios } from './collections/clinica/agenda'
 import { SitioConfiguracion, SitioFotos } from './collections/clinica/sitio'
+import { Solicitudes } from './collections/clinica/solicitudes'
 import { InstalacionConfiguracion } from './collections/Instalacion'
 import { FarAlmacenes, FarPresentaciones, FarProductos, FarProveedores } from './collections/farmacia/catalogo'
 import { FarLotes, FarMovimientos } from './collections/farmacia/inventario'
@@ -110,7 +111,7 @@ export default buildConfig({
     Roles,
     /* Clínica (octubre de 2026): pacientes, tutores y expediente. Reglas propias en collections/clinica/acceso.ts.
        Con el módulo Clínica apagado (lib/modulos.ts) responden «no» a todo. */
-    ...[Clientes, Mascotas, MasPesos, MasCartilla, MasNotas, MasDocumentos, MasFotos, CodigosVinculacion, Importaciones, Recursos, Servicios, Citas].map((c) => conModuloColeccion('clinica', c)),
+    ...[Clientes, Mascotas, MasPesos, MasCartilla, MasNotas, MasDocumentos, MasFotos, CodigosVinculacion, Importaciones, Recursos, Servicios, Citas, Solicitudes].map((c) => conModuloColeccion('clinica', c)),
     ...[EstAdicionales, EstFichas, EstFotos].map((c) => conModuloColeccion('estetica', conModuloColeccion('clinica', c))),
     /* Las cuentas del portal no se apagan con la clínica: en la fase 5 también entran a la tienda. */
     Tutores,

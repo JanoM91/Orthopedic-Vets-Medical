@@ -3,6 +3,8 @@
 > 27-oct-2026 · Reconstruido después de perderse la versión del 22-oct. Sirve para Orthopedic Vet's Medical y para cualquier clínica nueva (marca blanca: una instalación por clínica).
 >
 > Quién lo hace: el superadministrador (la primera cuenta que se crea). Tiempo: medio día de configuración y medio día de carga de datos y prueba con el equipo.
+>
+> **Puesta a punto** (`/admin/puesta-a-punto`, también desde «Hoy»): esta misma lista revisada contra la base, con lo que falta y una liga a cada pantalla. Las variables del servidor solo se revisan por presencia.
 
 ## 0. Antes de empezar (Vercel)
 

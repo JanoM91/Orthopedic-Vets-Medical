@@ -58,6 +58,8 @@ export type PermisosClinica = {
   agenda: boolean
   /** Editar servicios, recursos (consultorios) y horario de atención. */
   configurarAgenda: boolean
+  /** Estética (módulo «estetica»): tablero del día, ficha, fotos y entregar (cobra la cita). */
+  estetica: boolean
 }
 
 /**
@@ -132,6 +134,7 @@ export type RolGuardado = {
     importar?: boolean | null
     agenda?: boolean | null
     configurarAgenda?: boolean | null
+    estetica?: boolean | null
   } | null
   farmacia?: Partial<Record<keyof PermisosFarmacia, boolean | null>> | null
 }
@@ -154,8 +157,8 @@ const TODO_FARMACIA: PermisosFarmacia = {
   aprobar: true, asignarRepartidor: true, entregas: true, cierreDia: true, reportes: true, configurar: true,
 }
 
-const SIN_CLINICA: PermisosClinica = { verPacientes: false, editarPacientes: false, verExpediente: false, escribirExpediente: false, importar: false, agenda: false, configurarAgenda: false }
-const TODO_CLINICA: PermisosClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true, agenda: true, configurarAgenda: true }
+const SIN_CLINICA: PermisosClinica = { verPacientes: false, editarPacientes: false, verExpediente: false, escribirExpediente: false, importar: false, agenda: false, configurarAgenda: false, estetica: false }
+const TODO_CLINICA: PermisosClinica = { verPacientes: true, editarPacientes: true, verExpediente: true, escribirExpediente: true, importar: true, agenda: true, configurarAgenda: true, estetica: true }
 
 const TODO_FINANZAS: PermisosFinanzas = {
   registrar: true, ver: 'todos', alcance: [], verRestringidas: true, verSaldos: true, verUtilidad: true,
@@ -209,6 +212,7 @@ export function calcularPermisos(usuario: UsuarioParaPermisos | null | undefined
         importar: Boolean(c.importar),
         agenda: Boolean(c.agenda) || Boolean(c.configurarAgenda),
         configurarAgenda: Boolean(c.configurarAgenda),
+        estetica: Boolean(c.estetica),
       },
       farmacia: {
         vender: Boolean(fa.vender),

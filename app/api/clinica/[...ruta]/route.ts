@@ -1,3 +1,4 @@
+import { abrirFotoEstetica, arranqueEstetica, esteticasDeMascota, fichaEstetica, guardarFicha, moverEstetica, quitarFotoEstetica, subirFotoEstetica, tableroEstetica } from '@/lib/clinica/esteticaDia'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -109,6 +110,16 @@ import {
  *   POST agenda/citas/:id/reprogramar          { dia, hora, recursoId? }
  *   POST agenda/citas/:id/notas                { notasInternas?, profesionalId? }
  *   GET  mascotas/:id/citas
+ *
+ * ESTÉTICA (módulo «estetica», permiso «Estética», E2):
+ *   GET  estetica?dia                          tablero del día (tarjetas por etapa)
+ *   POST estetica/citas/:id/mover              { a: recibida | bano | secado | corte | lista | entregada }
+ *   GET|POST estetica/citas/:id/ficha          ficha de la cita (qué se hizo, hallazgos, notas…)
+ *   POST estetica/citas/:id/fotos              (multipart: archivo, momento=antes|despues)
+ *   POST estetica/fotos/:id/quitar
+ *   GET  estetica/fotos/:id                    la foto (equipo o el tutor de la mascota)
+ *   POST estetica/arranque                     rol «Estilista» y casilla en Dueño, Administración y Recepción
+ *   GET  mascotas/:id/estetica                 últimas estéticas (expediente)
  *
  * PORTAL (sesión de tutor, colección «tutores»):
  *   GET  portal/resumen                        tutor, ficha vinculada y mascotas
@@ -238,6 +249,8 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
   if (ruta[0] === 'portal') return atenderPortal(metodo, req, ruta.slice(1))
   /* Fotos: las ve el equipo o el tutor de la mascota; la función revisa cuál sesión es. */
   if (metodo === 'GET' && ruta[0] === 'fotos' && ruta[1] === 'mascotas' && ruta[2] && !ruta[3]) return abrirFoto(payloadModulos, req.headers, idDeRuta(ruta[2]))
+  /* Fotos de estética (E2): equipo con «Estética» o «Ver pacientes», o el tutor de la mascota. */
+  if (metodo === 'GET' && ruta[0] === 'estetica' && ruta[1] === 'fotos' && ruta[2] && !ruta[3]) return abrirFotoEstetica(payloadModulos, req.headers, idDeRuta(ruta[2]))
 
   const payload = payloadModulos
   const ctx: Ctx | null = await contextoDesdeHeaders(payload, req.headers)
@@ -276,7 +289,18 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     }
     if (a === 'agenda' && b === 'citas' && c) return json(await cita(ctx, idDeRuta(c)))
     if (a === 'mascotas' && b && c === 'citas') return json(await citasDeMascota(ctx, idDeRuta(b)))
+    if (a === 'mascotas' && b && c === 'estetica') return json(await esteticasDeMascota(ctx, idDeRuta(b)))
+    if (a === 'estetica' && !b) return json(await tableroEstetica(ctx, q.get('dia') ?? ctx.hoy))
+    if (a === 'estetica' && b === 'citas' && c && ruta[3] === 'ficha') return json(await fichaEstetica(ctx, idDeRuta(c)))
   } else {
+    if (a === 'estetica' && b === 'arranque' && !c) return json(await arranqueEstetica(ctx))
+    if (a === 'estetica' && b === 'citas' && c && ruta[3] === 'mover') return json(await moverEstetica(ctx, idDeRuta(c), await leerJson(req)))
+    if (a === 'estetica' && b === 'citas' && c && ruta[3] === 'ficha') return json(await guardarFicha(ctx, idDeRuta(c), await leerJson(req)))
+    if (a === 'estetica' && b === 'citas' && c && ruta[3] === 'fotos') {
+      const { archivo, campos } = await leerArchivo(req)
+      return json(await subirFotoEstetica(ctx, idDeRuta(c), String(campos.momento ?? ''), archivo), 201)
+    }
+    if (a === 'estetica' && b === 'fotos' && c && ruta[3] === 'quitar') return json(await quitarFotoEstetica(ctx, idDeRuta(c)))
     if (a === 'agenda' && b === 'arranque') return json(await arranqueAgenda(ctx))
     if (a === 'agenda' && b === 'citas' && !c) return json(await crearCita(ctx, await leerJson(req)), 201)
     if (a === 'agenda' && b === 'citas' && c) {

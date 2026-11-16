@@ -455,6 +455,15 @@ async function exigirDelTutor(payload: Payload, cita: Cita, actor: Extract<Actor
 
 export async function cambiarEstado(ctx: Ctx, id: number, entrada: unknown): Promise<CitaVista> {
   if (!ctx.p.clinica.agenda) throw prohibido()
+  return aplicarEstado(ctx, id, entrada)
+}
+
+/**
+ * Cambio de estado sin revisar el permiso «Agenda»: lo usan `cambiarEstado`
+ * (equipo con agenda) y el tablero de estética (`lib/clinica/esteticaDia.ts`,
+ * permiso «Estética», solo en citas de estética). Mismas transiciones y cargo.
+ */
+export async function aplicarEstado(ctx: Ctx, id: number, entrada: unknown, extra: { detalle?: string | null } = {}): Promise<CitaVista> {
   const d = z.object({ estado: z.enum(['confirmada', 'llegada', 'atencion', 'finalizada', 'cancelada', 'no_asistio']), motivo: z.string().trim().max(300).optional().default(''), profesionalId: z.number().int().positive().nullable().optional() }).safeParse(entrada)
   if (!d.success) throw invalido('Estado no válido.')
   const cita = await cargarCita(ctx.payload, id)
@@ -476,7 +485,7 @@ export async function cambiarEstado(ctx: Ctx, id: number, entrada: unknown): Pro
       profesional: d.data.profesionalId ?? cita.profesional ?? null,
       cargoFinanzas: cargoId ?? cita.cargoFinanzas ?? null,
       ...(esteticaFinal ? { estetica: esteticaFinal } : {}),
-      historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: d.data.estado, fecha: new Date().toISOString(), por: nombre, detalle: d.data.motivo || (cargoId ? `Cargo registrado en Finanzas` : null) }],
+      historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: d.data.estado, fecha: new Date().toISOString(), por: nombre, detalle: d.data.motivo || [extra.detalle, cargoId ? 'Cargo registrado en Finanzas' : null].filter(Boolean).join(' · ') || null }],
     },
   })
   if (d.data.estado === 'confirmada' || d.data.estado === 'cancelada') await avisarCita(ctx.payload, nueva.id, d.data.estado, { motivo: d.data.motivo || null })

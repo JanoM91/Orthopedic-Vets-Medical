@@ -171,3 +171,47 @@ export async function recordatorios(payload: Payload, ahora = new Date()): Promi
   }
   return { dia: manana, revisadas: citas.totalDocs, enviados, sinCorreo }
 }
+
+/* ───────────────────────────── estética (E2) ───────────────────────────── */
+
+/** «¡Ya está lista!» al tutor cuando la estética la pasa a «Lista para recoger». Nunca lanza. */
+export async function avisarListaEstetica(payload: Payload, citaId: number, marca: string): Promise<boolean> {
+  try {
+    const d = await cargar(payload, citaId)
+    const para = d ? correoDelTutor(d.cliente) : null
+    if (!d || !para) return false
+    const contacto = await contactoClinica(payload)
+    const mascota = d.mascota?.nombre ?? 'Tu mascota'
+    const wa = enlaceWhatsApp(contacto.whatsapp, `Hola, voy por ${mascota} a ${marca}.`)
+    const html = `<div style="font:15px/1.55 system-ui,sans-serif;color:#0f172a;max-width:560px">
+<p>Hola${d.cliente?.nombre ? `, ${esc(d.cliente.nombre)}` : ''}:</p>
+<p><b>${esc(mascota)} ya está lista para recoger</b> en ${esc(marca)}. ¡Quedó muy guapa!</p>
+${wa || contacto.telefono ? `<p>${wa ? `<a href="${wa}">Avísanos por WhatsApp</a>` : ''}${wa && contacto.telefono ? ' o ' : ''}${contacto.telefono ? `llámanos al ${esc(contacto.telefono)}` : ''}.</p>` : ''}
+<p style="color:#64748b;font-size:12px">${esc(site.brand.name)} · ${folioParaId('CIT', d.cita.id)}</p></div>`
+    await payload.sendEmail({ to: para, subject: `${mascota} ya está lista para recoger · ${marca}`, html })
+    return true
+  } catch (e) {
+    payload.logger.error(`[avisos] estética lista ${citaId}: ${String((e as Error)?.message ?? e)}`)
+    return false
+  }
+}
+
+/** Hallazgos de la estética a los correos de avisos de la clínica (para el médico). Nunca lanza. */
+export async function avisarHallazgosEstetica(payload: Payload, citaId: number, hallazgos: string[], detalle: string | null, marca: string): Promise<boolean> {
+  try {
+    const { correos } = await configuracionAvisos(payload)
+    const d = await cargar(payload, citaId)
+    if (!d || !correos.length || !hallazgos.length) return false
+    const mascota = d.mascota?.nombre ?? 'Mascota'
+    const ficha = `${site.url.replace(/\/$/, '')}/admin/clinica/mascotas/${idDe(d.cita.mascota)}`
+    await payload.sendEmail({
+      to: correos,
+      subject: `${marca}: observaron algo en ${mascota}`,
+      html: `<div style="font:14px/1.5 system-ui,sans-serif;color:#0f172a;max-width:560px"><p>En la estética de hoy observaron en <b>${esc(mascota)}</b>:</p><ul>${hallazgos.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>${detalle ? `<p>${esc(detalle)}</p>` : ''}<p>No es un diagnóstico: valóralo y, si hace falta, ofrece una consulta al tutor${d.cliente?.telefono ? ` (tel. ${esc(d.cliente.telefono)})` : ''}.</p><p><a href="${ficha}">Abrir el expediente</a></p></div>`,
+    })
+    return true
+  } catch (e) {
+    payload.logger.error(`[avisos] hallazgos estética ${citaId}: ${String((e as Error)?.message ?? e)}`)
+    return false
+  }
+}

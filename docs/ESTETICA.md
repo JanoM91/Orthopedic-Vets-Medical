@@ -65,11 +65,12 @@ Decisión de Jano (15-nov-2026): se cobra **solo por talla** (no por tipo de pel
 
 - Casilla nueva del rol: **«Estética: tablero del día, ficha, fotos y entregar»** (`clinica.estetica`).
 - Roles sugeridos: **Estilista** nuevo, con estética y ver pacientes, sin agenda, sin expediente y sin Finanzas. Dueño, Administración y Recepción también traen la casilla.
-- En una instalación con roles ya creados, el superadmin toca **«Preparar roles»** en el tablero (`POST estetica/arranque`): crea «Estilista» y da la casilla a Dueño, Administración y Recepción. Se puede repetir sin problema.
+- En una instalación con roles ya creados, quien administra usuarios ve **«Preparar roles»** en el tablero mientras falte algo (`faltaRoles` en `GET estetica`; `POST estetica/arranque`): crea «Estilista» y da la casilla a Dueño, Administración y Recepción. Se puede repetir sin problema.
 
 ### Tablero (Clínica → Estética, o «Estética» en el menú Trabajo)
 
-- Muestra las citas de estética del día: las de servicios marcados «de estética» o ya cotizadas por talla. Elige el día arriba.
+- Muestra las citas de estética del día: las de servicios marcados «de estética» o ya cotizadas por talla. Cambia de día con ‹ › o la fecha; «Hoy» regresa.
+- **Hoy** (`/admin`) trae el resumen de la estética del día (por etapa, listas con WhatsApp) y «Lista para recoger» en Pendientes. La estilista (estética sin agenda, Finanzas ni farmacia) que abre `/admin` llega a este tablero.
 - **Etapas:** Por llegar → Recibida → Baño → Secado → Corte y detalles → Lista para recoger → Entregada.
   - **Recibir** registra la llegada (si estaba solicitada, la confirma antes).
   - **Baño, secado, corte y lista** son la fase (`citas.estetica.fase`), con la cita «en atención». Se puede saltar el corte («Lista (sin corte)») o regresar.

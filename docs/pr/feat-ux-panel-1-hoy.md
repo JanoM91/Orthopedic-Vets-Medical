@@ -34,7 +34,8 @@ Sin migraciones ni variables. `GET /api/clinica/estetica` ahora trae `faltaRoles
 ## Verificación hecha
 
 - `npx tsc --noEmit`, `npm run build` (también con Postgres detenido) y `npm run lint` sin errores.
-- Pruebas sobre Postgres local vacío: `test:clinica` 175/175, `test:estetica` con 3 comprobaciones nuevas (`faltaRoles` antes y después del arranque, bloque en Hoy, la estilista va a su tablero) y `test:farmacia`. Las cifras finales están en la entrega.
+- Pruebas sobre Postgres local vacío (ciclo con las tres ramas de UX del panel): `test:clinica` 175/175, `test:estetica` 90/90 y `test:farmacia` 510/510. Esta rama suma 3 comprobaciones: `faltaRoles` antes y después del arranque, bloque en Hoy y la estilista va a su tablero.
+- `auditoria-front.mjs` en 10 tamaños sobre Hoy, Estética, Agenda y Farmacia: 0 hallazgos.
 - Capturas de Hoy y del tablero a 1366 y 390 px con citas en cada etapa, sin desbordes.
 
 ## Riesgos y pendientes

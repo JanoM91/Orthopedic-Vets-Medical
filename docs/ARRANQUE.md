@@ -53,6 +53,7 @@ Después de cambiar variables: **Deployments → … → Redeploy** de la últim
    - **Recordatorio la víspera** (encendido por omisión): correo a las 18:00 al tutor con cita al día siguiente.
 3. **Pacientes**: importa con la plantilla (Clínica → Importar) o da de alta cliente por cliente. El teléfono va a 10 dígitos (sirve para WhatsApp).
 4. **Sitio público**: Clínica → «Sitio público» (menú lateral): textos, **contacto** (teléfono, WhatsApp y urgencias: los usan también el portal, los correos de citas y la cartilla impresa) y «Sitio publicado». Llena también **dirección** y **liga del mapa** (Google Maps → Compartir → Copiar vínculo): alimentan la tarjeta «Hoy» del sitio y el botón «Cómo llegar» del sitio y del inicio del portal. El **lema** es el título grande del sitio; la **descripción**, la línea debajo.
+5. **Estética (opcional)**: Sistema → Instalación: módulos → «Estética». Luego Clínica → «Estética: marca y tallas» (nombre que ve el tutor y kilos de cada talla), en cada servicio de estética marca «Servicio de estética» y captura **precio y duración por talla**, y da de alta los **adicionales** (uñas, deslanado…) con su precio y si se piden en línea. Detalle en `docs/ESTETICA.md`.
 
 ## 5. Farmacia (si está encendida)
 

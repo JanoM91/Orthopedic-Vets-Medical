@@ -30,6 +30,7 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 ## Citas
 
 - **Pedir**: Inicio → «Pedir cita» (o «Servicios» → «Pedir cita») → elige a tu mascota, el servicio y un día del calendario. Los días en verde tienen horas libres; en amarillo quedan pocas; los tachados están llenos. Luego toca una hora libre (las ocupadas se ven tachadas) y «Pedir cita». Puedes dejar una nota (por ejemplo, «tiene la piel sensible»).
+- **Baño y estética**: el precio depende de la talla de tu mascota (por su peso) y lo ves antes de pedir la cita, con lo que le agregues (por ejemplo, corte de uñas). Si aún no tenemos su peso, te confirmamos el precio al recibirla.
 - **Refuerzos**: en la ficha de tu mascota → Cartilla verás cada vacuna o desparasitación como «Al día», «Próxima» o «Vencida». Con «Pedir refuerzo» se abre la cita ya llenada. La pestaña «Citas» muestra las citas de esa mascota.
 - **Foto de tu mascota**: en Inicio o en «Mascotas», toca la cámara de su tarjeta y toma o elige una foto. También se cambia o se quita desde la ficha de la mascota. La ve la clínica.
 - **Instalar el portal en tu celular**: en el iPhone, Safari → Compartir → «Agregar a pantalla de inicio»; en Android, Chrome → menú ⋮ → «Instalar app» o «Agregar a pantalla principal». Queda con el logo de la clínica.

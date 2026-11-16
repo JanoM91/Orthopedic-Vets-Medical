@@ -27,6 +27,8 @@ Arriba del menú está **Trabajo**: Hoy, Agenda, Pacientes, Mostrador, Farmacia 
 - En la ficha del cliente: **WhatsApp**, mascotas y **Acceso al portal**: **«Invitar por correo»** (crea la cuenta con el correo de la ficha y le llega al tutor una liga para elegir su contraseña, vence en 7 días) o **«Generar código»** (el tutor crea su cuenta y escribe el código). «Reenviar acceso» si perdió la liga; «Quitar acceso» para desligarla.
 - **Cartilla**: en el expediente, pestaña Cartilla → registrar vacuna o desparasitación → **«Imprimir cartilla»** (también sirve para guardarla en PDF y mandarla).
 
+**Estética** (si está encendida): al agendar un servicio de estética, el precio y el tiempo salen de la **talla** de la mascota (por su último peso, o la que fijes en «Editar datos»). Elige los **adicionales** (uñas, deslanado…) y ves el total antes de guardar. Ese total es el que se cobra al finalizar, aunque el precio cambie después. Si la mascota no tiene peso, la cita se agenda con «precio al recibirla»: **pésala al llegar**; sin peso o talla no se puede finalizar.
+
 ## Médicos
 
 - **Expediente** (Clínica → mascota): arriba, los botones de lo que haces con el paciente enfrente: **WhatsApp** al tutor, **Receta**, **Nueva cita**, **Editar datos** y **+ Nueva nota**. «De un vistazo» resume cartilla (en rojo si hay un refuerzo vencido, con «Programar refuerzo»), último peso y cómo cambió, última nota y próxima cita. Las pestañas (resumen, cartilla, peso, notas, recetas, documentos, citas) cambian sin recargar y la dirección guarda dónde estás: «Atrás» regresa a la pestaña anterior y puedes compartir la liga a una pestaña.

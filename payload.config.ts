@@ -85,6 +85,12 @@ export default buildConfig({
           Component: '/components/admin/clinica/VistaClinica#default',
           path: '/clinica',
         },
+        /* Puesta a punto (UX del panel 2, nov-2026): docs/ARRANQUE.md revisado contra la base. */
+        puestaAPunto: {
+          Component: '/components/admin/PuestaAPunto#default',
+          path: '/puesta-a-punto',
+          exact: true,
+        },
         /* Farmacia (25-oct-2026): catálogo, inventario, compras y ventas. Misma idea. */
         farmacia: {
           Component: '/components/admin/farmacia/VistaFarmacia#default',

@@ -210,8 +210,12 @@ async function main() {
   ok(r.status === 200 && typeof r.data === 'string' && r.data.includes(marca), 'Pedir cita: la estética con su nombre', r.status)
 
   console.log('\nTablero del día y ficha (E2)')
+  r = await admin.get(`/api/clinica/estetica?dia=${dia}`)
+  const faltabaRoles = r.data?.faltaRoles
   r = await admin.post('/api/clinica/estetica/arranque')
   ok(r.status === 200 && Array.isArray(r.data.hecho), 'Preparar roles de estética (se puede repetir)', r.data)
+  r = await admin.get(`/api/clinica/estetica?dia=${dia}`)
+  ok(r.status === 200 && r.data.faltaRoles === false && (faltabaRoles === true || r.data.tarjetas), '«Preparar roles» ya no hace falta después del arranque', { antes: faltabaRoles, despues: r.data?.faltaRoles })
   const rolesE = (await admin.get('/api/roles?limit=50&depth=0')).data.docs
   const rolEst = rolesE.find((x) => x.nombre === 'Estilista')
   ok(rolEst?.clinica?.estetica && !rolEst.clinica.agenda && !rolEst.clinica.verExpediente && rolesE.find((x) => x.nombre === 'Recepción')?.clinica?.estetica, 'Rol «Estilista»: estética, sin agenda ni expediente; Recepción también tiene estética', rolEst?.clinica)
@@ -289,6 +293,15 @@ async function main() {
   ok(r.status === 200 && r.data.lista[0]?.hallazgos.includes('Pulgas') && r.data.lista[0].fotos.length === 3 && r.data.lista[0].comportamiento === 'Necesitó bozal', 'Expediente: la estética con observaciones y fotos', r.data?.lista?.[0])
   r = await estilista.get('/admin/clinica/estetica')
   ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('cl-app'), 'Panel: Clínica → Estética renderiza para la estilista', r.status)
+
+  console.log('\nHoy integra la estética (UX del panel 1)')
+  r = await admin.get('/admin')
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('hoy-estetica') && r.data.includes('Abrir tablero'), 'Hoy: bloque de la estética del día con «Abrir tablero»', r.status)
+  {
+    const resp = await fetch(BASE + '/admin', { headers: { cookie: estilista.cookie }, redirect: 'manual' })
+    const destino = resp.headers.get('location') || ''
+    ok([303, 307, 308].includes(resp.status) && destino.includes('/admin/clinica/estetica'), 'La estilista que abre Hoy llega a su tablero de estética', { status: resp.status, destino })
+  }
 
   console.log('\nPortal: historial y «¿ya le toca su baño?» (E3)')
   r = await tutor.get(`/api/clinica/portal/mascotas/${oso.id}/estetica`)

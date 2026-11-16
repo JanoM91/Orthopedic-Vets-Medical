@@ -1,3 +1,4 @@
+import { default as default_765b355e4d90dffddc76f77e39955271 } from '../../../components/admin/CampoFoto'
 import { default as default_c018cf00e715f0851f0a934667cbd7ee } from '../../../components/admin/Icono'
 import { default as default_91a09b539d3c86b0aebf520e7564ce08 } from '../../../components/admin/Logo'
 import { default as default_d969df5bd9ac00dda115610e9cc525ec } from '../../../components/admin/MarcaDelPanel'
@@ -12,6 +13,7 @@ import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 
 /** @type import('payload').ImportMap */
 export const importMap = {
+  "/components/admin/CampoFoto#default": default_765b355e4d90dffddc76f77e39955271,
   "/components/admin/Icono#default": default_c018cf00e715f0851f0a934667cbd7ee,
   "/components/admin/Logo#default": default_91a09b539d3c86b0aebf520e7564ce08,
   "/components/admin/MarcaDelPanel#default": default_d969df5bd9ac00dda115610e9cc525ec,

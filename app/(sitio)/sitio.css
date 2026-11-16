@@ -3,7 +3,7 @@
    (los inyecta el layout desde lib/site.ts). Prefijo st-. Funcional y limpio;
    el diseño fino viene después.
    ═══════════════════════════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Manrope:wght@500;600;700;800&display=swap');
 :root {
   --st-primary: #0f2f2a;
   --st-accent: #0b6b59;
@@ -240,3 +240,119 @@ h2 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.01em; }
   .st-servicio__ir .st-i { width: 22px; height: 22px; }
   .st-banda, .st-app { padding: 20px; border-radius: 20px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Home versión B «Todo en un lugar» (nov-2026; lienzo «OVM Centro Veterinario
+   · Home: 3 versiones», artboard B). Cabecera oscura pegada al hero, mosaico
+   de fotos, banda de campaña, accesos de primera vez, áreas con píldoras,
+   razones, médico con credenciales, estética y testimonios. Todo dentro de
+   `.st-b` (la página principal); /servicios conserva la cabecera clara.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.st-b h1, .st-b h2, .st-area__cab h3, .st-acceso h3, .st-razones h3 { font-family: 'Bricolage Grotesque', Manrope, -apple-system, 'Segoe UI', sans-serif; font-weight: 800; letter-spacing: -0.015em; }
+.st-b h2 { font-size: clamp(26px, 3.4vw, 40px); line-height: 1.06; }
+
+/* Cabecera oscura */
+.st-cabecera--oscura { background: var(--st-primary); border-bottom-color: transparent; }
+.st-cabecera--oscura .st-marca { color: #fff; }
+.st-cabecera--oscura .st-nav a { color: #fff; }
+.st-cabecera--oscura .st-nav a.st-btn--claro { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+.st-cabecera--oscura .st-nav a.st-btn--acento { background: var(--st-gold); border-color: var(--st-gold); color: var(--st-primary); }
+.st-nav a.st-btn .st-i { width: 18px; height: 18px; }
+
+/* Hero */
+.st-b .st-hero__in { padding-block: 40px 64px; }
+.st-b .st-hero--campana .st-hero__in { padding-bottom: 112px; }
+.st-b .st-hero h1 { font-size: clamp(36px, 5.6vw, 68px); line-height: 1; letter-spacing: -0.02em; text-wrap: balance; }
+.st-b .st-hero .st-btn--primario { border-radius: 16px; }
+.st-b .st-hero .st-btn--claro { border-radius: 16px; min-height: 54px; }
+.st-hero__hoy { display: flex; align-items: center; gap: 10px; margin-top: 18px; color: #cfe9e1; font-size: 15px; }
+.st-mosaico { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.st-mosaico img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; background: #19433c; border-radius: 28px; }
+.st-mosaico img:nth-child(1) { border-bottom-right-radius: 8px; }
+.st-mosaico img:nth-child(2) { border-bottom-left-radius: 8px; }
+.st-mosaico img:nth-child(3) { border-top-right-radius: 8px; }
+.st-mosaico img:nth-child(4) { border-top-left-radius: 8px; }
+.st-mosaico--1 { grid-template-columns: minmax(0, 1fr); }
+.st-mosaico--1 img { aspect-ratio: 4 / 3; border-radius: 28px; }
+.st-mosaico--3 img:nth-child(3) { grid-column: 1 / -1; aspect-ratio: 2 / 1; border-radius: 8px 8px 28px 28px; }
+
+/* Campaña: banda menta que monta sobre el borde del hero (sobre su relleno, nunca sobre texto) */
+.st-campana-zona { margin-top: -52px; position: relative; z-index: 1; }
+.st-campana { background: var(--st-gold); color: var(--st-primary); border-radius: 28px; padding: 28px 32px; display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: center; justify-content: space-between; }
+.st-campana__texto { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.st-campana__etiqueta { font-size: 12.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.st-campana h2 { font-size: clamp(24px, 3vw, 34px); }
+.st-campana p { font-weight: 600; }
+.st-campana .st-btn--primario { border-radius: 16px; min-height: 54px; font-size: 16px; }
+
+/* Accesos de primera vez */
+.st-accesos { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.st-acceso { background: #fff; border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--st-sombra); }
+.st-acceso h3 { font-size: 22px; line-height: 1.15; }
+.st-acceso p { color: var(--st-muted); font-size: 15px; }
+.st-acceso .st-btn { margin-top: auto; align-self: flex-start; border-radius: 16px; }
+.st-acceso__i { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: #e3f8f2; color: var(--st-accent); }
+
+/* Áreas */
+.st-areas { display: flex; flex-direction: column; gap: 18px; }
+.st-areas__pildoras { display: flex; flex-wrap: wrap; gap: 10px; }
+.st-pildora { font: inherit; font-weight: 700; min-height: 48px; padding: 10px 20px; border-radius: 999px; border: 2px solid #b9cfc8; background: #fff; color: var(--st-ink); cursor: pointer; }
+.st-pildora.is-on { background: var(--st-primary); border-color: var(--st-primary); color: #fff; font-weight: 800; }
+.st-pildora:focus-visible, .st-fila:focus-visible { outline: 3px solid var(--st-gold); outline-offset: 2px; }
+.st-area { background: #fff; border-radius: 28px; padding: 28px; display: flex; flex-direction: column; gap: 18px; box-shadow: var(--st-sombra); }
+.st-area[hidden] { display: none; }
+.st-area__cab { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+.st-area__cab h3 { font-size: clamp(24px, 2.6vw, 32px); }
+.st-area__acciones { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; }
+.st-area__acciones .st-btn { border-radius: 16px; }
+.st-area__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.st-fila { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 12px 14px; border-radius: 16px; background: #f3f8f6; color: var(--st-ink); text-decoration: none; }
+.st-fila__txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.st-fila__txt b { font-size: 16px; line-height: 1.25; }
+.st-fila__txt span { font-size: 13.5px; color: var(--st-muted); font-weight: 600; }
+.st-fila__ir { flex: none; color: var(--st-accent); font-weight: 700; font-size: 14px; }
+@media (hover: hover) { .st-fila:hover { background: #e3f8f2; } }
+
+/* Razones */
+.st-razones { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.st-razones .st-card { border-radius: 24px; padding: 26px; }
+.st-razones h3 { font-size: 22px; line-height: 1.15; }
+
+/* Médico */
+.st-doctor { background: #fff; border-radius: 28px; padding: 32px; display: grid; gap: 36px; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: center; box-shadow: var(--st-sombra); }
+.st-doctor--sin-foto { grid-template-columns: minmax(0, 1fr); }
+.st-doctor__foto { width: 100%; aspect-ratio: 4 / 5; max-height: 540px; object-fit: cover; display: block; border-radius: 28px 28px 8px 28px; background: #e2efeb; }
+.st-doctor__texto { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.st-doctor__texto .st-eyebrow { margin: 0; color: var(--st-accent); }
+.st-doctor__pres { font-size: 17px; color: var(--st-muted); }
+.st-credenciales { margin: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+.st-credenciales div { background: var(--st-bg); border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.st-credenciales dt { font-size: 12.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--st-muted); }
+.st-credenciales dd { margin: 0; font-weight: 700; }
+.st-doctor .st-acciones { margin-top: 2px; }
+.st-doctor .st-btn { border-radius: 16px; }
+@media (max-width: 819px) { .st-doctor { grid-template-columns: minmax(0, 1fr); gap: 22px; padding: 20px; } .st-doctor__foto { aspect-ratio: 4 / 3; max-height: 360px; } }
+
+/* Estética y tienda */
+.st-banda { border-radius: 28px; }
+.st-banda__logo { flex: 0 1 260px; min-width: 0; max-width: 260px; width: 100%; height: auto; margin-inline: auto; }
+.st-banda--estetica h2 { font-size: clamp(24px, 3vw, 34px); }
+
+/* Testimonios */
+.st-testimonios { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); margin-top: 20px; }
+.st-testimonios blockquote { margin: 0; border-radius: 24px; padding: 26px; gap: 12px; }
+.st-testimonios blockquote p { font-size: 17px; font-weight: 600; }
+.st-testimonios footer { font-size: 14px; color: var(--st-muted); font-weight: 700; }
+
+@media (max-width: 599px) {
+  .st-b .st-hero__in { padding-block: 28px 44px; }
+  .st-b .st-hero--campana .st-hero__in { padding-bottom: 88px; }
+  .st-campana { padding: 22px; border-radius: 22px; }
+  .st-campana .st-btn { width: 100%; }
+  .st-area { padding: 18px; border-radius: 22px; }
+  .st-area__acciones .st-btn { width: 100%; }
+  .st-acceso { padding: 20px; border-radius: 20px; }
+  .st-fila__ir { display: none; }
+  .st-mosaico img { border-radius: 20px; }
+}
+.st-b .st-banda h2 { font-size: clamp(24px, 3vw, 34px); }

@@ -15,7 +15,7 @@ import { Clientes, Mascotas, MasPesos } from './collections/clinica/pacientes'
 import { MasCartilla, MasDocumentos, MasFotos, MasNotas } from './collections/clinica/expediente'
 import { CodigosVinculacion, Importaciones, Tutores } from './collections/clinica/tutores'
 import { AgendaConfiguracion, Citas, Recursos, Servicios } from './collections/clinica/agenda'
-import { SitioConfiguracion } from './collections/clinica/sitio'
+import { SitioConfiguracion, SitioFotos } from './collections/clinica/sitio'
 import { InstalacionConfiguracion } from './collections/Instalacion'
 import { FarAlmacenes, FarPresentaciones, FarProductos, FarProveedores } from './collections/farmacia/catalogo'
 import { FarLotes, FarMovimientos } from './collections/farmacia/inventario'
@@ -114,6 +114,8 @@ export default buildConfig({
     ...[EstAdicionales, EstFichas, EstFotos].map((c) => conModuloColeccion('estetica', conModuloColeccion('clinica', c))),
     /* Las cuentas del portal no se apagan con la clínica: en la fase 5 también entran a la tienda. */
     Tutores,
+    /* Fotos del sitio público (home versión B, nov-2026): reglas propias, como el global «Sitio público». */
+    SitioFotos,
     /* Farmacia (25-oct-2026): reglas propias en collections/farmacia/acceso.ts (ya revisan el módulo). */
     FarProductos,
     FarPresentaciones,

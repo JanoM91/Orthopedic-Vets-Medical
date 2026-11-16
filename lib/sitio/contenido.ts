@@ -9,6 +9,7 @@ import { idDe } from '../clinica/servicio'
 import { leerModulos } from '../modulos'
 import { configEstetica, esServicioEstetica, precioDesde } from '../clinica/estetica'
 import { site } from '../site'
+import { diaLocal } from '../localTime'
 
 /**
  * Lo que necesita el sitio público, en una sola lectura: el global
@@ -33,7 +34,16 @@ export type ContenidoSitio = {
   horario: { dia: string; abierto: boolean; de: string; a: string }[]
   /** Farmacia y Tienda encendidas: la cabecera muestra «Tienda» (fase 5a). */
   tienda: boolean
+  /* Home versión B (nov-2026): todo sale del global «Sitio público»; lo que no se capture no aparece. */
+  fotos: FotoSitio[]
+  campana: { etiqueta: string | null; titulo: string; texto: string | null; boton: string } | null
+  razones: { titulo: string; texto: string | null }[]
+  doctor: { nombre: string; titulo: string; presentacion: string | null; foto: FotoSitio | null; credenciales: { etiqueta: string; valor: string }[] } | null
+  testimonios: { texto: string; autor: string | null }[]
+  /** Estética encendida: nombre de su marca (grupo de servicios) y logotipo. */
+  estetica: { nombre: string; logo: string | null } | null
 }
+export type FotoSitio = { url: string; alt: string }
 
 const t = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
 
@@ -47,6 +57,12 @@ export async function contenidoSitio(): Promise<ContenidoSitio> {
     leerModulos(payload),
     configEstetica(payload),
   ])
+  /* Fotos del sitio: solo id, título y fecha (la imagen pesa y se sirve aparte por /api/sitio/fotos/:id). */
+  const idsFotos = [...new Set([...(g.fotos ?? []), g.doctor?.foto].map((f) => idDe(f)).filter((x): x is number => x != null))]
+  const fotos = idsFotos.length ? await payload.find({ collection: 'sitio-fotos', depth: 0, pagination: false, overrideAccess: true, where: { id: { in: idsFotos } }, select: { titulo: true, updatedAt: true } }) : { docs: [] }
+  const fotoPorId = new Map(fotos.docs.map((f) => [f.id, { url: `/api/sitio/fotos/${f.id}?v=${new Date(f.updatedAt).getTime()}`, alt: f.titulo } satisfies FotoSitio]))
+  const foto = (v: unknown): FotoSitio | null => fotoPorId.get(idDe(v) ?? -1) ?? null
+  const campanaVigente = Boolean(g.campana?.activa) && Boolean(t(g.campana?.titulo)) && (!t(g.campana?.hasta) || t(g.campana?.hasta)! >= diaLocal(new Date()))
   const nombreArea = new Map(areas.docs.map((a) => [a.id, a.nombre]))
   const grupos = new Map<string, ServicioPublico[]>()
   for (const s of servicios.docs) {
@@ -77,6 +93,12 @@ export async function contenidoSitio(): Promise<ContenidoSitio> {
     grupos: lista,
     horario,
     tienda: modulos.farmacia && modulos.tienda,
+    fotos: (g.fotos ?? []).map(foto).filter((f): f is FotoSitio => f != null).slice(0, 4),
+    campana: campanaVigente ? { etiqueta: t(g.campana?.etiqueta), titulo: t(g.campana?.titulo)!, texto: t(g.campana?.texto), boton: t(g.campana?.boton) ?? 'Apartar mi lugar' } : null,
+    razones: (g.razones ?? []).map((r) => ({ titulo: r.titulo, texto: t(r.texto) })).slice(0, 3),
+    doctor: t(g.doctor?.nombre) ? { nombre: t(g.doctor?.nombre)!, titulo: t(g.doctor?.titulo) ?? 'el médico veterinario', presentacion: t(g.doctor?.presentacion), foto: foto(g.doctor?.foto), credenciales: (g.doctor?.credenciales ?? []).map((x) => ({ etiqueta: x.etiqueta, valor: x.valor })) } : null,
+    testimonios: (g.testimonios ?? []).map((x) => ({ texto: x.texto, autor: t(x.autor) })).slice(0, 6),
+    estetica: est.activa ? { nombre: est.nombreMarca, logo: est.logo } : null,
   }
 }
 

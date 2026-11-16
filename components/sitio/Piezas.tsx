@@ -29,28 +29,41 @@ export function Icono({ n, grande }: { n: string; grande?: boolean }) {
   )
 }
 
-export function Cabecera({ c, activa }: { c: ContenidoSitio; activa?: 'inicio' | 'servicios' }) {
+/**
+ * Cabecera del sitio. `oscura` (home versión B): va pegada al hero, sobre el
+ * primario de la marca. El botón destacado es WhatsApp (decisión de Jano,
+ * 16-nov-2026); sin número capturado, «Pedir cita».
+ */
+export function Cabecera({ c, activa, oscura }: { c: ContenidoSitio; activa?: 'inicio' | 'servicios'; oscura?: boolean }) {
+  const wa = ligaWhatsApp(c.contacto.whatsapp, `Hola, quiero información para mi mascota en ${c.marca.nombre}.`)
   return (
-    <header className="st-cabecera">
+    <header className={`st-cabecera${oscura ? ' st-cabecera--oscura' : ''}`}>
       <div className="st-wrap st-cabecera__in">
         <Link href="/" className="st-marca">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.marca.logo} alt="" />
+          <img src={oscura ? c.marca.logoClaro : c.marca.logo} alt="" />
           <span>{c.marca.nombre}</span>
         </Link>
         <nav className="st-nav" aria-label="Secciones">
           <Link href="/servicios" className={activa === 'servicios' ? 'is-on' : ''}>
             Servicios
           </Link>
-          {c.equipo.length > 0 && <Link href="/#equipo">Equipo</Link>}
+          {c.doctor && <Link href="/#doctor">El doctor</Link>}
+          {c.equipo.length > 0 && !c.doctor && <Link href="/#equipo">Equipo</Link>}
           {c.tienda && <Link href="/tienda">Tienda</Link>}
           <Link href="/#contacto">Cómo llegar</Link>
           <Link href="/portal" className="st-btn st-btn--claro st-btn--chico">
             Entrar
           </Link>
-          <Link href="/portal/citas/nueva" className="st-btn st-btn--acento st-btn--chico">
-            Pedir cita
-          </Link>
+          {wa ? (
+            <a href={wa} target="_blank" rel="noreferrer" className="st-btn st-btn--acento st-btn--chico">
+              <Icono n="wa" /> WhatsApp
+            </a>
+          ) : (
+            <Link href="/portal/citas/nueva" className="st-btn st-btn--acento st-btn--chico">
+              Pedir cita
+            </Link>
+          )}
         </nav>
       </div>
     </header>
@@ -101,18 +114,23 @@ export function Pie({ c }: { c: ContenidoSitio }) {
   )
 }
 
+/**
+ * Botones de cita. WhatsApp es la acción principal (decisión de Jano,
+ * 16-nov-2026) y «Agendar en línea» la segunda; sin número capturado, la
+ * principal es la cita en línea y queda «Llamar».
+ */
 export function BotonesCita({ c, servicio }: { c: ContenidoSitio; servicio?: string }) {
   const wa = ligaWhatsApp(c.contacto.whatsapp, servicio ? `Hola, quiero una cita de ${servicio} en ${c.marca.nombre}.` : `Hola, quiero pedir una cita en ${c.marca.nombre}.`)
   return (
     <div className="st-acciones">
-      <Link href="/portal/citas/nueva" className="st-btn st-btn--primario">
-        <Icono n="cal" /> Pedir cita en línea
-      </Link>
       {wa && (
-        <a href={wa} className="st-btn st-btn--claro" target="_blank" rel="noreferrer">
-          <Icono n="wa" /> Por WhatsApp
+        <a href={wa} className="st-btn st-btn--primario" target="_blank" rel="noreferrer">
+          <Icono n="wa" /> Escríbenos por WhatsApp
         </a>
       )}
+      <Link href="/portal/citas/nueva" className={`st-btn ${wa ? 'st-btn--claro' : 'st-btn--primario'}`}>
+        <Icono n="cal" /> {wa ? 'Agendar en línea' : 'Pedir cita en línea'}
+      </Link>
       {!wa && c.contacto.telefono && (
         <a href={`tel:${c.contacto.telefono.replace(/\s+/g, '')}`} className="st-btn st-btn--claro">
           <Icono n="phone" /> Llamar

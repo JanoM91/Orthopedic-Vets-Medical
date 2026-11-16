@@ -27,7 +27,7 @@ import { ErrorClinica } from './servicio'
 
 export const NOMBRE_TALLA: Record<Talla, string> = Object.fromEntries(TALLAS.map((t) => [t.value, t.label])) as Record<Talla, string>
 
-export type ConfigEstetica = { activa: boolean; nombreMarca: string; logo: string | null; limites: { chico: number; mediano: number; grande: number } }
+export type ConfigEstetica = { activa: boolean; nombreMarca: string; logo: string | null; limites: { chico: number; mediano: number; grande: number }; recordatorio: { activo: boolean; semanasPorOmision: number | null } }
 
 export type AdicionalVista = { id: number; nombre: string; descripcion: string | null; precio: number; duracionMin: number; enLinea: boolean; activo: boolean }
 
@@ -45,11 +45,12 @@ export type Cotizacion = {
 
 export async function configEstetica(payload: Payload): Promise<ConfigEstetica> {
   const m = await leerModulos(payload)
-  const g = (await payload.findGlobal({ slug: 'estetica-configuracion', depth: 0, overrideAccess: true }).catch(() => null)) as { nombreMarca?: string | null; logo?: string | null; tallas?: { chicoHasta?: number | null; medianoHasta?: number | null; grandeHasta?: number | null } } | null
+  const g = (await payload.findGlobal({ slug: 'estetica-configuracion', depth: 0, overrideAccess: true }).catch(() => null)) as { nombreMarca?: string | null; logo?: string | null; tallas?: { chicoHasta?: number | null; medianoHasta?: number | null; grandeHasta?: number | null }; recordatorioActivo?: boolean | null; semanasPorOmision?: number | null } | null
   const chico = Number(g?.tallas?.chicoHasta) || 10
   const mediano = Math.max(chico, Number(g?.tallas?.medianoHasta) || 25)
   const grande = Math.max(mediano, Number(g?.tallas?.grandeHasta) || 40)
-  return { activa: m.clinica && m.estetica, nombreMarca: g?.nombreMarca?.trim() || 'Estética', logo: g?.logo?.trim() || null, limites: { chico, mediano, grande } }
+  const semanas = Number(g?.semanasPorOmision) || null
+  return { activa: m.clinica && m.estetica, nombreMarca: g?.nombreMarca?.trim() || 'Estética', logo: g?.logo?.trim() || null, limites: { chico, mediano, grande }, recordatorio: { activo: g?.recordatorioActivo !== false, semanasPorOmision: semanas && semanas > 0 ? Math.min(26, semanas) : null } }
 }
 
 export function tallaDePeso(kg: number | null | undefined, l: ConfigEstetica['limites']): Talla | null {

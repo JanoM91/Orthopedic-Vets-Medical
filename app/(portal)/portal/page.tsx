@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import React from 'react'
 import { portalCitas, proximasPorMascota } from '../../../lib/clinica/agenda'
 import { portalRefuerzosPendientes, portalResumen } from '../../../lib/clinica/servicio'
+import { portalBanosPendientes } from '../../../lib/clinica/esteticaPortal'
 import { pedidosDelTutor } from '../../../lib/farmacia/tienda'
 import { recomprasDelCliente, type RecompraVista } from '../../../lib/farmacia/recompra'
 import type { PedidoVista } from '../../../lib/farmacia/tiposTienda'
@@ -106,13 +107,14 @@ export default async function PortalInicio() {
   const vivas = r.mascotas.filter((m) => m.estado !== 'fallecido')
   const ids = vivas.map((m) => m.id)
   const cabeceras = await headers()
-  const [proximas, refuerzos, citas, pedidos, sesion, recompras] = await Promise.all([
+  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos] = await Promise.all([
     proximasPorMascota(c, ids),
     portalRefuerzosPendientes(c, ids),
     portalCitas(c),
     tienda ? pedidosDelTutor(c.payload, c.tutor.id) : Promise.resolve([] as PedidoVista[]),
     tienda ? sesionDeTienda() : Promise.resolve(null),
     tienda ? recomprasDelCliente(c.payload, cabeceras, r.cliente.id).catch(() => [] as RecompraVista[]) : Promise.resolve([] as RecompraVista[]),
+    portalBanosPendientes(c, ids).catch(() => []),
   ])
   const hoy = hoyISO()
   const siguiente = [...proximas.values()].sort((a, b) => (a.dia + a.horaInicio).localeCompare(b.dia + b.horaInicio))[0] ?? null
@@ -153,6 +155,18 @@ export default async function PortalInicio() {
       titulo: `${rc.producto.nombre}${rc.mascota ? ` de ${rc.mascota.nombre}` : ''}`,
       detalle: ya ? 'Ya se debió acabar' : `Se acaba alrededor del ${corta(rc.fechaEstimada)}`,
       accion: { href: `/tienda/recompra/${rc.id}?t=${rc.token}`, texto: 'Volver a pedir', secundaria: true },
+    })
+  }
+  /* Estética (E3): el baño que ya toca (o toca esta semana), con la cita ya llenada. */
+  for (const b of banos) {
+    const ya = b.fecha <= hoy
+    pendientes.push({
+      clave: `ban-${b.mascotaId}`,
+      tono: ya ? 'warn' : 'ok',
+      icono: 'calmas',
+      titulo: `${b.servicio} de ${nombreDe.get(b.mascotaId) ?? ''}`,
+      detalle: ya ? `Le tocaba el ${corta(b.fecha)}` : `Le toca alrededor del ${corta(b.fecha)}`,
+      accion: { href: b.ligaCita, texto: 'Pedir cita', secundaria: !ya },
     })
   }
   const visibles = pendientes.slice(0, 5)

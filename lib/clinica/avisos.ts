@@ -215,3 +215,24 @@ export async function avisarHallazgosEstetica(payload: Payload, citaId: number, 
     return false
   }
 }
+
+/** «¿Ya le toca su baño?» (E3). Solo si el tutor acepta avisos por correo. Nunca lanza. */
+export async function avisarBanoEstetica(payload: Payload, d: { cliente: Cliente | null; mascota: string; fecha: string; liga: string; marca: string; servicio: string }): Promise<boolean> {
+  try {
+    const para = correoDelTutor(d.cliente)
+    if (!para) return false
+    const contacto = await contactoClinica(payload)
+    const wa = enlaceWhatsApp(contacto.whatsapp, `Hola, quiero agendar ${d.servicio.toLowerCase()} para ${d.mascota}.`)
+    const html = `<div style="font:15px/1.55 system-ui,sans-serif;color:#0f172a;max-width:560px">
+<p>Hola${d.cliente?.nombre ? `, ${esc(d.cliente.nombre)}` : ''}:</p>
+<p><b>¿Ya le toca su baño a ${esc(d.mascota)}?</b> En ${esc(d.marca)} te sugerimos el siguiente alrededor del <b>${fechaLarga(d.fecha)}</b>.</p>
+<p><a href="${d.liga}" style="background:${site.brand.accent};color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Pedir cita</a></p>
+${wa ? `<p>¿Prefieres WhatsApp? <a href="${wa}">Escríbenos</a>.</p>` : ''}
+<p style="color:#64748b;font-size:12px">${esc(site.brand.name)}. Recibes este correo porque aceptaste avisos; para dejar de recibirlos, pídelo en la clínica.</p></div>`
+    await payload.sendEmail({ to: para, subject: `¿Ya le toca su baño a ${d.mascota}? · ${d.marca}`, html })
+    return true
+  } catch (e) {
+    payload.logger.error(`[avisos] baño estética: ${String((e as Error)?.message ?? e)}`)
+    return false
+  }
+}

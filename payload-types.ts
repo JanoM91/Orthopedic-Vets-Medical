@@ -902,6 +902,7 @@ export interface EstFicha {
   notaInterna?: string | null;
   proximaSemanas?: number | null;
   hallazgosAvisadosEn?: string | null;
+  recordatorioEnviadoEn?: string | null;
   realizadoPor?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
@@ -2363,6 +2364,7 @@ export interface EstFichasSelect<T extends boolean = true> {
   notaInterna?: T;
   proximaSemanas?: T;
   hallazgosAvisadosEn?: T;
+  recordatorioEnviadoEn?: T;
   realizadoPor?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -3203,6 +3205,11 @@ export interface EsteticaConfiguracion {
    * Opcional. Ej. /marcas/mi-estetica.png
    */
   logo?: string | null;
+  recordatorioActivo?: boolean | null;
+  /**
+   * Vacío: solo se recuerda cuando la ficha trae «próximo baño sugerido».
+   */
+  semanasPorOmision?: number | null;
   /**
    * Hasta cuántos kilos es cada talla. Más que «Grande» es «Gigante».
    */
@@ -3456,6 +3463,8 @@ export interface AgendaConfiguracionSelect<T extends boolean = true> {
 export interface EsteticaConfiguracionSelect<T extends boolean = true> {
   nombreMarca?: T;
   logo?: T;
+  recordatorioActivo?: T;
+  semanasPorOmision?: T;
   tallas?:
     | T
     | {

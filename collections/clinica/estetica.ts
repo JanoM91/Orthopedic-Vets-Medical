@@ -29,6 +29,13 @@ export const EsteticaConfiguracion: GlobalConfig = {
     { name: 'nombreMarca', label: 'Nombre de la estética (lo ve el tutor)', type: 'text', admin: { description: 'Ej. el nombre de tu estética. Vacío: «Estética».' } },
     { name: 'logo', label: 'Logotipo (ruta en public/ o URL)', type: 'text', admin: { description: 'Opcional. Ej. /marcas/mi-estetica.png' } },
     {
+      type: 'row',
+      fields: [
+        { name: 'recordatorioActivo', label: 'Mandar «¿ya le toca su baño?» al tutor', type: 'checkbox', defaultValue: true },
+        { name: 'semanasPorOmision', label: 'Si la ficha no dice cuándo, cada (semanas)', type: 'number', min: 1, max: 26, admin: { description: 'Vacío: solo se recuerda cuando la ficha trae «próximo baño sugerido».' } },
+      ],
+    },
+    {
       name: 'tallas',
       label: 'Talla por peso (kg)',
       type: 'group',
@@ -127,6 +134,7 @@ export const EstFichas: CollectionConfig = {
     { name: 'notaInterna', label: 'Nota interna', type: 'textarea' },
     { name: 'proximaSemanas', label: 'Próximo baño sugerido (semanas)', type: 'number', min: 1, max: 26 },
     { name: 'hallazgosAvisadosEn', type: 'date' },
+    { name: 'recordatorioEnviadoEn', label: '«¿Ya le toca?» enviado', type: 'date' },
     { name: 'realizadoPor', type: 'relationship', relationTo: 'users' },
   ],
 }

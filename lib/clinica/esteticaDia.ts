@@ -46,8 +46,7 @@ export const ETAPAS: { clave: EtapaEstetica; nombre: string }[] = [
   { clave: 'lista', nombre: 'Lista para recoger' },
   { clave: 'entregada', nombre: 'Entregada' },
 ]
-const FASES = ['recibida', 'bano', 'secado', 'corte', 'lista'] as const
-type Fase = (typeof FASES)[number]
+type Fase = 'recibida' | 'bano' | 'secado' | 'corte' | 'lista'
 
 export type FotoVista = { id: number; momento: 'antes' | 'despues'; url: string }
 export type FichaVista = {

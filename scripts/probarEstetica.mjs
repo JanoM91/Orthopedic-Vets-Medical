@@ -9,7 +9,16 @@
  * Enciende el módulo «estetica» y lo deja encendido. Crea su propio cliente,
  * mascotas y tutor del portal (con sufijo), así se puede correr varias veces.
  */
+import fs from 'node:fs'
+
 const BASE = process.argv[2] || 'http://localhost:3000'
+/* CRON_SECRET de .env (recordatorio «¿ya le toca su baño?», E3). */
+const ENV = Object.fromEntries(
+  (fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') : '')
+    .split('\n')
+    .filter((l) => /^[A-Z_]+=/.test(l))
+    .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '')]),
+)
 const CORREO = 'prueba-superadmin@ejemplo.mx'
 const PASS = 'Prueba-123456'
 
@@ -280,6 +289,51 @@ async function main() {
   ok(r.status === 200 && r.data.lista[0]?.hallazgos.includes('Pulgas') && r.data.lista[0].fotos.length === 3 && r.data.lista[0].comportamiento === 'Necesitó bozal', 'Expediente: la estética con observaciones y fotos', r.data?.lista?.[0])
   r = await estilista.get('/admin/clinica/estetica')
   ok(r.status === 200 && typeof r.data === 'string' && r.data.includes('cl-app'), 'Panel: Clínica → Estética renderiza para la estilista', r.status)
+
+  console.log('\nPortal: historial y «¿ya le toca su baño?» (E3)')
+  r = await tutor.get(`/api/clinica/portal/mascotas/${oso.id}/estetica`)
+  const eOso = r.data?.lista?.[0]
+  ok(r.status === 200 && r.data.activa && eOso?.notaTutor === 'Se portó muy bien después del bozal.' && eOso.hallazgos.includes('Pulgas') && eOso.fotos.length === 3, 'El tutor ve la estética de Oso: nota, lo observado y fotos', eOso)
+  ok(eOso && !('notaInterna' in eOso) && !('comportamiento' in eOso) && !JSON.stringify(r.data).includes('Usar bozal desde el inicio'), 'Sin la nota interna ni el comportamiento', eOso && Object.keys(eOso))
+  ok(r.data?.proximo?.fecha && r.data.proximo.ligaCita === `/portal/citas/nueva?mascota=${oso.id}&servicio=${bano.id}`, 'Próximo baño (4 semanas) con la cita ya llenada', r.data?.proximo)
+  r = await tutor.get(`/api/clinica/portal/mascotas/${chispa.id}/estetica`)
+  ok(r.status === 200 && r.data.lista.length === 0, 'Sin estéticas entregadas: lista vacía', r.data?.lista?.length)
+  const otroTutor = new Sesion()
+  const correoO = `otro.portal${sufijo}@ejemplo.mx`
+  await otroTutor.post('/api/tutores', { email: correoO, password: PASS, nombre: 'Otro (portal)' })
+  await otroTutor.login('tutores', correoO, PASS)
+  r = await otroTutor.get(`/api/clinica/portal/mascotas/${oso.id}/estetica`)
+  ok(r.status === 404 || r.status === 403, 'Otro tutor no ve la estética de Oso', r.status)
+  {
+    const x = await fetch(`${BASE}${eOso.fotos[0].url}`, { headers: { cookie: otroTutor.cookie } })
+    ok(x.status === 404 || x.status === 403, 'Ni sus fotos', x.status)
+  }
+  /* Una estética entregada hace 5 días con «próximo baño en 1 semana»: toca en 2 días. */
+  const hoyMx = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
+  const haceCinco = (() => { const d = new Date(hoyMx + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 5); return d.toISOString().slice(0, 10) })()
+  r = await recepcion.post('/api/clinica/agenda/citas', { mascotaId: bruno.id, servicioId: bano.id, dia: haceCinco, hora: '10:00', confirmar: true })
+  const cPasada = r.data
+  ok(r.status === 201, 'Recepción captura un baño de Bruno de hace 5 días', r.data)
+  for (const e of ['recibida', 'bano', 'lista']) await mover(cPasada.id, e)
+  await estilista.post(`/api/clinica/estetica/citas/${cPasada.id}/ficha`, { queSeHizo: ['bano'], notaTutor: 'Quedó listo.', proximaSemanas: 1 })
+  r = await mover(cPasada.id, 'entregada')
+  ok(r.data?.etapa === 'entregada', 'Entregada con «próximo baño en 1 semana»', r.data?.etapa)
+  r = await tutor.get('/portal')
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes(`Baño de Bruno ${sufijo}`) && r.data.includes(`/portal/citas/nueva?mascota=${bruno.id}&amp;servicio=${bano.id}`), 'Inicio del portal: el baño de Bruno en Pendientes con «Pedir cita»', r.status)
+  if (ENV.CRON_SECRET) {
+    const cron = () => fetch(`${BASE}/api/clinica/cron/recordatorios`, { headers: { authorization: `Bearer ${ENV.CRON_SECRET}` } }).then(async (x) => ({ status: x.status, data: await x.json() }))
+    r = await cron()
+    ok(r.status === 200 && r.data.estetica?.enviados >= 1, 'Cron: manda el «¿ya le toca su baño?»', r.data?.estetica)
+    r = await cron()
+    ok(r.status === 200 && r.data.estetica?.enviados === 0, 'Otro cron: no lo repite', r.data?.estetica)
+  } else ok(false, 'Falta CRON_SECRET en .env para probar el recordatorio')
+  /* Con una cita de estética por venir, ya no se recuerda. */
+  r = await tutor.post('/api/clinica/portal/citas', { mascotaId: bruno.id, servicioId: bano.id, dia, hora: '13:00' })
+  ok(r.status === 201, 'Tutor pide el siguiente baño de Bruno', r.data)
+  r = await tutor.get('/portal')
+  ok(r.status === 200 && typeof r.data === 'string' && !r.data.includes(`Baño de Bruno ${sufijo}`), 'Con su baño ya pedido, sale de Pendientes', r.status)
+  r = await tutor.get(`/portal/mascotas/${oso.id}?ver=estetica`)
+  ok(r.status === 200 && typeof r.data === 'string' && r.data.includes(marca) && r.data.includes('Se portó muy bien'), 'Pestaña «Estética» de la ficha de la mascota', r.status)
 
   console.log('\nSitio público')
   r = await new Sesion().get('/servicios')

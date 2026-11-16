@@ -1,3 +1,4 @@
+import { portalEsteticas } from '@/lib/clinica/esteticaPortal'
 import { abrirFotoEstetica, arranqueEstetica, esteticasDeMascota, fichaEstetica, guardarFicha, moverEstetica, quitarFotoEstetica, subirFotoEstetica, tableroEstetica } from '@/lib/clinica/esteticaDia'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
@@ -125,6 +126,7 @@ import {
  *   GET  portal/resumen                        tutor, ficha vinculada y mascotas
  *   GET  portal/mascotas/:id                   ficha, cartilla, pesos y documentos publicados
  *   GET  portal/mascotas/:id/cartilla          cartilla imprimible (HTML)
+ *   GET  portal/mascotas/:id/estetica          estéticas entregadas (qué se hizo, nota, lo observado, fotos) y próximo baño
  *   GET  portal/documentos/:id/archivo
  *   POST portal/vincular                       { codigo }
  *   POST portal/mascotas/:id/documentos        aportar un archivo (queda pendiente de revisión)
@@ -206,6 +208,7 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
   if (metodo === 'GET') {
     if (a === 'resumen' && !b) return json(await portalResumen(c))
     if (a === 'mascotas' && b && !d) return json(await portalMascota(c, idDeRuta(b)))
+    if (a === 'mascotas' && b && d === 'estetica') return json(await portalEsteticas(c, idDeRuta(b)))
     if (a === 'mascotas' && b && d === 'cartilla') {
       const x = await portalMascota(c, idDeRuta(b))
       return html(htmlCartilla(x.mascota, x.cartilla, x.pesos, c.hoy, (await contactoClinica(c.payload)).telefono))

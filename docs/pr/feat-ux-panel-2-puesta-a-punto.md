@@ -39,7 +39,8 @@ Sin migraciones ni variables. La vista nueva se registró en `payload.config.ts`
   - ninguna llave aparece en la página;
   - Recepción no la ve;
   - Hoy trae la liga.
-- Capturas a 1366 y 390 px sin desbordes. La cifra de la base de pruebas fue 14 de 30 listos, coherente con lo capturado.
+- Ciclo limpio con las tres ramas: `test:clinica` 175/175, `test:estetica` 90/90 y `test:farmacia` 510/510.
+- `auditoria-front.mjs` (incluye `/admin/puesta-a-punto`) en 10 tamaños: 0 hallazgos. Capturas a 1366 y 390 px sin desbordes. La cifra de la base de pruebas fue 14 de 30 listos, coherente con lo capturado.
 
 ## Riesgos y pendientes
 

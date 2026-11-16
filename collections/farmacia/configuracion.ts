@@ -159,6 +159,18 @@ export const FarmaciaConfiguracion: GlobalConfig = {
       ],
     },
     {
+      name: 'planes',
+      label: 'Planes de compra (fase 6b)',
+      type: 'group',
+      fields: [
+        { name: 'activo', label: 'Ofrecer planes en la tienda', type: 'checkbox', defaultValue: false },
+        { name: 'descuentoAnual', label: 'Descuento del plan anual prepagado (%)', type: 'number', min: 0, max: 50, defaultValue: 0 },
+        { name: 'entregasAnual', label: 'Entregas del plan anual', type: 'number', min: 2, max: 24, defaultValue: 12 },
+        { name: 'diasAntes', label: 'Días antes de cada entrega en que se genera el pedido', type: 'number', min: 1, max: 10, defaultValue: 3 },
+        { name: 'categoriaAnticipos', label: 'Categoría de Finanzas de los anticipos (entrada)', type: 'relationship', relationTo: 'fin-categorias' },
+      ],
+    },
+    {
       name: 'tienda',
       label: 'Tienda en línea',
       type: 'group',

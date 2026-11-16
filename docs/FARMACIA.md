@@ -431,3 +431,35 @@ Primera parte de la fase 6. Los planes van en la 6b.
 - **Configuración** → Tienda en línea: «Avisar por correo cuando se esté acabando…» (encendido por omisión) y los días de anticipación (1 a 30).
 - **Sin `RESEND_API_KEY`:** el adaptador solo deja el aviso en el registro, pero la fila queda como avisada para esa fecha.
 - **Migración:** `20261115_035641_farmacia_recompra` (tabla `far_recompras` con RLS y dos columnas en la configuración).
+
+## 18. Fase 6b · Planes de compra (15-nov-2026)
+
+Segunda parte de la fase 6. El tutor con cuenta **vinculada** contrata, para una de sus mascotas, un producto con «duración por omisión»:
+
+> cada = presentaciones por entrega × factor × duración por omisión (días)
+
+- **Dos modalidades:**
+  - **Cada entrega (recurrente):** suscripción en la pasarela. Mercado Pago: `POST /preapproval` («pending», el tutor la autoriza en `init_point`, cobra cada `cada` días). «prueba»: el cron simula el cobro. Cada cobro aprobado genera un pedido «pagado en línea» para recoger. Precio de lista al contratar.
+  - **Anual prepagado:** un solo pago por `entregasAnual` entregas (2 a 24, 12 por omisión) con `descuentoAnual` (0 a 50 %). El cron genera cada entrega `diasAntes` días antes (1 a 10, 3 por omisión) como pedido **«cubierto por el plan»** (`pago.forma = 'plan'`).
+- **Antes de cada entrega** se revisa contra la mascota (especie, peso, edad, alergias) y, si es Grupo II, que haya receta vigente con surtidos libres. Si algo no cuadra, el plan se **detiene**, se pausa la suscripción y se avisa al tutor (con liga para agendar cita) y al equipo. **Nunca** se cambia de producto o presentación por el peso: eso lo decide el veterinario o el equipo.
+- **`far-planes` (`PLN-`):** solo la escribe `lib/farmacia/planes.ts`. La API genérica deja leer al equipo que vende, sin el token; 403 a crear, editar y borrar. Estados: por pagar, activo, detenido, cancelado, terminado.
+- **Pagos:** referencias `pln-<id>-<azar>` (`prueba-pln-…` en prueba). Avisos de Mercado Pago: `payment` (pago anual), `subscription_preapproval` (autorizada, pausada o cancelada) y `subscription_authorized_payment` (cobro). Siempre se consulta al proveedor (`/v1/payments`, `/preapproval/{id}`, `/authorized_payments/{id}`). Idempotentes en `far-pagos-eventos` (ahora con `plan`).
+- **Venta y Finanzas:**
+  - La venta de una entrega lleva `plan` y respeta el **precio pactado** del plan aunque cambie el de lista.
+  - Recurrente: la venta cobra con el método de pago en línea (como un pedido pagado).
+  - Anual: la venta va **sin pagos** y no registra otro ingreso. El pago completo entra a Finanzas **una vez** como anticipo (`plan-<id>-anticipo`, categoría «anticipos» de la configuración o, sin elegir, la de ventas) liquidado en la cuenta del método en línea con la fecha del pago. Se registra al entregar la primera vez o desde Planes («Registrar anticipo en Finanzas»).
+  - `anticipo.reconocido` = suma de las ventas del plan; `resumenAnticipos()` da cobrado, entregado y por entregar (panel y reportes de la fase 7).
+- **Tienda:** en la ficha, con sesión y mascota elegida, «Recíbelo cada N días» con las dos opciones. `/tienda/plan/:id?t=` muestra el plan, el pago o la autorización, las entregas y «Cancelar». API: `GET plan-oferta`, `POST planes`, `GET plan/:id`, `POST plan/:id/pagar | cancelar`, `GET mis-planes`, `POST pago-prueba-plan/:id`.
+- **Portal → Mis pedidos:** «Mis planes» (vigentes). **Panel → Farmacia → Planes de compra** (en «Más»): lista por estado, anticipos, reanudar, cancelar con motivo y registrar el anticipo.
+- **Recompra:** lo que ya está en un plan vigente no manda «¿Ya toca?».
+- **Configuración → Tienda en línea:** «Planes de compra» (apagado por omisión), descuento anual, entregas, días antes y categoría de anticipos.
+- **Migración:** `20261115_041426_farmacia_planes` (tablas `far_planes` y `far_planes_historial` con RLS; `plan_id` en ventas, pedidos y eventos de pago; forma de pago «plan»; grupo `planes` en la configuración).
+
+### Decisiones y pendientes de la fase 6b
+
+- **v1 solo para recoger** en la farmacia.
+- **Cancelación del plan anual pagado:** el tutor no lo cancela solo; lo cancela el encargado o el dueño y el reembolso de lo no entregado se decide con la **política de la farmacia** (pendiente con el Dr. Joni) y se hace fuera del sistema.
+- **Contabilidad:** el anticipo entra como efectivo al pagarse (con su fecha); no hay devengo mes a mes en Finanzas. Lo entregado y lo por entregar se ven en Planes y en los reportes.
+- Cancelar en el panel una **entrega** del plan anual no la repone sola.
+- **Mercado Pago:** las suscripciones están probadas contra un simulador con los campos del SDK oficial (mercadopago@3.6). Hay que probarlas con credenciales de prueba reales antes de encenderlas; los nombres de los avisos de suscripción no están confirmados en la documentación pública.
+- Si llega un cobro con el plan detenido (la pausa no alcanzó), queda en el historial y se avisa al equipo para reembolsar o surtir al reanudar.

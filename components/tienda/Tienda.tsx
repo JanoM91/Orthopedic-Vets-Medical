@@ -9,6 +9,7 @@ import type { CotizacionEnvio, Linea, PedidoVista, ProductoTienda, SesionTienda,
 import { ESTADO_PEDIDO_LABEL, LINEAS_TIENDA } from '../../lib/farmacia/tiposTienda'
 import { IconoServicio } from '../IconoServicio'
 import { Avatar, Icono } from '../portal/comun'
+import { OfertaPlanes } from './Planes'
 import { api, consultaPerfil, type PerfilGuardado, perfilParaApi, pesos, tienda, useTienda } from './estado'
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -452,6 +453,7 @@ export function FichaProducto({ id, sesion }: { id: number; sesion: SesionTienda
           </button>
         </div>
       </div>
+      {pres.disponible && receta.ok && !noApto && Number.isInteger(cantidad) && cantidad <= 6 && <OfertaPlanes presentacionId={pres.id} cantidad={cantidad} conReceta={p.requiereReceta} sesion={sesion} perfil={perfil} />}
     </div>
   )
 }
@@ -884,6 +886,12 @@ export function Seguimiento({ folio, token, recienPagado, nuevo }: { folio: stri
         </div>
       )}
       {p.pago.estado === 'reembolso_pendiente' && <div className="pt-aviso pt-aviso--warn">Tu pago se reembolsará por el mismo medio. Si tienes dudas, escríbenos.</div>}
+      {p.plan && (
+        <div className="pt-aviso pt-aviso--info">
+          Entrega {p.plan.ciclo ?? ''} de tu plan {p.plan.folio}
+          {p.pago.forma === 'plan' ? ': ya está pagada con tu plan anual.' : ': se cobró con tu suscripción.'}
+        </div>
+      )}
 
       <section className="pt-card pt-lista">
         {p.renglones.map((r) => (

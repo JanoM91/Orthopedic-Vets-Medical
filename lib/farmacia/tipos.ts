@@ -147,6 +147,8 @@ export type ConfiguracionVista = {
     recompraActiva: boolean
     recompraDiasAntes: number
   }
+  /** Fase 6b: planes de compra (recurrente y anual prepagado) */
+  planes: { activo: boolean; descuentoAnual: number; entregasAnual: number; diasAntes: number; categoriaAnticiposId: number | null }
   exigirOriginalGrupoII: boolean
   metodosPago: MetodoPagoVista[]
 }

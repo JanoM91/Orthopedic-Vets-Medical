@@ -119,6 +119,7 @@ export async function sesionTienda(payload: Payload, headers: Headers): Promise<
     horasApartado: x.cfg.horasApartado,
     domicilio: { activo: x.cfg.tienda.domicilioActivo && x.cfg.tienda.zonas.some((z) => z.activa), pagarAlRecibir: x.cfg.tienda.pagarAlRecibir, horario: x.cfg.tienda.horarioEntrega, grupoII: x.cfg.recetaGrupoIIDomicilio },
     busquedaIA: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
+    planes: { activo: x.cfg.planes.activo && Boolean(prov) && Boolean(x.clienteId) },
   }
 }
 
@@ -298,6 +299,7 @@ function vistaPedido(p: FarPedido, conToken = false, evidencias: Set<number> = n
     motivoCancelacion: t(p.motivoCancelacion),
     ventaId: idDe(p.venta),
     ventaFolio: idDe(p.venta) ? folioParaId('VTA', idDe(p.venta)!) : null,
+    plan: idDe(p.plan) ? { id: idDe(p.plan)!, folio: folioParaId('PLN', idDe(p.plan)!), ciclo: nOpc(p.ciclo) } : null,
     historial: (p.historial ?? []).map((h) => ({ estado: h.estado, fecha: h.fecha, por: t(h.por), detalle: t(h.detalle) })),
   }
   if (conToken) v.token = p.token
@@ -599,7 +601,87 @@ export async function recibirAviso(payload: Payload, proveedor: string, cabecera
   const v = await prov.verificarAviso(cabeceras, cuerpo, url)
   if (!v.ok) throw new ErrorFarmacia(401, 'Firma del aviso inválida.')
   if (!v.evento) return { resultado: v.nota ?? 'sin cambios', duplicado: false }
+  /* Fase 6b: avisos de planes (pago anual, suscripción y sus cobros). Import dinámico: planes.ts importa este archivo. */
+  if (v.evento.planId) return (await import('./planes')).procesarEventoPlan(payload, prov.nombre, v.evento)
   return procesarEventoPago(payload, prov.nombre, v.evento)
+}
+
+/* ───────────────────────────── pedidos de un plan (fase 6b) ───────────────────────────── */
+
+export type DatosPedidoPlan = {
+  planId: number
+  ciclo: number
+  anual: boolean
+  tutorId: number
+  clienteId: number
+  mascotaId: number
+  contacto: { nombre: string; correo: string; telefono: string | null }
+  presentacionId: number
+  productoId: number
+  descripcion: string
+  grupo: string | null
+  cantidad: number
+  unidades: number
+  precioUnitario: number
+  recetaId: number | null
+  pago: { proveedor: string | null; referencia: string | null; idPago: string | null; pagadoEn: string | null }
+  nota: string
+}
+
+/**
+ * Pedido «para recoger» de una entrega del plan, ya pagado: anual → forma
+ * «plan» (cubierto por el anticipo); recurrente → «en línea» con el cobro de la
+ * suscripción. Idempotente por `plan-<id>-<ciclo>`. Aparta inventario como un
+ * pedido pagado; si no alcanza, se crea igual y lo dice el historial.
+ */
+export async function crearPedidoDePlan(payload: Payload, d: DatosPedidoPlan): Promise<{ pedido: FarPedido; nuevo: boolean; faltaExistencia: boolean }> {
+  const clave = `plan-${d.planId}-${d.ciclo}`
+  const ya = await payload.find({ collection: 'far-pedidos', depth: 1, limit: 1, overrideAccess: true, where: { claveIdempotencia: { equals: clave } } })
+  if (ya.docs[0]) return { pedido: ya.docs[0], nuevo: false, faltaExistencia: false }
+  const hoy = hoyNegocio()
+  const importe = aPesos(Math.round((aCentavos(d.precioUnitario) || 0) * d.cantidad))
+  const folioPlan = folioParaId('PLN', d.planId)
+  let falta = false
+  const creado = await conCandado(payload, [d.productoId], async (req) => {
+    const disp = await disponiblePorProducto(payload, [d.productoId], { hoy, req })
+    falta = (disp.get(d.productoId) ?? 0) + 1e-9 < d.unidades
+    return payload.create({
+      collection: 'far-pedidos',
+      overrideAccess: true,
+      req,
+      depth: 0,
+      data: {
+        estado: 'pagado',
+        claveIdempotencia: clave,
+        token: crypto.randomBytes(24).toString('hex'),
+        tutor: d.tutorId,
+        cliente: d.clienteId,
+        mascota: d.mascotaId,
+        contacto: d.contacto,
+        perfil: {},
+        renglones: [{ presentacion: d.presentacionId, producto: d.productoId, descripcion: d.descripcion, grupo: d.grupo, cantidad: d.cantidad, unidades: d.unidades, precioUnitario: d.precioUnitario, importe, receta: d.recetaId }],
+        subtotal: importe,
+        costoEnvio: 0,
+        total: importe,
+        entrega: 'recoger',
+        direccion: {},
+        pago: { forma: d.anual ? 'plan' : 'en_linea', estado: 'pagado', proveedor: d.pago.proveedor, referencia: d.pago.referencia, idPago: d.pago.idPago, pagadoEn: d.pago.pagadoEn ?? new Date().toISOString() },
+        plan: d.planId,
+        ciclo: d.ciclo,
+        expiraEn: null,
+        historial: [{ estado: 'pagado', fecha: new Date().toISOString(), por: `Plan ${folioPlan}`, detalle: `${d.nota}${falta ? ' · no alcanza la existencia: surtir' : ''}` }],
+      },
+    })
+  }).catch(async (e) => {
+    if (/clave_idempotencia|claveIdempotencia|unique|duplicate/i.test(String((e as Error)?.message))) {
+      const otro = await payload.find({ collection: 'far-pedidos', depth: 0, limit: 1, overrideAccess: true, where: { claveIdempotencia: { equals: clave } } })
+      if (otro.docs[0]) return otro.docs[0]
+    }
+    throw e
+  })
+  const final = await payload.findByID({ collection: 'far-pedidos', id: creado.id, depth: 1, overrideAccess: true })
+  await avisarPedido(payload, final, 'plan').catch((e) => payload.logger.error(`[tienda] aviso de entrega del plan: ${String(e)}`))
+  return { pedido: final, nuevo: true, faltaExistencia: falta }
 }
 
 /* ───────────────────────────── portal del tutor ───────────────────────────── */
@@ -686,7 +768,8 @@ export async function avanzarPedido(ctx: Ctx, id: number, entrada: unknown): Pro
     if (p.estado === 'en_ruta') throw invalido('El pedido ya salió con el repartidor: espera a que regrese («No se pudo entregar») para cancelarlo.')
     if (idDe(p.venta)) throw invalido(`Este pedido ya tiene la venta ${folioParaId('VTA', idDe(p.venta)!)}: anúlala en Ventas (regresa el inventario) y luego cancela el pedido.`)
     if (!d.data.motivo || d.data.motivo.length < 3) throw invalido('Escribe el motivo de la cancelación (lo recibe el cliente).')
-    const pagado = p.pago?.estado === 'pagado'
+    /* Una entrega del plan anual no se reembolsa sola: el anticipo es del plan (Farmacia → Planes). */
+    const pagado = p.pago?.estado === 'pagado' && p.pago?.forma !== 'plan'
     const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { estado: 'cancelado', motivoCancelacion: d.data.motivo, expiraEn: null, pago: pagado ? { ...(p.pago ?? {}), estado: 'reembolso_pendiente' } : p.pago, historial: historial(p, 'cancelado', quien, pagado ? `${d.data.motivo} · reembolso pendiente` : d.data.motivo) } })
     await avisarPedido(ctx.payload, n, 'cancelado').catch(() => undefined)
     return vistaPanel(ctx, n)
@@ -721,9 +804,15 @@ async function ventaDePedido(ctx: Ctx, p: FarPedido, v: z.infer<typeof esquemaVe
       pagos,
       autorizacion: v.autorizacion ?? null,
       correoTicket: p.contacto?.correo ?? null,
-      notas: `Pedido de la tienda ${folioParaId('PED', p.id)}${p.entrega === 'domicilio' ? ' · a domicilio' : ''}`,
+      notas: `Pedido de la tienda ${folioParaId('PED', p.id)}${p.entrega === 'domicilio' ? ' · a domicilio' : ''}${idDe(p.plan) ? ` · plan ${folioParaId('PLN', idDe(p.plan)!)}` : ''}`,
     },
-    { canal: 'tienda', pedidoId: p.id, envio: n0(p.costoEnvio) },
+    {
+      canal: 'tienda',
+      pedidoId: p.id,
+      envio: n0(p.costoEnvio),
+      /* Fase 6b: la entrega de un plan respeta el precio con que se contrató; la anual no lleva pagos (anticipo). */
+      ...(idDe(p.plan) ? { planId: idDe(p.plan), preciosPactados: Object.fromEntries((p.renglones ?? []).map((r) => [idDe(r.presentacion)!, r.precioUnitario])), cubiertoPorPlan: p.pago?.forma === 'plan' } : {}),
+    },
   )
 }
 
@@ -745,15 +834,22 @@ export async function entregarPedido(ctx: Ctx, id: number, entrada: unknown): Pr
   const p = await cargarPedido(ctx, id)
   if (idDe(p.venta)) return { pedido: await vistaPanel(ctx, p), ventaFolio: folioParaId('VTA', idDe(p.venta)!), finanzas: 'registrado', avisos: [] }
   if (p.entrega === 'domicilio') throw invalido('Este pedido es a domicilio: usa «Enviar con repartidor».')
+  if (p.pago?.forma === 'plan' && (d.data.pagos ?? []).length) throw invalido('Esta entrega ya está pagada con el plan anual: no lleva cobro.')
   if (!['listo_para_recoger', 'preparando', 'pagado', 'creado'].includes(p.estado) || estadoVisible(p) === 'expirado') throw invalido(`Un pedido «${ESTADO_PEDIDO_LABEL[estadoVisible(p)]}» no se entrega.`)
   const cfg = await leerConfiguracion(ctx.payload)
   let pagos = d.data.pagos ?? []
-  if (p.pago?.estado === 'pagado') {
+  if (p.pago?.forma === 'plan') pagos = []
+  else if (p.pago?.estado === 'pagado') {
     const m = metodoConCuenta(cfg, cfg.tienda.metodoPagoEnLinea, 'pagos en línea')
     pagos = [{ metodo: m.clave, monto: p.total, referencia: t(p.pago.idPago) ?? t(p.pago.referencia) ?? folioParaId('PED', p.id), recibido: null }]
   } else if (p.pago?.forma === 'en_linea') throw invalido('Este pedido es de pago en línea y todavía no se paga.')
   const venta = await ventaDePedido(ctx, p, d.data, pagos)
   const n = await ctx.payload.update({ collection: 'far-pedidos', id, overrideAccess: true, depth: 1, data: { estado: 'entregado', venta: venta.id, historial: historial(p, 'entregado', quienEs(ctx), `Venta ${venta.folio}`) } })
+  /* Plan anual: el anticipo entra a Finanzas (una vez) y se reconoce lo entregado. */
+  if (idDe(p.plan) && p.pago?.forma === 'plan') {
+    const r = await (await import('./planes')).reconocerEntrega(ctx, idDe(p.plan)!).catch((e) => ({ aviso: `No se registró el anticipo del plan en Finanzas: ${String((e as Error)?.message ?? e)}. Reintenta desde Farmacia → Planes.` }))
+    if (r.aviso) venta.avisos.push(r.aviso)
+  }
   return { pedido: await vistaPanel(ctx, n), ventaFolio: venta.folio, finanzas: venta.finanzas, avisos: venta.avisos }
 }
 
@@ -943,7 +1039,7 @@ export async function pedidosPorAtender(payload: Payload): Promise<number> {
 
 /* ───────────────────────────── avisos por correo (best-effort) ───────────────────────────── */
 
-type EventoAviso = 'nuevo' | 'pagado' | 'listo' | 'cancelado' | 'en_camino' | 'entregado' | 'reembolsado'
+type EventoAviso = 'nuevo' | 'pagado' | 'listo' | 'cancelado' | 'en_camino' | 'entregado' | 'reembolsado' | 'plan'
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
@@ -960,6 +1056,7 @@ async function avisarPedido(payload: Payload, p: FarPedido, evento: EventoAviso)
     en_camino: 'Tu pedido va en camino',
     entregado: 'Entregamos tu pedido',
     reembolsado: 'Te reembolsamos tu pago',
+    plan: 'Preparamos la entrega de tu plan',
   }
   const detalle: Record<EventoAviso, string> = {
     nuevo: p.pago?.forma === 'en_linea' ? 'Termina el pago desde la liga de abajo. Si no se paga, el apartado vence solo.' : p.entrega === 'domicilio' ? 'Te avisamos cuando salga. Pagas al recibir.' : 'Te avisamos cuando esté listo. Pagas al recoger.',
@@ -967,14 +1064,15 @@ async function avisarPedido(payload: Payload, p: FarPedido, evento: EventoAviso)
     en_camino: `${p.pago?.estado === 'pagado' ? 'Ya está pagado.' : `Ten listo el pago de $${p.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}.`} Lo lleva nuestro repartidor a ${p.direccion?.calle ?? 'tu domicilio'}.`,
     entregado: `Recibió: ${p.entregaDomicilio?.recibio ?? ''}. ¡Gracias por tu compra!`,
     reembolsado: 'El reembolso puede tardar unos días en verse en tu estado de cuenta, según tu banco.',
+    plan: `Es la entrega ${n0(p.ciclo)} de tu plan${idDe(p.plan) ? ` ${folioParaId('PLN', idDe(p.plan)!)}` : ''}. Ya está pagada: te avisamos cuando esté lista para recoger.`,
     listo: 'Pasa por él a la farmacia. Si es con receta, trae a la mano el nombre de tu mascota.',
     cancelado: t(p.motivoCancelacion) ?? '',
   }
   const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#0f2f2a"><h2 style="margin:0 0 6px">${esc(titulo[evento])}</h2><p style="margin:0 0 12px;color:#4b5b56">${esc(site.brand.name)} · ${folio}</p><p>${esc(detalle[evento])}</p><table style="width:100%;border-collapse:collapse;font-size:14px">${lineas}${n0(p.costoEnvio) ? `<tr><td style="padding:4px 0">Envío</td><td style="padding:4px 0;text-align:right">$${n0(p.costoEnvio).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td></tr>` : ''}<tr><td style="padding-top:8px;border-top:1px solid #d9e4e0"><b>Total</b></td><td style="padding-top:8px;border-top:1px solid #d9e4e0;text-align:right"><b>$${p.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</b></td></tr></table><p style="margin-top:18px"><a href="${liga}" style="background:${site.brand.accent};color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Ver mi pedido</a></p></div>`
   if (p.contacto?.correo) await payload.sendEmail({ to: p.contacto.correo, subject: `${titulo[evento]} · ${folio}`, html })
-  if (evento === 'nuevo' || evento === 'pagado') {
+  if (evento === 'nuevo' || evento === 'pagado' || evento === 'plan') {
     const cfg = await leerConfiguracion(payload)
     const para = (cfg.tienda.correosPedidos ?? '').split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean)
-    if (para.length) await payload.sendEmail({ to: para, subject: `${evento === 'nuevo' ? 'Pedido nuevo' : 'Pedido pagado'} en la tienda: ${folio} · $${p.total.toLocaleString('es-MX')}`, html: `<p>${esc(p.contacto?.nombre ?? '')} · ${esc(p.contacto?.telefono ?? '')} · ${esc(p.contacto?.correo ?? '')}</p><table>${lineas}</table><p>Entra a Farmacia → Pedidos.</p>` })
+    if (para.length) await payload.sendEmail({ to: para, subject: `${evento === 'nuevo' ? 'Pedido nuevo' : evento === 'plan' ? 'Entrega de un plan' : 'Pedido pagado'} en la tienda: ${folio} · $${p.total.toLocaleString('es-MX')}`, html: `<p>${esc(p.contacto?.nombre ?? '')} · ${esc(p.contacto?.telefono ?? '')} · ${esc(p.contacto?.correo ?? '')}</p><table>${lineas}</table><p>Entra a Farmacia → Pedidos.</p>` })
   }
 }

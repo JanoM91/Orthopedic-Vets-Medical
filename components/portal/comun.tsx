@@ -29,6 +29,7 @@ const TRAZOS: Record<string, React.ReactNode> = {
   luna: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />,
   billete: (<><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6.5 9.5v.01M17.5 14.5v.01" /></>),
   camion: (<><path d="M3 6h11v10H3zM14 9h4l3 3.5V16h-7" /><circle cx="7" cy="18" r="2" /><circle cx="17" cy="18" r="2" /></>),
+  repetir: (<><path d="M4 11a8 8 0 0 1 14-5l2 2" /><path d="M20 3v5h-5" /><path d="M20 13a8 8 0 0 1-14 5l-2-2" /><path d="M4 21v-5h5" /></>),
   bolsa: (<><path d="M5 8h14l-1 12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20.5z" /><path d="M9 10V6.5a3 3 0 0 1 6 0V10" /></>),
   frasco: (<><rect x="7" y="7" width="10" height="14" rx="2" /><path d="M8 3h8v4H8zM7 12h10M12 14.5v4M10 16.5h4" /></>),
   carrito: (<><circle cx="9" cy="20" r="1.5" /><circle cx="17" cy="20" r="1.5" /><path d="M3 4h2.5l2.2 11h10.6l2-8H6.4" /></>),

@@ -67,6 +67,8 @@ export type SesionTienda = {
   domicilio: { activo: boolean; pagarAlRecibir: boolean; horario: string | null; grupoII: boolean }
   /** Hay búsqueda con IA («¿qué necesita tu mascota?»). */
   busquedaIA: boolean
+  /** Fase 6b: planes de compra (encendidos y con pago en línea). */
+  planes: { activo: boolean }
 }
 
 /** Cotización de envío para un código postal. */
@@ -97,7 +99,7 @@ export type PedidoVista = {
   creadoEn: string
   expiraEn: string | null
   entrega: 'recoger' | 'domicilio'
-  pago: { forma: 'al_recoger' | 'en_linea' | 'al_recibir'; estado: 'pendiente' | 'pagado' | 'reembolso_pendiente' | 'reembolsado'; proveedor: string | null; referencia: string | null; pagadoEn: string | null }
+  pago: { forma: 'al_recoger' | 'en_linea' | 'al_recibir' | 'plan'; estado: 'pendiente' | 'pagado' | 'reembolso_pendiente' | 'reembolsado'; proveedor: string | null; referencia: string | null; pagadoEn: string | null }
   contacto: { nombre: string; correo: string; telefono: string | null }
   mascota: { id: number; nombre: string } | null
   perfil: { especie: string | null; pesoKg: number | null } | null
@@ -113,6 +115,8 @@ export type PedidoVista = {
   motivoCancelacion: string | null
   ventaId: number | null
   ventaFolio: string | null
+  /** Fase 6b: entrega de un plan */
+  plan: { id: number; folio: string; ciclo: number | null } | null
   historial: { estado: string; fecha: string; por: string | null; detalle: string | null }[]
   /** Solo para el tutor o el invitado (liga de seguimiento). */
   token?: string

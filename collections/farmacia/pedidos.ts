@@ -111,6 +111,8 @@ export const FarPedidos: CollectionConfig = {
         { name: 'receta', type: 'relationship', relationTo: 'far-recetas' },
       ],
     },
+    /* Fase 6b: pedido generado por un plan (una entrega del ciclo). */
+    { type: 'row', fields: [{ name: 'plan', type: 'relationship', relationTo: 'far-planes', index: true }, { name: 'ciclo', label: 'Entrega número', type: 'number' }] },
     { name: 'subtotal', label: 'Productos (MXN)', type: 'number' },
     { name: 'costoEnvio', label: 'Envío (MXN)', type: 'number', defaultValue: 0 },
     { name: 'total', label: 'Total (MXN)', type: 'number', required: true },
@@ -119,7 +121,7 @@ export const FarPedidos: CollectionConfig = {
       name: 'pago',
       type: 'group',
       fields: [
-        { name: 'forma', label: 'Forma de pago', type: 'select', required: true, defaultValue: 'al_recoger', options: [{ label: 'Al recoger', value: 'al_recoger' }, { label: 'En línea', value: 'en_linea' }, { label: 'Al recibir (a domicilio)', value: 'al_recibir' }] },
+        { name: 'forma', label: 'Forma de pago', type: 'select', required: true, defaultValue: 'al_recoger', options: [{ label: 'Al recoger', value: 'al_recoger' }, { label: 'En línea', value: 'en_linea' }, { label: 'Al recibir (a domicilio)', value: 'al_recibir' }, { label: 'Cubierto por un plan anual (anticipo)', value: 'plan' }] },
         { name: 'estado', type: 'select', required: true, defaultValue: 'pendiente', options: [{ label: 'Pendiente', value: 'pendiente' }, { label: 'Pagado', value: 'pagado' }, { label: 'Reembolso pendiente', value: 'reembolso_pendiente' }, { label: 'Reembolsado', value: 'reembolsado' }] },
         { name: 'proveedor', type: 'text' },
         { name: 'idPago', label: 'Id del pago en la pasarela', type: 'text' },
@@ -182,6 +184,7 @@ export const FarPagosEventos: CollectionConfig = {
   fields: [
     { name: 'clave', label: 'Proveedor:evento', type: 'text', required: true, unique: true },
     { name: 'pedido', type: 'relationship', relationTo: 'far-pedidos' },
+    { name: 'plan', type: 'relationship', relationTo: 'far-planes' },
     { name: 'tipo', type: 'text' },
     { name: 'resultado', type: 'text' },
   ],

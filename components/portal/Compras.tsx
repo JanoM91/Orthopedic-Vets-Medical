@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import React from 'react'
+import type { PlanVista } from '../../lib/farmacia/planes'
 import { ESTADO_PEDIDO_LABEL, type EstadoPedido, type PedidoVista, type RecetaTienda } from '../../lib/farmacia/tiposTienda'
 import { fecha, Icono, Pill } from './comun'
 
@@ -44,6 +45,30 @@ export function FilaPedido({ p }: { p: PedidoVista }) {
         </span>
       </span>
       <Pill tono={TONO_PEDIDO[p.estado]}>{ESTADO_PEDIDO_LABEL[p.estado]}</Pill>
+    </Link>
+  )
+}
+
+const PLAN_ESTADO: Record<PlanVista['estado'], [string, 'ok' | 'warn' | 'bad' | 'info' | 'gris']> = { por_pagar: ['Falta el pago', 'warn'], activo: ['Activo', 'ok'], detenido: ['En pausa', 'warn'], cancelado: ['Cancelado', 'gris'], terminado: ['Terminado', 'gris'] }
+
+/** Plan de compra (fase 6b) en «Mis pedidos». */
+export function FilaPlan({ p }: { p: PlanVista }) {
+  const [t, tono] = PLAN_ESTADO[p.estado]
+  return (
+    <Link href={`/tienda/plan/${p.id}?t=${encodeURIComponent(p.token ?? '')}`} className="pt-fila">
+      <span className="ti-fila-i">
+        <Icono n="repetir" />
+      </span>
+      <span className="pt-fila__main">
+        <span className="pt-fila__t1">
+          {p.producto.nombre} · {p.mascota.nombre}
+        </span>
+        <span className="pt-fila__t2">
+          Cada {p.cadaDias} días · {p.modalidad === 'anual' ? `${p.entregasHechas} de ${p.entregasTotales ?? '?'} entregas` : `${pesos(p.precioEntrega)} por entrega`}
+          {p.estado === 'activo' && p.proximaEntrega ? ` · próxima ${fecha(p.proximaEntrega)}` : ''}
+        </span>
+      </span>
+      <Pill tono={tono}>{t}</Pill>
     </Link>
   )
 }

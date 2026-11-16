@@ -137,6 +137,32 @@ export default function Configuracion() {
                 </Campo>
               </div>
             )}
+            <Check checked={c.planes.activo} onChange={(v) => setC({ ...c, planes: { ...c.planes, activo: v } })}>
+              Planes de compra: el tutor con cuenta vinculada lo recibe cada cierto tiempo (suscripción) o paga un año por adelantado. Necesita pago en línea.
+            </Check>
+            {c.planes.activo && (
+              <div className="cl-grid cl-grid--3">
+                <Campo etiqueta="Descuento del plan anual (%)" ayuda="0 a 50. El plan de cada entrega va a precio de lista.">
+                  <input className="fz-input" type="number" inputMode="decimal" min={0} max={50} step="0.5" value={c.planes.descuentoAnual} onChange={(e) => setC({ ...c, planes: { ...c.planes, descuentoAnual: Math.max(0, Math.min(50, Number(e.target.value) || 0)) } })} />
+                </Campo>
+                <Campo etiqueta="Entregas del plan anual" ayuda="2 a 24 (12 = una al mes si dura 30 días).">
+                  <input className="fz-input" type="number" inputMode="numeric" min={2} max={24} value={c.planes.entregasAnual} onChange={(e) => setC({ ...c, planes: { ...c.planes, entregasAnual: Math.max(2, Math.min(24, Math.round(Number(e.target.value) || 12))) } })} />
+                </Campo>
+                <Campo etiqueta="Preparar la entrega (días antes)" ayuda="1 a 10. Ese día se revisa receta y mascota y aparece en Pedidos.">
+                  <input className="fz-input" type="number" inputMode="numeric" min={1} max={10} value={c.planes.diasAntes} onChange={(e) => setC({ ...c, planes: { ...c.planes, diasAntes: Math.max(1, Math.min(10, Math.round(Number(e.target.value) || 3))) } })} />
+                </Campo>
+                <Campo etiqueta="Categoría de Finanzas de los anticipos" ayuda="El pago del plan anual entra completo aquí. Sin elegir, usa la de ventas.">
+                  <Select valor={c.planes.categoriaAnticiposId ? String(c.planes.categoriaAnticiposId) : ''} onChange={(v) => setC({ ...c, planes: { ...c.planes, categoriaAnticiposId: v ? Number(v) : null } })}>
+                    <option value="">La de ventas</option>
+                    {catalogo.finanzas.categorias.filter((x) => x.tipo === 'entrada').map((x) => (
+                      <option key={x.id} value={String(x.id)}>
+                        {x.nombre}
+                      </option>
+                    ))}
+                  </Select>
+                </Campo>
+              </div>
+            )}
             {c.tienda.domicilioActivo && (
               <>
                 <div className="cl-grid cl-grid--3">

@@ -48,6 +48,7 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 - Los medicamentos **con receta** solo se piden con tu cuenta y con una receta vigente de tu veterinario para esa mascota. Los controlados no se venden en línea.
 - En **Mis pedidos** (arriba, en la tienda) ves tus pedidos y tus recetas; «Surtir» abre la tienda con tu mascota ya elegida.
 - **¿Ya toca?** Si compraste algo que dura un tiempo (por ejemplo, una pipeta al mes), te escribimos unos días antes de que se acabe con el botón **Volver a pedir**: lo pone en tu carrito en un toque. También aparece en **Pendientes** de tu inicio. Si no quieres esos avisos, toca «No me avises más» en el correo.
+- **Planes: que te lo preparen solo.** En la tienda, con tu cuenta y tu mascota elegida, algunos productos dicen **«Recíbelo cada N días»**. Puedes pagar en cada entrega (se cobra solo; cancela cuando quieras) o pagar varias entregas por adelantado con descuento. Te avisamos cuando cada entrega esté lista para recoger. Antes de cada una revisamos que le siga correspondiendo a tu mascota (y su receta, si lleva); si algo cambió, pausamos el plan y te avisamos. Tus planes están en **Mis pedidos → Mis planes**.
 
 ## Cartilla
 

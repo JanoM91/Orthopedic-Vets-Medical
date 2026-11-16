@@ -86,6 +86,7 @@ export interface Config {
     'est-fichas': EstFicha;
     'est-fotos': EstFoto;
     tutores: Tutor;
+    'sitio-fotos': SitioFoto;
     'far-productos': FarProducto;
     'far-presentaciones': FarPresentacion;
     'far-almacenes': FarAlmacen;
@@ -137,6 +138,7 @@ export interface Config {
     'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
     'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
     tutores: TutoresSelect<false> | TutoresSelect<true>;
+    'sitio-fotos': SitioFotosSelect<false> | SitioFotosSelect<true>;
     'far-productos': FarProductosSelect<false> | FarProductosSelect<true>;
     'far-presentaciones': FarPresentacionesSelect<false> | FarPresentacionesSelect<true>;
     'far-almacenes': FarAlmacenesSelect<false> | FarAlmacenesSelect<true>;
@@ -920,6 +922,22 @@ export interface EstFoto {
   datos: string;
   bytes?: number | null;
   subidaPor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Fotos para la página principal: portada y retrato del médico. Súbelas aquí y elígelas en «Sitio público».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sitio-fotos".
+ */
+export interface SitioFoto {
+  id: number;
+  /**
+   * Ej. «Fachada de la clínica». Es también el texto que oyen las personas que usan lector de pantalla.
+   */
+  titulo: string;
+  imagen: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -1786,6 +1804,10 @@ export interface PayloadLockedDocument {
         value: number | Tutor;
       } | null)
     | ({
+        relationTo: 'sitio-fotos';
+        value: number | SitioFoto;
+      } | null)
+    | ({
         relationTo: 'far-productos';
         value: number | FarProducto;
       } | null)
@@ -2409,6 +2431,16 @@ export interface TutoresSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sitio-fotos_select".
+ */
+export interface SitioFotosSelect<T extends boolean = true> {
+  titulo?: T;
+  imagen?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3238,6 +3270,75 @@ export interface SitioConfiguracion {
    */
   lema?: string | null;
   descripcion?: string | null;
+  /**
+   * Salen junto al lema. Sin fotos, ahí va la tarjeta «Hoy» con el horario y la dirección.
+   */
+  fotos?: (number | SitioFoto)[] | null;
+  /**
+   * Una banda destacada bajo la portada: la promoción o jornada a la que llegan tus anuncios. Apagada o vencida, no aparece.
+   */
+  campana?: {
+    activa?: boolean | null;
+    /**
+     * Ej. «Solo en noviembre».
+     */
+    etiqueta?: string | null;
+    /**
+     * Opcional. Al día siguiente la banda se quita sola.
+     */
+    hasta?: string | null;
+    /**
+     * Ej. «Jornada de esterilización». Sin título no se muestra.
+     */
+    titulo?: string | null;
+    texto?: string | null;
+    /**
+     * Vacío: «Apartar mi lugar». Abre WhatsApp con el nombre de la campaña.
+     */
+    boton?: string | null;
+  };
+  razones?:
+    | {
+        titulo: string;
+        texto?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Sección «Lo atiende…» con foto y credenciales. Sin nombre no aparece.
+   */
+  doctor?: {
+    /**
+     * Como debe leerse. Ej. «Jonathan Velasco».
+     */
+    nombre?: string | null;
+    /**
+     * Ej. «la médica veterinaria». Vacío: «el médico veterinario».
+     */
+    titulo?: string | null;
+    presentacion?: string | null;
+    foto?: (number | null) | SitioFoto;
+    /**
+     * Una por renglón. Ej. Formación · Cédula profesional · Especialidad · Experiencia · Asociaciones.
+     */
+    credenciales?:
+      | {
+          etiqueta: string;
+          valor: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
+   * Solo testimonios reales y con permiso de quien los dio.
+   */
+  testimonios?:
+    | {
+        texto: string;
+        autor?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   contacto?: {
     direccion?: string | null;
     mapaUrl?: string | null;
@@ -3484,6 +3585,46 @@ export interface SitioConfiguracionSelect<T extends boolean = true> {
   publicado?: T;
   lema?: T;
   descripcion?: T;
+  fotos?: T;
+  campana?:
+    | T
+    | {
+        activa?: T;
+        etiqueta?: T;
+        hasta?: T;
+        titulo?: T;
+        texto?: T;
+        boton?: T;
+      };
+  razones?:
+    | T
+    | {
+        titulo?: T;
+        texto?: T;
+        id?: T;
+      };
+  doctor?:
+    | T
+    | {
+        nombre?: T;
+        titulo?: T;
+        presentacion?: T;
+        foto?: T;
+        credenciales?:
+          | T
+          | {
+              etiqueta?: T;
+              valor?: T;
+              id?: T;
+            };
+      };
+  testimonios?:
+    | T
+    | {
+        texto?: T;
+        autor?: T;
+        id?: T;
+      };
   contacto?:
     | T
     | {

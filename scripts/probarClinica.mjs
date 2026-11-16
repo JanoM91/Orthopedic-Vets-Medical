@@ -591,6 +591,43 @@ async function main() {
   r = await fetch(`${BASE}/`)
   const html = await r.text()
   ok(r.status === 200 && html.includes('Lema de prueba') && html.includes('wa.me/522280000000') && html.includes('Consulta general'), 'Raíz: muestra lema, WhatsApp con +52 y servicios del catálogo')
+  /* Home versión B (nov-2026): accesos de primera vez, campaña, médico con credenciales, razones, testimonios y fotos. */
+  ok(html.includes('Reserva tu primera cita') && html.includes('primera%20vez') && html.includes('/portal/entrar'), 'Raíz: accesos de primera vez (reservar por WhatsApp y entrar al portal)')
+  ok(!html.includes('id="doctor"') && !html.includes('st-campana'), 'Raíz: sin médico ni campaña capturados, esas secciones no aparecen')
+  const PNG_SITIO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+  r = await new Sesion().post('/api/sitio-fotos', { titulo: 'Intruso', imagen: PNG_SITIO })
+  ok(r.status === 403 || r.status === 401, 'Un visitante no sube fotos del sitio', r.status)
+  r = await admin.post('/api/sitio-fotos', { titulo: 'Texto que no es foto', imagen: 'hola' })
+  ok(r.status === 400, 'Una foto del sitio que no es imagen se rechaza', r.status)
+  r = await admin.post('/api/sitio-fotos', { titulo: 'Retrato de prueba', imagen: PNG_SITIO })
+  const fotoId = r.data?.doc?.id
+  ok(r.status === 201 && fotoId, 'El equipo sube una foto del sitio', r.status)
+  r = await fetch(`${BASE}/api/sitio-fotos`)
+  const lista = await r.json().catch(() => null)
+  ok(r.status === 403 || r.status === 401 || (lista?.docs ?? []).length === 0, 'La API genérica no da las fotos del sitio al visitante')
+  r = await fetch(`${BASE}/api/sitio/fotos/${fotoId}`)
+  ok(r.status === 200 && r.headers.get('content-type') === 'image/png' && (r.headers.get('cache-control') ?? '').includes('immutable'), 'La foto del sitio se sirve pública y con caché', r.status)
+  r = await fetch(`${BASE}/api/sitio/fotos/999999`)
+  ok(r.status === 404, 'Una foto del sitio que no existe responde 404', r.status)
+  const basico = { publicado: true, lema: 'Lema de prueba', contacto: { whatsapp: '228 000 0000' } }
+  r = await admin.post('/api/globals/sitio-configuracion', {
+    ...basico,
+    fotos: [fotoId],
+    campana: { activa: true, etiqueta: 'Solo este mes', titulo: 'Jornada de prueba', texto: 'Con valoración previa.', boton: 'Quiero mi lugar', hasta: '2020-01-01' },
+    razones: [{ titulo: 'Un solo expediente', texto: 'Todo en un lugar.' }],
+    doctor: { nombre: 'Ana Prueba', titulo: 'la médica veterinaria', presentacion: 'Presentación de prueba.', foto: fotoId, credenciales: [{ etiqueta: 'Cédula profesional', valor: '1234567' }] },
+    testimonios: [{ texto: 'Testimonio de prueba', autor: 'Luis y Kira' }],
+  })
+  ok(r.status === 200, 'El equipo captura campaña, razones, médico y testimonios', r.status)
+  let h2 = await (await fetch(`${BASE}/`)).text()
+  ok(!h2.includes('Jornada de prueba'), 'Raíz: una campaña vencida no aparece')
+  ok(h2.includes('id="doctor"') && h2.includes('Lo atiende la médica veterinaria Ana Prueba.') && h2.includes('1234567') && h2.includes(`/api/sitio/fotos/${fotoId}?v=`), 'Raíz: médico con credenciales y su retrato')
+  ok(h2.includes('Un solo expediente') && h2.includes('Testimonio de prueba') && h2.includes('st-mosaico'), 'Raíz: razones, testimonios y fotos de portada')
+  r = await admin.post('/api/globals/sitio-configuracion', { ...basico, campana: { activa: true, etiqueta: 'Solo este mes', titulo: 'Jornada de prueba', boton: 'Quiero mi lugar', hasta: '2099-12-31' } })
+  h2 = await (await fetch(`${BASE}/`)).text()
+  ok(r.status === 200 && h2.includes('Jornada de prueba') && h2.includes('Quiero mi lugar') && h2.includes(encodeURIComponent('campaña «Jornada de prueba»')), 'Raíz: la campaña vigente aparece con su botón de WhatsApp')
+  r = await admin.post('/api/globals/sitio-configuracion', { ...basico, campana: { activa: true, titulo: 'Jornada de prueba', hasta: '31/12/2099' } })
+  ok(r.status === 400, 'La fecha de la campaña se valida (AAAA-MM-DD)', r.status)
   r = await fetch(`${BASE}/robots.txt`)
   ok(r.status === 200 && (await r.text()).includes('Disallow: /admin'), 'robots.txt excluye el panel')
   r = await fetch(`${BASE}/finanzas`, { redirect: 'manual' })

@@ -16,6 +16,7 @@ import * as migration_20261115_041426_farmacia_planes from './20261115_041426_fa
 import * as migration_20261116_040643_estetica_precios from './20261116_040643_estetica_precios';
 import * as migration_20261116_041602_estetica_tablero from './20261116_041602_estetica_tablero';
 import * as migration_20261116_042227_estetica_portal from './20261116_042227_estetica_portal';
+import * as migration_20261116_150807_sitio_home_b from './20261116_150807_sitio_home_b';
 
 export const migrations = [
   {
@@ -106,6 +107,11 @@ export const migrations = [
   {
     up: migration_20261116_042227_estetica_portal.up,
     down: migration_20261116_042227_estetica_portal.down,
-    name: '20261116_042227_estetica_portal'
+    name: '20261116_042227_estetica_portal',
+  },
+  {
+    up: migration_20261116_150807_sitio_home_b.up,
+    down: migration_20261116_150807_sitio_home_b.down,
+    name: '20261116_150807_sitio_home_b'
   },
 ];

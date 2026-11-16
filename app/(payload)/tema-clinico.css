@@ -151,7 +151,7 @@ h3 {
 }
 
 /* 2.2 Menú lateral blanco con borde, activo en cobalto suave (el riel de
-   iconos de 72 px de la opción C requiere componentes propios: pendiente) */
+   iconos de 72 px está al final: «Riel del menú», UX del panel 3) */
 .nav {
   background: #ffffff;
   color: var(--mx-ink);
@@ -1666,4 +1666,82 @@ input[type='time']::-webkit-date-and-time-value {
 .hoy__pap .fz-btn {
   margin-top: 10px;
   align-self: flex-start;
+}
+
+/* ─── Riel del menú (UX del panel 3, nov-2026) ───────────────────────────────
+   En pantallas de 1025 px o más, el menú «cerrado» ya no desaparece: queda un
+   riel de 72 px con el isotipo y los iconos de «Trabajo». Al pasar el cursor o
+   al llegar con el teclado se despliega encima del contenido (sin moverlo).
+   El botón del menú lo fija abierto, como antes. En teléfono y tableta
+   (≤ 1024 px) nada cambia: sigue siendo el panel que se abre con el botón. */
+@media (min-width: 1025px) {
+  .template-default--nav-hydrated:not(.template-default--nav-open) {
+    grid-template-columns: 72px auto;
+  }
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav {
+    opacity: 1;
+    width: 72px;
+    z-index: 40;
+    overflow: hidden;
+    /* clip: ni el foco ni un «scrollIntoView» pueden desplazarlo de lado. */
+    overflow: clip;
+    transition:
+      width 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav__scroll {
+    --nav-padding-inline-start: 12px;
+    --nav-padding-inline-end: 12px;
+    overflow-x: hidden;
+    width: 275px;
+  }
+  /* Riel: solo isotipo, iconos y salir. */
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:not(:hover):not(:focus-within) :is(.mx-marca__nombre, .mx-marca__sub, .mx-nav-etiqueta, .nav-group, .mx-trabajo__link .nav__link-label) {
+    display: none;
+  }
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:not(:hover):not(:focus-within) .mx-marca {
+    padding-inline: 0;
+    width: 48px;
+    border-bottom: 0;
+  }
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:not(:hover):not(:focus-within) .mx-marca__fila {
+    justify-content: center;
+  }
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:not(:hover):not(:focus-within) a.mx-trabajo__link {
+    position: relative;
+    width: 48px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+  /* El número de alertas pasa a ser una bolita sobre el icono. */
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:not(:hover):not(:focus-within) .mx-trabajo__n {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 10.5px;
+  }
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:not(:hover):not(:focus-within) .nav__controls {
+    width: 48px;
+    display: flex;
+    justify-content: center;
+  }
+  /* Desplegado sobre el contenido. */
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:is(:hover, :focus-within) {
+    width: 275px;
+    box-shadow: 8px 0 28px rgba(15, 23, 42, 0.12);
+    transition-delay: 0.08s;
+  }
+}
+@media (min-width: 1025px) and (prefers-reduced-motion: reduce) {
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav {
+    transition: none;
+  }
+}
+@media (min-width: 1025px) {
+  .template-default--nav-hydrated:not(.template-default--nav-open) .nav:not(:hover):not(:focus-within) a.mx-trabajo__link {
+    margin-inline: 0;
+  }
 }

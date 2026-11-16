@@ -63,31 +63,58 @@ function dentro(ruta: string, href: string): boolean {
 }
 
 /* Payload cierra el menú lateral entre 1025 y 1440 px (laptops comunes) en cada
-   carga y lo deja abierto solo arriba de 1440. Con el menú cerrado, Agenda y
-   Mostrador quedaban a dos clics. En ese rango se abre al cargar, salvo que la
-   persona lo haya cerrado en esta pestaña del navegador (se recuerda en
-   sessionStorage). En teléfono y tableta (≤ 1024 px) el menú sigue siendo el
-   panel que se abre con el botón. */
+   carga y lo deja abierto solo arriba de 1440. Desde la UX del panel 3
+   (nov-2026), cerrado ya no desaparece: queda el riel de iconos de 72 px
+   (tema-clinico.css, «Riel del menú»), que se despliega al pasar el cursor.
+   En ese rango el menú arranca como riel y se abre al cargar solo si la
+   persona lo fijó abierto con el botón en esta pestaña (sessionStorage).
+   En teléfono y tableta (≤ 1024 px) el menú sigue siendo el panel que se
+   abre con el botón. */
 const RANGO_LAPTOP = '(min-width: 1025px) and (max-width: 1440px)'
-const CLAVE_CERRADO = 'ovm-menu-cerrado'
+const CLAVE_ABIERTO = 'ovm-menu-fijo'
 const enRango = () => typeof window !== 'undefined' && window.matchMedia(RANGO_LAPTOP).matches
-function leerCerrado(): boolean {
+function leerFijo(): boolean {
   try {
-    return window.sessionStorage.getItem(CLAVE_CERRADO) === '1'
+    return window.sessionStorage.getItem(CLAVE_ABIERTO) === '1'
   } catch {
     return false
   }
 }
-function guardarCerrado(cerrado: boolean) {
+function guardarFijo(fijo: boolean) {
   try {
-    if (cerrado) window.sessionStorage.setItem(CLAVE_CERRADO, '1')
-    else window.sessionStorage.removeItem(CLAVE_CERRADO)
+    if (fijo) window.sessionStorage.setItem(CLAVE_ABIERTO, '1')
+    else window.sessionStorage.removeItem(CLAVE_ABIERTO)
   } catch {
     /* sin almacenamiento (modo privado): no se recuerda */
   }
 }
 
-function useMenuAbiertoEnLaptop() {
+/* Payload marca el menú cerrado con `inert` (no se puede tocar ni enfocar). En el
+   riel (≥ 1025 px) el menú cerrado sí se usa, así que se le quita; en teléfono y
+   tableta se deja, porque ahí el menú cerrado está fuera de la pantalla. */
+const RIEL = '(min-width: 1025px)'
+function useRielUsable() {
+  useEffect(() => {
+    const nav = document.querySelector('aside.nav')
+    if (!nav) return
+    const mq = window.matchMedia(RIEL)
+    const ajustar = () => {
+      const abierto = nav.classList.contains('nav--nav-open')
+      if (mq.matches && !abierto && nav.hasAttribute('inert')) nav.removeAttribute('inert')
+      else if (!mq.matches && !abierto && !nav.hasAttribute('inert')) nav.setAttribute('inert', '')
+    }
+    ajustar()
+    const obs = new MutationObserver(ajustar)
+    obs.observe(nav, { attributes: true, attributeFilter: ['inert', 'class'] })
+    mq.addEventListener('change', ajustar)
+    return () => {
+      obs.disconnect()
+      mq.removeEventListener('change', ajustar)
+    }
+  }, [])
+}
+
+function useMenuEnLaptop() {
   const { hydrated, setNavOpen } = useNav()
   const { breakpoints } = useWindowInfo()
   const l = breakpoints?.l
@@ -95,7 +122,7 @@ function useMenuAbiertoEnLaptop() {
   /* Payload cierra el menú en su propio efecto cada vez que mide la ventana; se abre
      en el turno siguiente para que su cierre no lo pise. */
   useEffect(() => {
-    if (!hydrated || !enRango() || leerCerrado()) return
+    if (!hydrated || !enRango() || !leerFijo()) return
     const t = window.setTimeout(() => setNavOpen(true), 0)
     return () => window.clearTimeout(t)
   }, [hydrated, l, m, setNavOpen])
@@ -104,7 +131,7 @@ function useMenuAbiertoEnLaptop() {
     const alClic = (e: MouseEvent) => {
       const boton = e.target instanceof Element ? e.target.closest('.nav-toggler') : null
       if (!boton || !enRango()) return
-      window.setTimeout(() => guardarCerrado(!document.querySelector('.template-default--nav-open')), 50)
+      window.setTimeout(() => guardarFijo(Boolean(document.querySelector('.template-default--nav-open'))), 50)
     }
     document.addEventListener('click', alClic, true)
     return () => document.removeEventListener('click', alClic, true)
@@ -119,7 +146,8 @@ function useMenuAbiertoEnLaptop() {
  * marca en el tablero mismo.
  */
 export default function MenuTrabajoEnlaces({ enlaces, rutaAdmin }: { enlaces: EnlaceTrabajo[]; rutaAdmin: string }) {
-  useMenuAbiertoEnLaptop()
+  useMenuEnLaptop()
+  useRielUsable()
   const ruta = (usePathname() || '').replace(/\/+$/, '') || '/'
   const raiz = rutaAdmin.replace(/\/+$/, '')
   let activo: EnlaceTrabajo | null = null
@@ -133,7 +161,7 @@ export default function MenuTrabajoEnlaces({ enlaces, rutaAdmin }: { enlaces: En
       {enlaces.map((e) => {
         const on = activo?.clave === e.clave
         return (
-          <Link key={e.clave} className={`nav__link mx-trabajo__link${on ? ' active' : ''}`} href={e.href} aria-current={on ? 'page' : undefined} prefetch={false}>
+          <Link key={e.clave} className={`nav__link mx-trabajo__link${on ? ' active' : ''}`} href={e.href} aria-current={on ? 'page' : undefined} aria-label={e.contador ? `${e.texto}, ${e.contador} alertas abiertas` : e.texto} prefetch={false}>
             <svg aria-hidden="true" className="mx-trabajo__ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               {TRAZOS[e.clave]}
             </svg>

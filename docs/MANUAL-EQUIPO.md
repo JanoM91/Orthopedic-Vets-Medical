@@ -6,7 +6,7 @@
 
 `/admin` con tu correo y contraseña. En el teléfono funciona igual (agrégalo a la pantalla de inicio). La sesión dura 7 días; si pierdes el teléfono, avisa para que cierren tus sesiones.
 
-Arriba del menú está **Trabajo**: Hoy, Agenda, Estética, Pacientes, Mostrador, Farmacia y Finanzas (solo lo que tu rol usa). Los catálogos (Sistema, Clínica, Farmacia, Finanzas) quedan plegados debajo; ábrelos con un clic y se quedan como los dejes.
+Arriba del menú está **Trabajo**: Hoy, Agenda, Estética, Pacientes, Mostrador, Farmacia y Finanzas (solo lo que tu rol usa). Los catálogos (Sistema, Clínica, Farmacia, Finanzas) quedan plegados debajo; ábrelos con un clic y se quedan como los dejes. En la computadora, con el menú cerrado queda una columna de iconos: pasa el cursor para verlo completo, o tócale al botón ☰ para dejarlo abierto.
 
 **Hoy** (`/admin`) es el tablero del día: citas de hoy, en clínica, por confirmar, ventas de mostrador y cobros pendientes; la agenda de hoy con el siguiente paso de cada cita («Confirmar», «Llegó», «Atender», «Abrir nota»), acciones rápidas y pendientes (cobros, farmacia, pedidos de la tienda, planes detenidos y mascotas listas para recoger). Finalizar y «No asistió» se hacen en la agenda, donde piden confirmación. Con la estética encendida, Hoy trae su bloque: cuántas van por llegar, en proceso, listas y entregadas, y las del día con su etapa y el WhatsApp de las listas; las citas de estética de la agenda de hoy se avanzan «En el tablero». La estilista entra directo a su tablero.
 

@@ -13,6 +13,7 @@ import * as migration_20261113_053734_farmacia_tienda_pedidos from './20261113_0
 import * as migration_20261113_185522_farmacia_domicilio_mercadopago from './20261113_185522_farmacia_domicilio_mercadopago';
 import * as migration_20261115_035641_farmacia_recompra from './20261115_035641_farmacia_recompra';
 import * as migration_20261115_041426_farmacia_planes from './20261115_041426_farmacia_planes';
+import * as migration_20261116_040643_estetica_precios from './20261116_040643_estetica_precios';
 
 export const migrations = [
   {
@@ -88,6 +89,11 @@ export const migrations = [
   {
     up: migration_20261115_041426_farmacia_planes.up,
     down: migration_20261115_041426_farmacia_planes.down,
-    name: '20261115_041426_farmacia_planes'
+    name: '20261115_041426_farmacia_planes',
+  },
+  {
+    up: migration_20261116_040643_estetica_precios.up,
+    down: migration_20261116_040643_estetica_precios.down,
+    name: '20261116_040643_estetica_precios'
   },
 ];

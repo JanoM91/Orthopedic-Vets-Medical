@@ -7,6 +7,7 @@ import { DIAS_SEMANA } from '../../collections/clinica/agenda'
 import { configuracion as configuracionAgenda } from '../clinica/agenda'
 import { idDe } from '../clinica/servicio'
 import { leerModulos } from '../modulos'
+import { configEstetica, esServicioEstetica, precioDesde } from '../clinica/estetica'
 import { site } from '../site'
 
 /**
@@ -16,7 +17,7 @@ import { site } from '../site'
  * con la API local sin sesión: es información pública.
  */
 
-export type ServicioPublico = { id: number; nombre: string; descripcion: string | null; indicaciones: string | null; duracionMin: number; precio: number | null; enLinea: boolean; icono: ClaveIcono }
+export type ServicioPublico = { id: number; nombre: string; descripcion: string | null; indicaciones: string | null; duracionMin: number; precio: number | null; enLinea: boolean; icono: ClaveIcono; /** Estética: el precio es «desde» (varía por talla). */ desde: boolean }
 export type GrupoServicios = { area: string; servicios: ServicioPublico[] }
 export type ContenidoSitio = {
   marca: { nombre: string; logo: string; logoClaro: string; primario: string; acento: string; ciudad: string }
@@ -38,19 +39,22 @@ const t = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.
 
 export async function contenidoSitio(): Promise<ContenidoSitio> {
   const payload = await getPayload({ config })
-  const [g, servicios, areas, agenda, modulos] = await Promise.all([
+  const [g, servicios, areas, agenda, modulos, est] = await Promise.all([
     payload.findGlobal({ slug: 'sitio-configuracion', depth: 0, overrideAccess: true }) as Promise<SitioConfiguracion>,
     payload.find({ collection: 'servicios', depth: 0, pagination: false, sort: 'orden', overrideAccess: true, where: { activo: { equals: true } } }),
     payload.find({ collection: 'fin-actividades', depth: 0, pagination: false, overrideAccess: true }),
     configuracionAgenda(payload),
     leerModulos(payload),
+    configEstetica(payload),
   ])
   const nombreArea = new Map(areas.docs.map((a) => [a.id, a.nombre]))
   const grupos = new Map<string, ServicioPublico[]>()
   for (const s of servicios.docs) {
-    const area = (s.area && nombreArea.get(idDe(s.area)!)) || 'Otros servicios'
+    const deEstetica = esServicioEstetica(s, est)
+    /* La estética se agrupa con el nombre de su marca (p. ej. la submarca de la clínica). */
+    const area = deEstetica ? est.nombreMarca : (s.area && nombreArea.get(idDe(s.area)!)) || 'Otros servicios'
     if (!grupos.has(area)) grupos.set(area, [])
-    grupos.get(area)!.push({ id: s.id, nombre: s.nombre, descripcion: t(s.descripcion), indicaciones: t(s.indicaciones), duracionMin: s.duracionMin, precio: s.precio ?? null, enLinea: s.reservaEnLinea !== 'no', icono: iconoDeServicio(s.nombre, s.icono) })
+    grupos.get(area)!.push({ id: s.id, nombre: s.nombre, descripcion: t(s.descripcion), indicaciones: t(s.indicaciones), duracionMin: s.duracionMin, precio: deEstetica ? precioDesde(s) : (s.precio ?? null), enLinea: s.reservaEnLinea !== 'no', icono: iconoDeServicio(s.nombre, s.icono), desde: deEstetica })
   }
   /* «Otros servicios» al final; el resto en el orden en que aparecen. */
   const lista = [...grupos.entries()].map(([area, s]) => ({ area, servicios: s }))

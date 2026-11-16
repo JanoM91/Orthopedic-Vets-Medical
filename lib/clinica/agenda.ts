@@ -7,12 +7,14 @@ import type { AgendaConfiguracion, Cita, Recurso, Servicio, Tutor, User } from '
 import { ESTADOS_OCUPAN, type EstadoCita, TRANSICIONES } from '../../collections/clinica/agenda'
 import { folioParaId } from '../../collections/clinica/acceso'
 import { registrar as registrarEnFinanzas } from '../finanzas/servicio'
+import { aCentavos, aPesos } from '../finanzas/reglas'
 import { instanteDesdeLocal, minutosDesdeTexto, partesLocales, textoDesdeMinutos } from '../localTime'
 import { calcularPermisos } from '../permisosBase'
 import { site } from '../site'
 import { iconoDeServicio } from '../iconosServicio'
 import { fechaLarga, horaLegible } from '../whatsapp'
 import { avisarCita } from './avisos'
+import { adicionales as listaAdicionales, type AdicionalVista, configEstetica, type ConfigEstetica, cotizar, type Cotizacion, datosCita, esServicioEstetica, NOMBRE_TALLA, porTalla, precioDesde, tallaDeMascota } from './estetica'
 import { type Ctx, type CtxTutor, ErrorClinica, idDe, urlFoto, vistaMascota } from './servicio'
 import type { CitaVista, ConfiguracionAgenda, DiaCalendario, DisponibilidadDia, RecursoVista, ServicioVista } from './tipos'
 
@@ -84,7 +86,7 @@ export function ahoraLocal(): { dia: string; minutos: number } {
 /* ───────────────────────────── vistas ───────────────────────────── */
 
 const vistaRecurso = (r: Recurso): RecursoVista => ({ id: r.id, nombre: r.nombre, tipo: r.tipo, activo: r.activo ?? true, orden: r.orden ?? 0 })
-const vistaServicio = (s: Servicio): ServicioVista => ({
+const vistaServicio = (s: Servicio, cfgEst?: ConfigEstetica): ServicioVista => ({
   id: s.id,
   nombre: s.nombre,
   descripcion: s.descripcion ?? null,
@@ -98,6 +100,9 @@ const vistaServicio = (s: Servicio): ServicioVista => ({
   orden: s.orden ?? 0,
   icono: iconoDeServicio(s.nombre, s.icono),
   iconoFijado: s.icono ?? 'auto',
+  estetica: Boolean(cfgEst && esServicioEstetica(s, cfgEst)),
+  precioDesde: cfgEst && esServicioEstetica(s, cfgEst) ? precioDesde(s) : (s.precio ?? null),
+  preciosTalla: cfgEst && esServicioEstetica(s, cfgEst) ? { chico: s.preciosTalla?.chico ?? null, mediano: s.preciosTalla?.mediano ?? null, grande: s.preciosTalla?.grande ?? null, gigante: s.preciosTalla?.gigante ?? null } : null,
 })
 const nombreDe = (v: unknown, campo = 'nombre'): string => (v && typeof v === 'object' ? String((v as Record<string, unknown>)[campo] ?? '') : '')
 
@@ -124,6 +129,10 @@ export function vistaCita(c: Cita, hoy: string): CitaVista {
     motivoCancelacion: c.motivoCancelacion ?? null,
     historial: (c.historial ?? []).map((h) => ({ estado: h.estado, fecha: h.fecha, por: h.por ?? null, detalle: h.detalle ?? null })),
     cargoFinanzas: idDe(c.cargoFinanzas),
+    estetica:
+      c.estetica?.cotizada
+        ? { talla: c.estetica.talla ?? null, nombreTalla: c.estetica.talla ? NOMBRE_TALLA[c.estetica.talla] : null, precioBase: c.estetica.precioBase ?? null, total: c.estetica.total ?? null, adicionales: (c.estetica.adicionales ?? []).map((a) => ({ nombre: a.nombre, precio: a.precio })) }
+        : null,
     esHoy: c.dia === hoy,
     siguientes: TRANSICIONES[c.estado as EstadoCita] ?? [],
     creadoEn: c.createdAt,
@@ -132,15 +141,19 @@ export function vistaCita(c: Cita, hoy: string): CitaVista {
 
 /* ───────────────────────────── catálogos ───────────────────────────── */
 
-export async function catalogoAgenda(payload: Payload, soloEnLinea = false): Promise<{ recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda }> {
-  const [r, s, cfg] = await Promise.all([
+export type CatalogoEstetica = { activa: boolean; nombre: string; logo: string | null; adicionales: AdicionalVista[]; limites: ConfigEstetica['limites'] }
+
+export async function catalogoAgenda(payload: Payload, soloEnLinea = false): Promise<{ recursos: RecursoVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda; estetica: CatalogoEstetica }> {
+  const cfgEst = await configEstetica(payload)
+  const [r, s, cfg, ads] = await Promise.all([
     payload.find({ collection: 'recursos', depth: 0, pagination: false, sort: 'orden', overrideAccess: true }),
     payload.find({ collection: 'servicios', depth: 0, pagination: false, sort: 'orden', overrideAccess: true, where: soloEnLinea ? { and: [{ activo: { equals: true } }, { reservaEnLinea: { not_equals: 'no' } }] } : undefined }),
     configuracion(payload),
+    cfgEst.activa ? listaAdicionales(payload, soloEnLinea) : Promise.resolve([]),
   ])
   const { horarioMin: _h, ...conf } = cfg
   void _h
-  return { recursos: r.docs.map(vistaRecurso), servicios: s.docs.map(vistaServicio), configuracion: conf }
+  return { recursos: r.docs.map(vistaRecurso), servicios: s.docs.map((x) => vistaServicio(x, cfgEst)), configuracion: conf, estetica: { activa: cfgEst.activa, nombre: cfgEst.nombreMarca, logo: cfgEst.logo, adicionales: ads, limites: cfgEst.limites } }
 }
 
 /** Catálogo inicial (recursos y servicios del prototipo). Solo si no hay nada. */
@@ -187,14 +200,39 @@ async function citasQueOcupan(payload: Payload, recursoId: number, d: string, re
  * cada intervalo del horario donde cabe la duración sin chocar. `paraPortal`
  * aplica además anticipación mínima y ventana de días.
  */
-export async function disponibilidad(payload: Payload, servicioId: number, d: string, opciones: { recursoId?: number | null; paraPortal?: boolean; ignorarCita?: number } = {}): Promise<DisponibilidadDia> {
+/** Estética: mascota y adicionales para calcular la duración (y el precio). `clienteId` = el tutor solo cotiza sus mascotas. */
+export type ExtraEstetica = { mascotaId?: number | null; adicionales?: number[]; clienteId?: number | null }
+
+async function cotizacionPara(payload: Payload, servicio: Servicio, extra: ExtraEstetica | undefined, soloEnLinea: boolean): Promise<Cotizacion | null> {
+  const cfgEst = await configEstetica(payload)
+  if (!esServicioEstetica(servicio, cfgEst)) {
+    if (extra?.adicionales?.length) throw invalido('Los adicionales solo van con un servicio de estética.')
+    return null
+  }
+  if (!extra?.mascotaId) return null
+  const m = await payload.findByID({ collection: 'mascotas', id: extra.mascotaId, depth: 0, overrideAccess: true }).catch(() => null)
+  if (!m || (extra.clienteId != null && !(m.tutores ?? []).some((t) => idDe(t.cliente) === extra.clienteId))) throw noEncontrado('Esa mascota no está entre las tuyas.')
+  return cotizar(payload, servicio, m, extra.adicionales ?? [], { soloEnLinea, cfg: cfgEst })
+}
+
+/** Duración del hueco: al reprogramar, la de la cita (ya trae talla y adicionales); si no, la cotización de estética o la del servicio. */
+async function duracionPara(payload: Payload, servicio: Servicio, opciones: { paraPortal?: boolean; ignorarCita?: number; extra?: ExtraEstetica }): Promise<number> {
+  if (opciones.ignorarCita) {
+    const c = await payload.findByID({ collection: 'citas', id: opciones.ignorarCita, depth: 0, overrideAccess: true }).catch(() => null)
+    if (c && idDe(c.servicio) === servicio.id) return c.duracionMin
+  }
+  return (await cotizacionPara(payload, servicio, opciones.extra, Boolean(opciones.paraPortal)))?.duracionMin ?? servicio.duracionMin
+}
+
+export async function disponibilidad(payload: Payload, servicioId: number, d: string, opciones: { recursoId?: number | null; paraPortal?: boolean; ignorarCita?: number; extra?: ExtraEstetica } = {}): Promise<DisponibilidadDia> {
   const servicio = await payload.findByID({ collection: 'servicios', id: servicioId, depth: 0, overrideAccess: true }).catch(() => null)
   if (!servicio || !servicio.activo) throw invalido('Ese servicio no está disponible.')
   if (opciones.paraPortal && servicio.reservaEnLinea === 'no') throw invalido('Ese servicio no se pide en línea. Llámanos.')
   const recursoId = opciones.recursoId ?? idDe(servicio.recursoPorDefecto)!
   const cfg = await configuracion(payload)
+  const duracion = await duracionPara(payload, servicio, opciones)
   const ocupadas = (await citasQueOcupan(payload, recursoId, d)).filter((c) => c.id !== opciones.ignorarCita)
-  return huecosDelDia(cfg, servicio.duracionMin, recursoId, d, ocupadas, Boolean(opciones.paraPortal))
+  return huecosDelDia(cfg, duracion, recursoId, d, ocupadas, Boolean(opciones.paraPortal))
 }
 
 /** El cálculo de un día con las citas ya leídas (lo comparten `disponibilidad` y `calendario`). */
@@ -230,7 +268,7 @@ const sumarDia = (d: string, n: number): string => {
  * Una sola consulta de citas para todo el rango (máximo 62 días). No revela
  * citas de nadie: solo libre u ocupado.
  */
-export async function calendario(payload: Payload, servicioId: number, desde: string, hasta: string, opciones: { paraPortal?: boolean; ignorarCita?: number } = {}): Promise<DiaCalendario[]> {
+export async function calendario(payload: Payload, servicioId: number, desde: string, hasta: string, opciones: { paraPortal?: boolean; ignorarCita?: number; extra?: ExtraEstetica } = {}): Promise<DiaCalendario[]> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta) || hasta < desde) throw invalido('Rango de días no válido.')
   const dias: string[] = []
   for (let d = desde; d <= hasta && dias.length < 62; d = sumarDia(d, 1)) dias.push(d)
@@ -239,11 +277,12 @@ export async function calendario(payload: Payload, servicioId: number, desde: st
   if (opciones.paraPortal && servicio.reservaEnLinea === 'no') throw invalido('Ese servicio no se pide en línea. Llámanos.')
   const recursoId = idDe(servicio.recursoPorDefecto)!
   const cfg = await configuracion(payload)
+  const duracion = await duracionPara(payload, servicio, opciones)
   const citas = (
     await payload.find({ collection: 'citas', depth: 0, pagination: false, overrideAccess: true, where: { and: [{ recurso: { equals: recursoId } }, { dia: { greater_than_equal: dias[0] } }, { dia: { less_than_equal: dias[dias.length - 1] } }, { estado: { in: ESTADOS_OCUPAN } }] } })
   ).docs.filter((c) => c.id !== opciones.ignorarCita)
   return dias.map((d) => {
-    const r = huecosDelDia(cfg, servicio.duracionMin, recursoId, d, citas.filter((c) => c.dia === d), Boolean(opciones.paraPortal))
+    const r = huecosDelDia(cfg, duracion, recursoId, d, citas.filter((c) => c.dia === d), Boolean(opciones.paraPortal))
     const libres = r.huecos.filter((x) => x.disponible).length
     const estado: DiaCalendario['estado'] = !r.abierto ? (r.motivo?.startsWith('La clínica') ? 'cerrado' : 'fuera') : libres === 0 ? 'lleno' : libres <= Math.max(2, Math.floor(r.huecos.length / 4)) ? 'pocos' : 'libre'
     return { dia: d, estado, libres, total: r.huecos.length }
@@ -263,6 +302,8 @@ const esquemaNueva = z.object({
   notasInternas: z.string().trim().max(1000).optional().default(''),
   /** Equipo: crear ya confirmada (recepción agenda por teléfono). */
   confirmar: z.boolean().optional().default(false),
+  /** Estética: adicionales (ids de `est-adicionales`). */
+  adicionales: z.array(z.number().int().positive()).max(10).optional().default([]),
 })
 
 type Actor = { tipo: 'equipo'; user: User; nombre: string } | { tipo: 'tutor'; tutor: Tutor; clienteId: number; nombre: string }
@@ -306,10 +347,13 @@ async function crear(payload: Payload, actor: Actor, entrada: unknown, hoy: stri
   const minutos = minutosDesdeTexto(d.data.hora)
   if (minutos == null) throw invalido('Hora no válida.')
   const cfg = await configuracion(payload)
+  /* Estética: duración y precio por talla + adicionales (lo pactado queda en la cita). */
+  const cot = await cotizacionPara(payload, servicio, { mascotaId: mascota.id, adicionales: d.data.adicionales }, actor.tipo === 'tutor')
+  const duracion = cot?.duracionMin ?? servicio.duracionMin
   const h = cfg.horarioMin.find((x) => x.dia === diaDeSemana(d.data.dia))
-  const ini = instante(d.data.dia, minutos), fin = instante(d.data.dia, minutos + servicio.duracionMin)
+  const ini = instante(d.data.dia, minutos), fin = instante(d.data.dia, minutos + duracion)
   if (actor.tipo === 'tutor') {
-    if (!h || !h.abierto || minutos < h.de || minutos + servicio.duracionMin > h.a) throw invalido('Fuera del horario de atención.')
+    if (!h || !h.abierto || minutos < h.de || minutos + duracion > h.a) throw invalido('Fuera del horario de atención.')
     if (ini.getTime() < Date.now() + cfg.anticipacionHoras * 3600000) throw invalido(`Las citas se piden con al menos ${cfg.anticipacionHoras} h de anticipación.`)
     if (ini.getTime() > Date.now() + cfg.diasAdelante * 86400000) throw invalido(`Solo se puede pedir hasta ${cfg.diasAdelante} días adelante.`)
   }
@@ -331,7 +375,8 @@ async function crear(payload: Payload, actor: Actor, entrada: unknown, hoy: stri
         profesional: actor.tipo === 'equipo' ? d.data.profesionalId ?? null : null,
         dia: d.data.dia,
         horaInicio: textoDesdeMinutos(minutos),
-        duracionMin: servicio.duracionMin,
+        duracionMin: duracion,
+        ...(cot ? { estetica: datosCita(cot) } : {}),
         inicio: ini.toISOString(),
         fin: fin.toISOString(),
         estado,
@@ -418,7 +463,8 @@ export async function cambiarEstado(ctx: Ctx, id: number, entrada: unknown): Pro
   if (d.data.estado === 'cancelada' && !d.data.motivo) throw invalido('Escribe el motivo de la cancelación.')
   const nombre = ctx.user.name || ctx.user.email
   let cargoId: number | null = null
-  if (d.data.estado === 'finalizada') cargoId = await registrarCargo(ctx, cita)
+  let esteticaFinal: ReturnType<typeof datosCita> | null = null
+  if (d.data.estado === 'finalizada') ({ cargoId, estetica: esteticaFinal } = await registrarCargo(ctx, cita))
   const nueva = await ctx.payload.update({
     collection: 'citas',
     id,
@@ -429,6 +475,7 @@ export async function cambiarEstado(ctx: Ctx, id: number, entrada: unknown): Pro
       motivoCancelacion: d.data.estado === 'cancelada' ? d.data.motivo : cita.motivoCancelacion,
       profesional: d.data.profesionalId ?? cita.profesional ?? null,
       cargoFinanzas: cargoId ?? cita.cargoFinanzas ?? null,
+      ...(esteticaFinal ? { estetica: esteticaFinal } : {}),
       historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: d.data.estado, fecha: new Date().toISOString(), por: nombre, detalle: d.data.motivo || (cargoId ? `Cargo registrado en Finanzas` : null) }],
     },
   })
@@ -436,27 +483,53 @@ export async function cambiarEstado(ctx: Ctx, id: number, entrada: unknown): Pro
   return vistaCita(nueva, ctx.hoy)
 }
 
+/**
+ * Estética al finalizar: lo pactado al agendar; sin total (no había talla),
+ * se vuelve a calcular con la talla de hoy y los adicionales guardados. Sin
+ * ningún precio en el servicio no hay cargo; con precios por talla y sin talla
+ * no se puede finalizar hasta capturar el peso o fijar la talla.
+ */
+async function importeEstetica(ctx: Ctx, cita: Cita, servicio: Servicio): Promise<{ importe: number | null; detalle: string; datos: ReturnType<typeof datosCita> | null }> {
+  const e = cita.estetica
+  const ads = (e?.adicionales ?? []).map((a) => ({ id: idDe(a.adicional) ?? 0, nombre: a.nombre, precio: a.precio, duracionMin: a.duracionMin ?? 0 }))
+  const sumaAds = ads.reduce((s, a) => s + (aCentavos(a.precio) || 0), 0)
+  const detalle = (talla: string | null) => [talla ? `talla ${NOMBRE_TALLA[talla as keyof typeof NOMBRE_TALLA].toLowerCase()}` : null, ...ads.map((a) => a.nombre)].filter(Boolean).join(', ')
+  if (e?.total != null) return { importe: e.total, detalle: detalle(e.talla ?? null), datos: null }
+  const sinPrecios = !(servicio.precio && servicio.precio > 0) && !Object.values(servicio.preciosTalla ?? {}).some((x) => typeof x === 'number' && x > 0)
+  if (sinPrecios) return { importe: null, detalle: '', datos: null }
+  const mascota = await ctx.payload.findByID({ collection: 'mascotas', id: idDe(cita.mascota)!, depth: 0, overrideAccess: true })
+  const { talla } = await tallaDeMascota(ctx.payload, mascota, await configEstetica(ctx.payload))
+  const base = porTalla(servicio, talla)
+  if (base.precio == null) throw invalido(talla ? `El servicio no tiene precio para la talla ${NOMBRE_TALLA[talla].toLowerCase()}: captúralo en Clínica → Servicios.` : `Para cobrar la estética falta la talla de ${mascota.nombre}: registra su peso o fija su talla en el expediente.`)
+  const total = aPesos((aCentavos(base.precio) || 0) + sumaAds)
+  return { importe: total, detalle: detalle(talla), datos: { cotizada: true, talla, precioBase: base.precio, total, adicionales: ads.map((a) => ({ adicional: a.id || null, nombre: a.nombre, precio: a.precio, duracionMin: a.duracionMin })) } as ReturnType<typeof datosCita> }
+}
+
 /** Entrada por cobrar en Finanzas cuando el servicio tiene precio. Acción del sistema (con permisos completos de Finanzas). */
-async function registrarCargo(ctx: Ctx, cita: Cita): Promise<number | null> {
+async function registrarCargo(ctx: Ctx, cita: Cita): Promise<{ cargoId: number | null; estetica: ReturnType<typeof datosCita> | null }> {
   const servicio = await ctx.payload.findByID({ collection: 'servicios', id: idDe(cita.servicio)!, depth: 0, overrideAccess: true }).catch(() => null)
-  if (!servicio || !servicio.precio || servicio.precio <= 0) return null
+  if (!servicio) return { cargoId: null, estetica: null }
+  const cfgEst = await configEstetica(ctx.payload)
+  const est = esServicioEstetica(servicio, cfgEst) || cita.estetica?.total != null ? await importeEstetica(ctx, cita, servicio) : null
+  const importe = est ? est.importe : servicio.precio
+  if (!importe || importe <= 0) return { cargoId: null, estetica: est?.datos ?? null }
   const mascota = await ctx.payload.findByID({ collection: 'mascotas', id: idDe(cita.mascota)!, depth: 0, overrideAccess: true }).catch(() => null)
   const cliente = cita.cliente ? await ctx.payload.findByID({ collection: 'clientes', id: idDe(cita.cliente)!, depth: 0, overrideAccess: true }).catch(() => null) : null
   const ctxSistema = { ...ctx, p: calcularPermisos({ esSuperadmin: true }, null) }
   const areaId = idDe(servicio.area)
   const r = await registrarEnFinanzas(ctxSistema, {
     tipo: 'entrada',
-    importe: servicio.precio,
+    importe,
     fechaReal: ctx.hoy,
     estado: 'pendiente',
-    concepto: `${servicio.nombre} · ${mascota?.nombre ?? 'mascota'}`,
+    concepto: `${servicio.nombre} · ${mascota?.nombre ?? 'mascota'}${est?.detalle ? ` (${est.detalle})` : ''}`,
     categoria: idDe(servicio.categoriaFinanzas),
     asignacion: areaId ? 'actividad' : 'pendiente',
     actividad: areaId,
     contraparte: cliente ? cliente.nombreCompleto || cliente.nombre : null,
     notas: `Cita ${folioParaId('CIT', cita.id)} del ${cita.dia} ${cita.horaInicio}.`,
   }, `cita-${cita.id}`)
-  return r.operacion.id
+  return { cargoId: r.operacion.id, estetica: est?.datos ?? null }
 }
 
 /* ───────────────────────────── consultas ───────────────────────────── */
@@ -504,9 +577,24 @@ export async function anotarCita(ctx: Ctx, id: number, entrada: unknown): Promis
   const n = await ctx.payload.update({ collection: 'citas', id, overrideAccess: true, depth: 1, data: { ...(d.data.notasInternas !== undefined ? { notasInternas: d.data.notasInternas || null } : {}), ...(d.data.profesionalId !== undefined ? { profesional: d.data.profesionalId } : {}) } })
   return vistaCita(n, ctx.hoy)
 }
-export async function disponibilidadEquipo(ctx: Ctx, servicioId: number, d: string, recursoId: number | null, ignorarCita?: number): Promise<DisponibilidadDia> {
+export async function disponibilidadEquipo(ctx: Ctx, servicioId: number, d: string, recursoId: number | null, ignorarCita?: number, extra?: ExtraEstetica): Promise<DisponibilidadDia> {
   if (!ctx.p.clinica.agenda) throw prohibido()
-  return disponibilidad(ctx.payload, servicioId, d, { recursoId, ignorarCita })
+  return disponibilidad(ctx.payload, servicioId, d, { recursoId, ignorarCita, extra: extra ? { ...extra, clienteId: null } : undefined })
+}
+
+/** Estética: precio y duración para una mascota con adicionales (equipo). */
+export async function cotizarEquipo(ctx: Ctx, servicioId: number, extra: ExtraEstetica): Promise<Cotizacion> {
+  if (!ctx.p.clinica.agenda) throw prohibido()
+  return cotizarServicio(ctx.payload, servicioId, { ...extra, clienteId: null }, false)
+}
+
+async function cotizarServicio(payload: Payload, servicioId: number, extra: ExtraEstetica, soloEnLinea: boolean): Promise<Cotizacion> {
+  const servicio = await payload.findByID({ collection: 'servicios', id: servicioId, depth: 0, overrideAccess: true }).catch(() => null)
+  if (!servicio || !servicio.activo) throw invalido('Ese servicio no está disponible.')
+  if (!extra.mascotaId) throw invalido('Elige la mascota.')
+  const c = await cotizacionPara(payload, servicio, extra, soloEnLinea)
+  if (!c) throw invalido('Ese servicio no es de estética.')
+  return c
 }
 
 /* ───────────────────────────── portal ───────────────────────────── */
@@ -518,7 +606,7 @@ function actorTutor(c: CtxTutor): Extract<Actor, { tipo: 'tutor' }> {
 }
 const accesoTutor = (c: CtxTutor) => ({ user: c.tutor as Tutor & { collection: 'tutores' }, overrideAccess: false as const })
 
-export async function portalCitas(c: CtxTutor): Promise<{ proximas: CitaVista[]; pasadas: CitaVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda; mascotas: { id: number; nombre: string; especie: string; foto: string | null }[] }> {
+export async function portalCitas(c: CtxTutor): Promise<{ proximas: CitaVista[]; pasadas: CitaVista[]; servicios: ServicioVista[]; configuracion: ConfiguracionAgenda; estetica: CatalogoEstetica; mascotas: { id: number; nombre: string; especie: string; foto: string | null }[] }> {
   const [citas, cat, mascotas] = await Promise.all([
     c.payload.find({ collection: 'citas', depth: 1, pagination: false, sort: '-inicio', ...accesoTutor(c) }),
     catalogoAgenda(c.payload, true),
@@ -531,16 +619,21 @@ export async function portalCitas(c: CtxTutor): Promise<{ proximas: CitaVista[];
     pasadas: todas.filter((x) => !abierta(x)),
     servicios: cat.servicios,
     configuracion: cat.configuracion,
+    estetica: cat.estetica,
     mascotas: mascotas.docs.map((m) => ({ id: m.id, nombre: m.nombre, especie: m.especie, foto: urlFoto(m.id, m.fotoFecha) })),
   }
 }
-export async function portalDisponibilidad(c: CtxTutor, servicioId: number, d: string, ignorarCita?: number): Promise<DisponibilidadDia> {
-  actorTutor(c)
-  return disponibilidad(c.payload, servicioId, d, { paraPortal: true, ignorarCita })
+export async function portalDisponibilidad(c: CtxTutor, servicioId: number, d: string, ignorarCita?: number, extra?: ExtraEstetica): Promise<DisponibilidadDia> {
+  const a = actorTutor(c)
+  return disponibilidad(c.payload, servicioId, d, { paraPortal: true, ignorarCita, extra: extra ? { ...extra, clienteId: a.clienteId } : undefined })
 }
-export async function portalCalendario(c: CtxTutor, servicioId: number, desde: string, hasta: string, ignorarCita?: number): Promise<DiaCalendario[]> {
-  actorTutor(c)
-  return calendario(c.payload, servicioId, desde, hasta, { paraPortal: true, ignorarCita })
+export async function portalCalendario(c: CtxTutor, servicioId: number, desde: string, hasta: string, ignorarCita?: number, extra?: ExtraEstetica): Promise<DiaCalendario[]> {
+  const a = actorTutor(c)
+  return calendario(c.payload, servicioId, desde, hasta, { paraPortal: true, ignorarCita, extra: extra ? { ...extra, clienteId: a.clienteId } : undefined })
+}
+export async function portalCotizar(c: CtxTutor, servicioId: number, extra: ExtraEstetica): Promise<Cotizacion> {
+  const a = actorTutor(c)
+  return cotizarServicio(c.payload, servicioId, { ...extra, clienteId: a.clienteId }, true)
 }
 export async function portalCrearCita(c: CtxTutor, entrada: unknown): Promise<CitaVista> {
   return crear(c.payload, actorTutor(c), entrada, c.hoy)

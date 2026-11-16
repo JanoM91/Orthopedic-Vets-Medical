@@ -207,6 +207,13 @@ export const Mascotas: CollectionConfig = {
         { name: 'microchip', label: 'Microchip', type: 'text', index: true },
       ],
     },
+    {
+      name: 'tallaEstetica',
+      label: 'Talla para estética',
+      type: 'select',
+      options: [{ label: 'Chica', value: 'chico' }, { label: 'Mediana', value: 'mediano' }, { label: 'Grande', value: 'grande' }, { label: 'Gigante', value: 'gigante' }],
+      admin: { description: 'Vacío: se calcula con su último peso.' },
+    },
     { name: 'alergias', label: 'Alergias', type: 'textarea', admin: { description: 'Se muestran como alerta en todo el sistema.' } },
     {
       name: 'alertasManejo',

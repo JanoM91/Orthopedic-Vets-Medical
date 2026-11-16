@@ -13,18 +13,21 @@ import type { Payload, PayloadRequest } from 'payload'
  *   - Finanzas: siempre activo (es la base de todo).
  *   - Clínica:  pacientes, expediente, agenda, portal del tutor con expediente.
  *   - Farmacia: catálogo, inventario, compras, ventas.
- *   - Tienda:   tienda digital para tutores (fase 5; hoy solo se guarda la casilla).
+ *   - Tienda:   tienda en línea para tutores (farmacia, fase 5).
+ *   - Estética: precios por talla, adicionales, tablero del día y ficha de
+ *               estética (submarca, p. ej. Peluqueadogs; nov-2026). Sin ella,
+ *               la estética se agenda como cualquier servicio.
  *
  * Apagar un módulo NO borra datos: oculta sus rutas, menús, colecciones y
  * API. Las reglas de acceso de cada módulo llaman a `moduloActivo(req, …)`,
  * que lee el global una sola vez por petición (memoria en `req.context`).
  */
 
-export type Modulo = 'clinica' | 'farmacia' | 'tienda'
+export type Modulo = 'clinica' | 'farmacia' | 'tienda' | 'estetica'
 export type Modulos = Record<Modulo, boolean>
 
 /** Qué hay encendido cuando el global nunca se ha guardado. */
-export const MODULOS_POR_OMISION: Modulos = { clinica: true, farmacia: true, tienda: false }
+export const MODULOS_POR_OMISION: Modulos = { clinica: true, farmacia: true, tienda: false, estetica: false }
 
 const MEMO = '__modulosMx'
 
@@ -34,6 +37,7 @@ function normalizar(doc: unknown): Modulos {
     clinica: m.clinica == null ? MODULOS_POR_OMISION.clinica : Boolean(m.clinica),
     farmacia: m.farmacia == null ? MODULOS_POR_OMISION.farmacia : Boolean(m.farmacia),
     tienda: m.tienda == null ? MODULOS_POR_OMISION.tienda : Boolean(m.tienda),
+    estetica: m.estetica == null ? MODULOS_POR_OMISION.estetica : Boolean(m.estetica),
   }
 }
 

@@ -28,6 +28,8 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 - Nada financiero se borra: se corrige o se anula con motivo; todo queda en `fin-bitacora`.
 - Pantallas de Finanzas: probar de 320 a 430 px y campos de 16 px.
 - Pruebas sin base: `npm run test:finanzas` (también en CI).
+- **Errores públicos:** en producción las clases de error de Payload pierden su nombre al minificar y Payload respondía «An unknown error occurred.» aun para un 400/403/429 con mensaje en español. El gancho global `mostrarMensajeDeError` (`lib/erroresPublicos.ts`, en `hooks.afterError`) devuelve el mensaje real si el error es público (`isPublic` o estado distinto de 500); los 500 siguen ocultos. Lanza `APIError(mensaje, 400|403|429)` con texto en español para lo que la persona debe leer.
+- **Restablecer contraseña** (panel `/admin/reset/<token>` y portal `/portal/restablecer/<token>`): la liga vale **24 h** (`VIGENCIA_RECUPERACION_MS`; la invitación de tutor, 7 días), sirve una vez y cada liga nueva anula las anteriores. `revisarLigaDeRecuperacion` (`beforeOperation` de `users` y `tutores`) revisa la liga antes que Payload y contesta en español si está usada/vencida o reemplazada. El superadmin puede poner una contraseña temporal en Sistema → Usuarios.
 
 ## Reglas de la Clínica (docs/CLINICA.md)
 
@@ -39,7 +41,7 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 - Marca blanca: nombre, colores, logotipo y teléfono salen de `lib/site.ts` (variables `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_BRAND_*`). No escribir datos de una clínica en el código.
 - Las citas solo se crean y cambian por `lib/clinica/agenda.ts` (candado por recurso en la transacción; transiciones en `TRANSICIONES`); por la API genérica solo se leen. Al finalizar una cita con servicio con precio, el cargo entra a Finanzas por `registrar()` con clave `cita-<id>`.
 - **Avisos** (`lib/clinica/avisos.ts`): todo aviso de cita es best-effort y nunca hace fallar la operación. Los crons (`app/api/*/cron/*`) se autorizan con `revisarCron()` de `lib/cron.ts` (`Bearer $CRON_SECRET`; sin variable, 503). Enlaces de WhatsApp solo con `lib/whatsapp.ts`.
-- Pruebas con base local: `npm run test:clinica` (178 comprobaciones; el recordatorio usa `CRON_SECRET` de `.env`) con la app corriendo contra Postgres local vacío.
+- Pruebas con base local: `npm run test:clinica` (214 comprobaciones; el recordatorio usa `CRON_SECRET` de `.env`) con la app corriendo contra Postgres local vacío.
 
 ## Reglas de la Estética (docs/ESTETICA.md)
 

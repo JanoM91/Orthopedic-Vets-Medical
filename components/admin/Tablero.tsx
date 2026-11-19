@@ -11,6 +11,7 @@ import type { CitaVista } from '../../lib/clinica/tipos'
 import { catalogo as catalogoFarmacia, contextoDesdeReq as contextoFarmacia } from '../../lib/farmacia/servicio'
 import type { CatalogoFarmacia } from '../../lib/farmacia/tipos'
 import { formatoMXN } from '../../lib/finanzas/reglas'
+import { solicitudesNuevas } from '../../lib/sitio/solicitudes'
 import { contextoDesdeReq as contextoFinanzas, pendientes as pendientesFinanzas } from '../../lib/finanzas/servicio'
 import type { OperacionVista } from '../../lib/finanzas/tipos'
 import { diaLocal, partesLocales } from '../../lib/localTime'
@@ -80,7 +81,7 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
   if (conEstetica && !conAgenda && !conFinanzas && !conFarmacia) redirect(`${rutaAdmin}/clinica/estetica`)
   const conPlanes = conFarmacia && modulos.tienda && p.farmacia.vender
 
-  const [agenda, farmacia, finanzas, estetica, planesDetenidos, puesta] = await Promise.all([
+  const [agenda, farmacia, finanzas, estetica, planesDetenidos, puesta, solicitudes] = await Promise.all([
     conAgenda
       ? intentar(async () => {
           const ctx = await contextoClinica(req)
@@ -114,6 +115,8 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
     conPlanes ? intentar(async () => (await req.payload.count({ collection: 'far-planes', overrideAccess: true, where: { estado: { equals: 'detenido' } } })).totalDocs) : null,
     /* Puesta a punto (UX del panel 2): solo para quien administra usuarios. */
     p.gestionarUsuarios ? intentar(() => puestaAPunto(req.payload, modulos, rutaAdmin)) : null,
+    /* Solicitudes de primera cita del sitio que nadie ha atendido (nov-2026). */
+    conAgenda ? intentar(() => solicitudesNuevas(req.payload)) : null,
   ])
 
   const ahora = new Date()
@@ -187,6 +190,7 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
   }
   if (farmacia?.ok && farmacia.datos.pedidosTienda) pendientes.push({ clave: 'pedidos', tipo: 'Tienda', tono: 'farmacia', texto: plural(farmacia.datos.pedidosTienda, 'pedido de la tienda por atender', 'pedidos de la tienda por atender'), href: `${base.farmacia}/pedidos` })
   if (planesDetenidos?.ok && planesDetenidos.datos) pendientes.push({ clave: 'planes', tipo: 'Tienda', tono: 'farmacia', texto: plural(planesDetenidos.datos, 'plan de compra detenido', 'planes de compra detenidos'), href: `${base.farmacia}/planes?grupo=detenidos` })
+  if (solicitudes?.ok && solicitudes.datos) pendientes.push({ clave: 'solicitudes', tipo: 'Sitio', tono: 'aviso', texto: plural(solicitudes.datos, 'solicitud de primera cita por atender', 'solicitudes de primera cita por atender'), href: `${rutaAdmin}/collections/solicitudes?where[estado][equals]=nueva` })
   if (agenda?.ok && porConfirmar) pendientes.push({ clave: 'por-confirmar', tipo: 'Agenda', tono: 'aviso', texto: plural(porConfirmar, 'cita por confirmar', 'citas por confirmar'), href: `${base.clinica}/agenda` })
 
   /* ───────── estética del día ───────── */

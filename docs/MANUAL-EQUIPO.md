@@ -101,3 +101,13 @@ En computadora la pantalla va en dos columnas: el ticket a la izquierda y el cob
 - *No veo un menú*: tu rol no lo incluye. Pide al dueño que lo revise en Sistema → Roles.
 - *El tutor no recibió el correo*: revisa que su ficha tenga correo y «Avisos» por «correo» marcados.
 - *El botón de WhatsApp no aparece*: el teléfono debe tener 10 dígitos.
+
+## Solicitudes de primera cita (desde el sitio)
+
+Una persona que nunca ha venido puede pedir su primera cita en el sitio sin crear cuenta. **No queda agendada sola**: tú la confirmas.
+
+1. En «Hoy» aparece «solicitudes de primera cita por atender» (y llega un correo a la clínica). Toca el aviso o entra a Clínica → «Solicitudes de cita».
+2. Abre la solicitud: ves su nombre, mascota, servicio, día y horario que prefiere.
+3. Toca **«Escribir por WhatsApp»**: se abre el chat con el mensaje listo. Acuerden día y hora.
+4. Da de alta al cliente y a su mascota en Pacientes y agenda la cita en la Agenda, como siempre.
+5. Regresa a la solicitud y cambia el **Estado** a «Cita agendada» (o «Ya le escribimos» si aún no contesta, o «Descartada»). Guarda.

@@ -82,6 +82,7 @@ export interface Config {
     recursos: Recurso;
     servicios: Servicio;
     citas: Cita;
+    solicitudes: Solicitud;
     'est-adicionales': EstAdicional;
     'est-fichas': EstFicha;
     'est-fotos': EstFoto;
@@ -134,6 +135,7 @@ export interface Config {
     recursos: RecursosSelect<false> | RecursosSelect<true>;
     servicios: ServiciosSelect<false> | ServiciosSelect<true>;
     citas: CitasSelect<false> | CitasSelect<true>;
+    solicitudes: SolicitudesSelect<false> | SolicitudesSelect<true>;
     'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
     'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
     'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
@@ -881,6 +883,43 @@ export interface FinOperacion {
   anuladaPor?: (number | null) | User;
   anuladaEn?: string | null;
   claveIdempotencia?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Personas que pidieron su primera cita desde el sitio. Escríbeles por WhatsApp para acordar día y hora; después da de alta su ficha y agenda la cita.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "solicitudes".
+ */
+export interface Solicitud {
+  id: number;
+  folio?: string | null;
+  /**
+   * Cámbialo cuando le escribas y cuando la cita quede agendada.
+   */
+  estado: 'nueva' | 'contactada' | 'agendada' | 'descartada';
+  nombre: string;
+  whatsapp: string;
+  correo?: string | null;
+  mascota: string;
+  especie: 'perro' | 'gato' | 'otra';
+  servicio?: (number | null) | Servicio;
+  /**
+   * Como se llamaba cuando lo pidió.
+   */
+  servicioNombre?: string | null;
+  diaPreferido?: string | null;
+  turno?: ('manana' | 'tarde' | 'cualquiera') | null;
+  nota?: string | null;
+  /**
+   * Campaña vigente al momento de pedir, si la había.
+   */
+  origen?: string | null;
+  /**
+   * Solo la ve el equipo. Ej. «Quedó para el jueves 10:00».
+   */
+  notaInterna?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1788,6 +1827,10 @@ export interface PayloadLockedDocument {
         value: number | Cita;
       } | null)
     | ({
+        relationTo: 'solicitudes';
+        value: number | Solicitud;
+      } | null)
+    | ({
         relationTo: 'est-adicionales';
         value: number | EstAdicional;
       } | null)
@@ -2350,6 +2393,28 @@ export interface CitasSelect<T extends boolean = true> {
   recordatorioEnviadoEn?: T;
   creadoPor?: T;
   creadoPorTutor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "solicitudes_select".
+ */
+export interface SolicitudesSelect<T extends boolean = true> {
+  folio?: T;
+  estado?: T;
+  nombre?: T;
+  whatsapp?: T;
+  correo?: T;
+  mascota?: T;
+  especie?: T;
+  servicio?: T;
+  servicioNombre?: T;
+  diaPreferido?: T;
+  turno?: T;
+  nota?: T;
+  origen?: T;
+  notaInterna?: T;
   updatedAt?: T;
   createdAt?: T;
 }

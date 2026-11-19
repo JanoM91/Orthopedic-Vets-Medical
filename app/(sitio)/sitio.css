@@ -356,3 +356,27 @@ h2 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.01em; }
   .st-mosaico img { border-radius: 20px; }
 }
 .st-b .st-banda h2 { font-size: clamp(24px, 3vw, 34px); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Reserva de primera vez (`/reservar`, nov-2026): solicitud que recepción
+   confirma por WhatsApp. Campos de 16 px (iOS no acerca la pantalla).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.st-reservar { max-width: 760px; }
+.st-reservar h1 { font-family: 'Bricolage Grotesque', Manrope, -apple-system, 'Segoe UI', sans-serif; }
+.st-reserva { gap: 16px; padding: 24px; border-radius: 24px; margin-top: 8px; }
+.st-campos { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.st-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.st-campo label { font-weight: 700; font-size: 14.5px; }
+.st-campo input, .st-campo select, .st-campo textarea { font: inherit; font-size: 16px; color: var(--st-ink); background: #fff; border: 2px solid #b9cfc8; border-radius: 12px; padding: 11px 12px; min-height: 48px; width: 100%; }
+.st-campo textarea { min-height: 96px; resize: vertical; }
+.st-campo input:focus-visible, .st-campo select:focus-visible, .st-campo textarea:focus-visible, .st-check input:focus-visible { outline: 3px solid var(--st-gold); outline-offset: 1px; border-color: var(--st-accent); }
+.st-trampa { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.st-check { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; min-height: 44px; }
+.st-check input { width: 22px; height: 22px; flex: none; margin: 1px 0 0; accent-color: var(--st-accent); }
+.st-reserva__enviar { align-self: flex-start; border-radius: 16px; min-height: 52px; font-size: 16px; cursor: pointer; font-family: inherit; }
+.st-reserva__enviar[disabled] { opacity: 0.6; cursor: default; }
+.st-reserva__error { background: #fbe3e0; color: #8a1f17; border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+.st-reserva__campana { align-self: flex-start; background: var(--st-gold); color: var(--st-primary); border-radius: 999px; padding: 4px 14px; font-size: 13.5px; font-weight: 800; }
+.st-reserva__lista { gap: 12px; padding: 28px; border-radius: 24px; margin-top: 8px; }
+.st-acceso__otra { font-size: 14px; font-weight: 700; min-height: 40px; display: inline-flex; align-items: center; }
+@media (max-width: 599px) { .st-reserva { padding: 18px; border-radius: 20px; } .st-reserva__enviar { width: 100%; } }

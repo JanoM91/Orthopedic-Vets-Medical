@@ -45,7 +45,7 @@ export default async function Servicios() {
                         Pedir cita
                       </Link>
                     )}
-                    <PrimeraVez c={c} servicio={s.nombre} />
+                    <PrimeraVez c={c} servicio={s.nombre} servicioId={s.id} />
                   </div>
                 </article>
               ))}

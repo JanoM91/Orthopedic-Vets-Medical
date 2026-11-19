@@ -144,15 +144,14 @@ export default async function Inicio() {
                   <Icono n="cal" />
                 </span>
                 <h3>Reserva tu primera cita</h3>
-                <p>{waPrimera ? 'Dinos qué necesita tu mascota y te damos día y hora. En tu visita te entregamos el código para ver su expediente en tu celular.' : 'Crea tu cuenta para pedir tu cita; en tu primera visita la vinculamos con la ficha de tu mascota.'}</p>
-                {waPrimera ? (
-                  <a href={waPrimera} target="_blank" rel="noreferrer" className="st-btn st-btn--acento">
-                    <Icono n="wa" /> Reservar por WhatsApp
+                <p>Déjanos tus datos y qué día te queda mejor; te escribimos por WhatsApp para confirmarte la hora. No necesitas crear una cuenta.</p>
+                <Link href="/reservar" className="st-btn st-btn--acento">
+                  <Icono n="cal" /> Reservar mi primera cita
+                </Link>
+                {waPrimera && (
+                  <a href={waPrimera} target="_blank" rel="noreferrer" className="st-acceso__otra">
+                    O escríbenos por WhatsApp
                   </a>
-                ) : (
-                  <Link href="/portal/registro" className="st-btn st-btn--acento">
-                    Crear mi cuenta
-                  </Link>
                 )}
               </div>
               {c.tienda && (

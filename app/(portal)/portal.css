@@ -446,3 +446,9 @@ b, strong { font-weight: 700; }
 .pt-est__fotos figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .pt-est__fotos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: var(--pt-bg); }
 .pt-est__fotos figcaption { font-size: 12.5px; color: var(--pt-muted); }
+
+/* Contraseña con «Mostrar» (19-nov-2026) */
+.pt-clave { position: relative; display: block; }
+.pt-clave .pt-input { padding-right: 92px; }
+.pt-clave__ver { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-height: 40px; min-width: 80px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--pt-accent, #0b6b59); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; }
+.pt-clave__ver:focus-visible { outline: 2px solid currentColor; }

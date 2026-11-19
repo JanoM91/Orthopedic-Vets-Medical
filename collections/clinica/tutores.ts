@@ -1,6 +1,6 @@
 import type { Access, AccessResult, CollectionConfig, FieldAccess } from 'payload'
 import { APIError } from 'payload'
-import { htmlDeRecuperacion, VIGENCIA_RECUPERACION_MS } from '../../lib/authEmails'
+import { htmlDeRecuperacion, revisarLigaDeRecuperacion, VIGENCIA_RECUPERACION_MS } from '../../lib/authEmails'
 import { esPersonal, esTutor, permisosDe } from '../../lib/permisos'
 import { rateLimit } from '../../lib/rateLimit'
 import { site } from '../../lib/site'
@@ -80,6 +80,8 @@ export const Tutores: CollectionConfig = {
     admin: () => false,
   },
   hooks: {
+    /* Liga vencida, usada o reemplazada: mensaje claro en español (lib/authEmails.ts). */
+    beforeOperation: [revisarLigaDeRecuperacion],
     beforeValidate: [
       ({ operation, req }) => {
         /* Freno de registros públicos: solo cuenta cuando de verdad se intenta crear sin sesión. */

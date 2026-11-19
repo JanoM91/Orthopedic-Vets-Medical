@@ -8,6 +8,7 @@ import { BarraApp } from '../../components/app/BarraApp'
 import { partesLocales } from '../../lib/localTime'
 import { contenidoSitio, ligaWhatsApp, type ServicioPublico } from '../../lib/sitio/contenido'
 import { enlaceWhatsApp, mensajes } from '../../lib/whatsapp'
+import { Carrusel } from '../../components/sitio/Carrusel'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,12 +75,7 @@ export default async function Inicio() {
               )}
             </div>
             {c.fotos.length > 0 ? (
-              <div className={`st-mosaico st-mosaico--${c.fotos.length}`}>
-                {c.fotos.map((f, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={f.url} src={f.url} alt={f.alt} loading={i === 0 ? 'eager' : 'lazy'} />
-                ))}
-              </div>
+              <Carrusel fotos={c.fotos} />
             ) : (
               <aside className="st-hoy" aria-label="Hoy en la clínica">
                 <div className="st-hoy__fila">

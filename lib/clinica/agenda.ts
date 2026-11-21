@@ -14,6 +14,7 @@ import { site } from '../site'
 import { iconoDeServicio } from '../iconosServicio'
 import { fechaLarga, horaLegible } from '../whatsapp'
 import { avisarCita } from './avisos'
+import { consumirConCita, paqueteParaCita } from './paquetes'
 import { adicionales as listaAdicionales, type AdicionalVista, configEstetica, type ConfigEstetica, cotizar, type Cotizacion, datosCita, esServicioEstetica, NOMBRE_TALLA, porTalla, precioDesde, tallaDeMascota } from './estetica'
 import { type Ctx, type CtxTutor, ErrorClinica, idDe, urlFoto, vistaMascota } from './servicio'
 import type { CitaVista, ConfiguracionAgenda, DiaCalendario, DisponibilidadDia, RecursoVista, ServicioVista } from './tipos'
@@ -133,6 +134,7 @@ export function vistaCita(c: Cita, hoy: string): CitaVista {
       c.estetica?.cotizada
         ? { talla: c.estetica.talla ?? null, nombreTalla: c.estetica.talla ? NOMBRE_TALLA[c.estetica.talla] : null, precioBase: c.estetica.precioBase ?? null, total: c.estetica.total ?? null, adicionales: (c.estetica.adicionales ?? []).map((a) => ({ nombre: a.nombre, precio: a.precio })) }
         : null,
+    paquete: idDe(c.paquete) ? { id: idDe(c.paquete)!, folio: folioParaId('PQV', idDe(c.paquete)!), nombre: typeof c.paquete === 'object' && c.paquete ? c.paquete.nombre : null } : null,
     esHoy: c.dia === hoy,
     siguientes: TRANSICIONES[c.estado as EstadoCita] ?? [],
     creadoEn: c.createdAt,
@@ -304,6 +306,8 @@ const esquemaNueva = z.object({
   confirmar: z.boolean().optional().default(false),
   /** Estética: adicionales (ids de `est-adicionales`). */
   adicionales: z.array(z.number().int().positive()).max(10).optional().default([]),
+  /** Paquetes: `false` = no descontar esta cita del paquete de la mascota (solo el equipo). */
+  usarPaquete: z.boolean().optional().default(true),
 })
 
 type Actor = { tipo: 'equipo'; user: User; nombre: string } | { tipo: 'tutor'; tutor: Tutor; clienteId: number; nombre: string }
@@ -362,6 +366,8 @@ async function crear(payload: Payload, actor: Actor, entrada: unknown, hoy: stri
 
   const creada = await conCandado(payload, actor, recursoId, async (req) => {
     revisarTraslape(await citasQueOcupan(payload, recursoId, d.data.dia, req), ini, fin)
+    /* Paquetes: la cita aparta un uso del paquete vigente con saldo de este servicio (el equipo puede no ligarla). */
+    const paquete = actor.tipo === 'tutor' || d.data.usarPaquete ? await paqueteParaCita(payload, mascota.id, servicio.id, d.data.dia, req) : null
     return payload.create({
       collection: 'citas',
       req,
@@ -377,13 +383,14 @@ async function crear(payload: Payload, actor: Actor, entrada: unknown, hoy: stri
         horaInicio: textoDesdeMinutos(minutos),
         duracionMin: duracion,
         ...(cot ? { estetica: datosCita(cot) } : {}),
+        paquete,
         inicio: ini.toISOString(),
         fin: fin.toISOString(),
         estado,
         origen: actor.tipo === 'tutor' ? 'portal' : 'panel',
         notasTutor: d.data.notasTutor || null,
         notasInternas: actor.tipo === 'equipo' ? d.data.notasInternas || null : null,
-        historial: [{ estado, fecha: new Date().toISOString(), por: actor.nombre, detalle: actor.tipo === 'tutor' ? 'Pedida desde el portal' : 'Agendada en el panel' }],
+        historial: [{ estado, fecha: new Date().toISOString(), por: actor.nombre, detalle: [actor.tipo === 'tutor' ? 'Pedida desde el portal' : 'Agendada en el panel', paquete ? `del paquete ${folioParaId('PQV', paquete)}` : null].filter(Boolean).join(', ') }],
         creadoPor: actor.tipo === 'equipo' ? actor.user.id : null,
         creadoPorTutor: actor.tipo === 'tutor' ? actor.tutor.id : null,
       },
@@ -473,7 +480,13 @@ export async function aplicarEstado(ctx: Ctx, id: number, entrada: unknown, extr
   const nombre = ctx.user.name || ctx.user.email
   let cargoId: number | null = null
   let esteticaFinal: ReturnType<typeof datosCita> | null = null
-  if (d.data.estado === 'finalizada') ({ cargoId, estetica: esteticaFinal } = await registrarCargo(ctx, cita))
+  /* Paquetes: si la cita está ligada a un paquete con saldo, se descuenta el uso y no se cobra el servicio. */
+  let delPaquete: string | null = null
+  if (d.data.estado === 'finalizada' && idDe(cita.paquete)) {
+    const r = await consumirConCita(ctx.payload, ctx.user, cita, ctx.hoy)
+    delPaquete = r.cubierta ? r.folio : null
+  }
+  if (d.data.estado === 'finalizada') ({ cargoId, estetica: esteticaFinal } = await registrarCargo(ctx, cita, Boolean(delPaquete)))
   const nueva = await ctx.payload.update({
     collection: 'citas',
     id,
@@ -485,7 +498,7 @@ export async function aplicarEstado(ctx: Ctx, id: number, entrada: unknown, extr
       profesional: d.data.profesionalId ?? cita.profesional ?? null,
       cargoFinanzas: cargoId ?? cita.cargoFinanzas ?? null,
       ...(esteticaFinal ? { estetica: esteticaFinal } : {}),
-      historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: d.data.estado, fecha: new Date().toISOString(), por: nombre, detalle: d.data.motivo || [extra.detalle, cargoId ? 'Cargo registrado en Finanzas' : null].filter(Boolean).join(' · ') || null }],
+      historial: [...(cita.historial ?? []).map(limpiarHistorial), { estado: d.data.estado, fecha: new Date().toISOString(), por: nombre, detalle: d.data.motivo || [extra.detalle, delPaquete ? `Descontada del paquete ${delPaquete}` : null, cargoId ? 'Cargo registrado en Finanzas' : null].filter(Boolean).join(' · ') || null }],
     },
   })
   if (d.data.estado === 'confirmada' || d.data.estado === 'cancelada') await avisarCita(ctx.payload, nueva.id, d.data.estado, { motivo: d.data.motivo || null })
@@ -515,9 +528,31 @@ async function importeEstetica(ctx: Ctx, cita: Cita, servicio: Servicio): Promis
 }
 
 /** Entrada por cobrar en Finanzas cuando el servicio tiene precio. Acción del sistema (con permisos completos de Finanzas). */
-async function registrarCargo(ctx: Ctx, cita: Cita): Promise<{ cargoId: number | null; estetica: ReturnType<typeof datosCita> | null }> {
+async function registrarCargo(ctx: Ctx, cita: Cita, cubiertaPorPaquete = false): Promise<{ cargoId: number | null; estetica: ReturnType<typeof datosCita> | null }> {
   const servicio = await ctx.payload.findByID({ collection: 'servicios', id: idDe(cita.servicio)!, depth: 0, overrideAccess: true }).catch(() => null)
   if (!servicio) return { cargoId: null, estetica: null }
+  if (cubiertaPorPaquete) {
+    /* El servicio ya se pagó con el paquete: solo se cobran los adicionales de estética que se hayan pactado. */
+    const ads = cita.estetica?.adicionales ?? []
+    const importe = aPesos(ads.reduce((s, a) => s + (aCentavos(a.precio) || 0), 0))
+    if (!importe) return { cargoId: null, estetica: null }
+    const mascota = await ctx.payload.findByID({ collection: 'mascotas', id: idDe(cita.mascota)!, depth: 0, overrideAccess: true }).catch(() => null)
+    const cliente = cita.cliente ? await ctx.payload.findByID({ collection: 'clientes', id: idDe(cita.cliente)!, depth: 0, overrideAccess: true }).catch(() => null) : null
+    const areaId = idDe(servicio.area)
+    const r = await registrarEnFinanzas({ ...ctx, p: calcularPermisos({ esSuperadmin: true }, null) }, {
+      tipo: 'entrada',
+      importe,
+      fechaReal: ctx.hoy,
+      estado: 'pendiente',
+      concepto: `Adicionales de ${servicio.nombre} · ${mascota?.nombre ?? 'mascota'} (${ads.map((a) => a.nombre).join(', ')})`,
+      categoria: idDe(servicio.categoriaFinanzas),
+      asignacion: areaId ? 'actividad' : 'pendiente',
+      actividad: areaId,
+      contraparte: cliente ? cliente.nombreCompleto || cliente.nombre : null,
+      notas: `Cita ${folioParaId('CIT', cita.id)} del ${cita.dia} ${cita.horaInicio}; el servicio se descontó del paquete.`,
+    }, `cita-${cita.id}`)
+    return { cargoId: r.operacion.id, estetica: null }
+  }
   const cfgEst = await configEstetica(ctx.payload)
   const est = esServicioEstetica(servicio, cfgEst) || cita.estetica?.total != null ? await importeEstetica(ctx, cita, servicio) : null
   const importe = est ? est.importe : servicio.precio

@@ -278,6 +278,8 @@ export type CitaVista = {
   cargoFinanzas: number | null
   /** Estética: lo pactado al agendar (total null = por confirmar). */
   estetica: { talla: 'chico' | 'mediano' | 'grande' | 'gigante' | null; nombreTalla: string | null; precioBase: number | null; total: number | null; adicionales: { nombre: string; precio: number }[] } | null
+  /** Paquete del que se descuenta al finalizar (nov-2026). */
+  paquete: { id: number; folio: string; nombre: string | null } | null
   esHoy: boolean
   siguientes: EstadoCitaVista[]
   creadoEn: string

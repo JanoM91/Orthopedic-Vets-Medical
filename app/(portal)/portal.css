@@ -452,3 +452,18 @@ b, strong { font-weight: 700; }
 .pt-clave .pt-input { padding-right: 92px; }
 .pt-clave__ver { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-height: 40px; min-width: 80px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--pt-accent, #0b6b59); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; }
 .pt-clave__ver:focus-visible { outline: 2px solid currentColor; }
+
+/* ───────── Paquetes (nov-2026) ───────── */
+.pt-paq { display: flex; flex-direction: column; gap: 10px; }
+.pt-paq__cab h3, .pt-paq-oferta h3 { margin: 0; font-size: 17px; }
+.pt-paq__cab { display: flex; flex-direction: column; gap: 2px; }
+.pt-paq__saldo { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pt-paq__saldo li { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 14px; }
+.pt-paq__barra { grid-column: 1 / -1; display: block; height: 6px; border-radius: 99px; background: #e1eae6; overflow: hidden; }
+.pt-paq__barra > span { display: block; height: 100%; background: var(--pt-accent); }
+.pt-paq__saldo li > .pt-chico { grid-column: 1 / -1; }
+.pt-paq .pt-btn { align-self: flex-start; }
+.pt-paq-oferta__precio { margin: 0; font-weight: 800; font-size: 18px; color: var(--pt-accent); }
+.pt-paq-oferta__lista { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.pt-paq-form { display: flex; flex-direction: column; gap: 10px; }
+.pt-paq-form__botones { display: flex; gap: 8px; flex-wrap: wrap; }

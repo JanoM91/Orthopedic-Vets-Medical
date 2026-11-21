@@ -83,6 +83,9 @@ export interface Config {
     servicios: Servicio;
     citas: Cita;
     solicitudes: Solicitud;
+    paquetes: Paquete;
+    'paq-vendidos': PaqVendido;
+    'paq-usos': PaqUso;
     'est-adicionales': EstAdicional;
     'est-fichas': EstFicha;
     'est-fotos': EstFoto;
@@ -136,6 +139,9 @@ export interface Config {
     servicios: ServiciosSelect<false> | ServiciosSelect<true>;
     citas: CitasSelect<false> | CitasSelect<true>;
     solicitudes: SolicitudesSelect<false> | SolicitudesSelect<true>;
+    paquetes: PaquetesSelect<false> | PaquetesSelect<true>;
+    'paq-vendidos': PaqVendidosSelect<false> | PaqVendidosSelect<true>;
+    'paq-usos': PaqUsosSelect<false> | PaqUsosSelect<true>;
     'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
     'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
     'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
@@ -830,6 +836,7 @@ export interface Cita {
       | null;
   };
   cargoFinanzas?: (number | null) | FinOperacion;
+  paquete?: (number | null) | PaqVendido;
   /**
    * Lo escribe el recordatorio diario (un solo correo por cita).
    */
@@ -887,96 +894,120 @@ export interface FinOperacion {
   createdAt: string;
 }
 /**
- * Personas que pidieron su primera cita desde el sitio. Escríbeles por WhatsApp para acordar día y hora; después da de alta su ficha y agenda la cita.
+ * Paquetes que compraron los clientes. Se venden y se usan desde el expediente de la mascota → Paquetes.
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "solicitudes".
+ * via the `definition` "paq-vendidos".
  */
-export interface Solicitud {
+export interface PaqVendido {
+  id: number;
+  folio?: string | null;
+  paquete: number | Paquete;
+  /**
+   * Como se llamaba al venderlo.
+   */
+  nombre: string;
+  mascota: number | Mascota;
+  cliente?: (number | null) | Cliente;
+  precio: number;
+  /**
+   * Talla con la que se cobró (paquetes por talla).
+   */
+  talla?: string | null;
+  fecha: string;
+  /**
+   * Vacío = no vence.
+   */
+  vence?: string | null;
+  estado: 'activo' | 'cancelado';
+  renglones: {
+    tipo: 'servicio' | 'producto';
+    servicio?: (number | null) | Servicio;
+    presentacion?: (number | null) | FarPresentacion;
+    nombre: string;
+    total: number;
+    id?: string | null;
+  }[];
+  cargoFinanzas?: (number | null) | FinOperacion;
+  solicitud?: (number | null) | Solicitud;
+  vendidoPor?: (number | null) | User;
+  notas?: string | null;
+  motivoCancelacion?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Servicios y productos que se venden juntos y se van usando (ej. 10 sesiones de rehabilitación, 4 baños). Se venden desde el expediente de la mascota → Paquetes.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paquetes".
+ */
+export interface Paquete {
   id: number;
   folio?: string | null;
   /**
-   * Cámbialo cuando le escribas y cuando la cita quede agendada.
+   * Ej. «Rehabilitación: 10 sesiones», «Baño mensual: 4 baños».
    */
-  estado: 'nueva' | 'contactada' | 'agendada' | 'descartada';
   nombre: string;
-  whatsapp: string;
-  correo?: string | null;
-  mascota: string;
-  especie: 'perro' | 'gato' | 'otra';
-  servicio?: (number | null) | Servicio;
+  descripcion?: string | null;
+  contenido: {
+    tipo: 'servicio' | 'producto';
+    /**
+     * Usos del servicio o piezas del producto.
+     */
+    cantidad: number;
+    servicio?: (number | null) | Servicio;
+    /**
+     * Solo productos sin receta (nunca Grupo I ni II). Se descuentan del inventario al entregarlos.
+     */
+    presentacion?: (number | null) | FarPresentacion;
+    id?: string | null;
+  }[];
   /**
-   * Como se llamaba cuando lo pidió.
+   * Lo que paga el cliente por todo el paquete.
    */
-  servicioNombre?: string | null;
-  diaPreferido?: string | null;
-  turno?: ('manana' | 'tarde' | 'cualquiera') | null;
-  nota?: string | null;
+  precio: number;
   /**
-   * Campaña vigente al momento de pedir, si la había.
+   * Desde el día de la venta. Vacío = no vence.
    */
-  origen?: string | null;
+  vigenciaDias?: number | null;
   /**
-   * Solo la ve el equipo. Ej. «Quedó para el jueves 10:00».
+   * Si lo capturas, al vender se usa el precio de la talla de la mascota (por su peso o la talla fijada). Vacío = el precio de arriba.
    */
-  notaInterna?: string | null;
+  preciosTalla?: {
+    chico?: number | null;
+    mediano?: number | null;
+    grande?: number | null;
+    gigante?: number | null;
+  };
+  activo?: boolean | null;
+  /**
+   * El cliente lo pide y recepción lo confirma y lo cobra en la clínica.
+   */
+  enLinea?: boolean | null;
+  orden?: number | null;
   updatedAt: string;
   createdAt: string;
 }
 /**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "est-fichas".
- */
-export interface EstFicha {
-  id: number;
-  cita: number | Cita;
-  mascota: number | Mascota;
-  dia: string;
-  queSeHizo?:
-    ('bano' | 'secado' | 'cepillado' | 'corte' | 'deslanado' | 'unas' | 'oidos' | 'glandulas' | 'dientes')[] | null;
-  corte?: string | null;
-  productos?: string | null;
-  comportamiento?: ('tranquila' | 'nerviosa' | 'bozal' | 'agresiva') | null;
-  hallazgos?: ('pulgas' | 'garrapatas' | 'heridas' | 'nudos' | 'piel' | 'oidos' | 'unas' | 'bultos' | 'otro')[] | null;
-  hallazgosNota?: string | null;
-  notaTutor?: string | null;
-  notaInterna?: string | null;
-  proximaSemanas?: number | null;
-  hallazgosAvisadosEn?: string | null;
-  recordatorioEnviadoEn?: string | null;
-  realizadoPor?: (number | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "est-fotos".
- */
-export interface EstFoto {
-  id: number;
-  cita: number | Cita;
-  mascota: number | Mascota;
-  momento: 'antes' | 'despues';
-  tipo: string;
-  datos: string;
-  bytes?: number | null;
-  subidaPor?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Fotos para la página principal: portada y retrato del médico. Súbelas aquí y elígelas en «Sitio público».
+ * Cómo se vende cada producto (caja, tableta, frasco) y su precio.
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "sitio-fotos".
+ * via the `definition` "far-presentaciones".
  */
-export interface SitioFoto {
+export interface FarPresentacion {
   id: number;
+  producto: number | FarProducto;
   /**
-   * Ej. «Fachada de la clínica». Es también el texto que oyen las personas que usan lector de pantalla.
+   * Ej. «Caja 30 tabletas», «Tableta suelta», «Bolsa 2 kg».
    */
-  titulo: string;
-  imagen: string;
+  nombre: string;
+  titulo?: string | null;
+  factor: number;
+  precio: number;
+  codigoBarras?: string | null;
+  fraccionada?: boolean | null;
+  activa?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1064,248 +1095,63 @@ export interface FarProveedor {
   createdAt: string;
 }
 /**
- * Cómo se vende cada producto (caja, tableta, frasco) y su precio.
+ * Personas que pidieron su primera cita desde el sitio. Escríbeles por WhatsApp para acordar día y hora; después da de alta su ficha y agenda la cita.
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "far-presentaciones".
+ * via the `definition` "solicitudes".
  */
-export interface FarPresentacion {
-  id: number;
-  producto: number | FarProducto;
-  /**
-   * Ej. «Caja 30 tabletas», «Tableta suelta», «Bolsa 2 kg».
-   */
-  nombre: string;
-  factor: number;
-  precio: number;
-  codigoBarras?: string | null;
-  fraccionada?: boolean | null;
-  activa?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Dónde está la existencia.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "far-almacenes".
- */
-export interface FarAlmacen {
-  id: number;
-  nombre: string;
-  tipo: 'farmacia' | 'clinica' | 'sucursal';
-  activo?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Lotes con caducidad. Solo consulta.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "far-lotes".
- */
-export interface FarLote {
+export interface Solicitud {
   id: number;
   folio?: string | null;
-  producto: number | FarProducto;
-  almacen: number | FarAlmacen;
-  numeroLote: string;
-  caducidad: string;
-  cantidadRecibida: number;
   /**
-   * Suma del kardex. La mantiene el sistema.
+   * Cámbialo cuando le escribas y cuando la cita quede agendada.
    */
-  existencia: number;
-  costoUnidad?: number | null;
-  /**
-   * Compra COM-… o motivo del ajuste.
-   */
-  referencia?: string | null;
-  /**
-   * Un lote vencido queda bloqueado solo; también se puede bloquear a mano (retiro, cuarentena).
-   */
-  bloqueado?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Entradas y salidas por lote. No se editan.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "far-movimientos".
- */
-export interface FarMovimiento {
-  id: number;
-  tipo: 'compra' | 'venta' | 'ajuste' | 'merma' | 'traspaso' | 'devolucion';
-  producto: number | FarProducto;
-  lote: number | FarLote;
-  almacen: number | FarAlmacen;
-  /**
-   * Positiva entra, negativa sale.
-   */
-  cantidad: number;
-  costoUnidad?: number | null;
-  dia: string;
-  /**
-   * Folio de la compra, venta o pedido que lo originó.
-   */
-  referencia?: string | null;
-  motivo?: string | null;
-  usuario?: (number | null) | User;
-  existenciaDespues?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Claves del proveedor ligadas al catálogo. Se aprenden solas.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "far-proveedor-claves".
- */
-export interface FarProveedorClave {
-  id: number;
-  proveedor: number | FarProveedor;
-  clave: string;
-  presentacion: number | FarPresentacion;
-  descripcionProveedor?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Compras a proveedores (XML o a mano).
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "far-compras".
- */
-export interface FarCompra {
-  id: number;
-  folio?: string | null;
-  estado: 'borrador' | 'recibida' | 'anulada';
-  proveedor: number | FarProveedor;
-  almacen?: (number | null) | FarAlmacen;
-  fecha: string;
-  serieFactura?: string | null;
-  folioFactura?: string | null;
-  /**
-   * Único: el mismo XML no se registra dos veces.
-   */
-  uuid?: string | null;
-  origen: 'xml' | 'manual';
-  xmlTexto?: string | null;
-  renglones?:
-    | {
-        claveProveedor?: string | null;
-        descripcion?: string | null;
-        presentacion?: (number | null) | FarPresentacion;
-        producto?: (number | null) | FarProducto;
-        cantidad: number;
-        valorUnitario?: number | null;
-        importe?: number | null;
-        numeroLote?: string | null;
-        caducidad?: string | null;
-        lote?: (number | null) | FarLote;
-        id?: string | null;
-      }[]
-    | null;
-  subtotal?: number | null;
-  iva?: number | null;
-  total?: number | null;
-  condicion: 'contado' | 'credito';
-  cuenta?: (number | null) | FinCuenta;
-  venceEl?: string | null;
-  /**
-   * Se crea al recibir. Si falló, «Reintentar gasto».
-   */
-  gastoFinanzas?: (number | null) | FinOperacion;
-  notas?: string | null;
-  capturadaPor?: (number | null) | User;
-  recibidaPor?: (number | null) | User;
-  recibidaEn?: string | null;
-  anuladaPor?: (number | null) | User;
-  anuladaEn?: string | null;
-  motivoAnulacion?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "fin-cuentas".
- */
-export interface FinCuenta {
-  id: number;
-  /**
-   * Ej. «Banco · Cuenta principal» o «Caja chica · Recepción»
-   */
+  estado: 'nueva' | 'contactada' | 'agendada' | 'vendida' | 'descartada';
   nombre: string;
-  tipo: 'banco' | 'efectivo' | 'caja_chica' | 'fondo' | 'otro';
+  whatsapp: string;
+  correo?: string | null;
+  mascota: string;
+  especie: 'perro' | 'gato' | 'otra';
+  servicio?: (number | null) | Servicio;
   /**
-   * Lo que había en la fecha de inicio. No es una entrada del periodo.
+   * Como se llamaba cuando lo pidió.
    */
-  saldoInicial: number;
-  /**
-   * Normalmente, la fecha de corte.
-   */
-  fechaInicio: string;
-  /**
-   * Solo para cajas o fondos que maneja una persona.
-   */
-  responsable?: (number | null) | User;
-  activa?: boolean | null;
-  notas?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Recetas internas y externas.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "far-recetas".
- */
-export interface FarReceta {
-  id: number;
-  folio?: string | null;
-  origen: 'interna' | 'externa';
-  estado: 'borrador' | 'por_validar' | 'valida' | 'rechazada' | 'cancelada';
-  mascota?: (number | null) | Mascota;
+  servicioNombre?: string | null;
+  paquete?: (number | null) | Paquete;
   cliente?: (number | null) | Cliente;
-  pacienteTexto?: string | null;
-  nota?: (number | null) | MasNota;
-  mvzNombre: string;
-  mvzCedula?: string | null;
-  emitidaPor?: (number | null) | User;
-  fechaEmision: string;
-  vigenteHasta: string;
-  folioCuantificado?: string | null;
-  pesoKg?: number | null;
-  indicaciones?: string | null;
-  renglones?:
-    | {
-        producto?: (number | null) | FarProducto;
-        principio?: string | null;
-        dosis?: string | null;
-        frecuencia?: string | null;
-        duracion?: string | null;
-        surtidosPermitidos?: number | null;
-        surtidosUsados?: number | null;
-        id?: string | null;
-      }[]
-    | null;
+  mascotaFicha?: (number | null) | Mascota;
+  diaPreferido?: string | null;
+  turno?: ('manana' | 'tarde' | 'cualquiera') | null;
+  nota?: string | null;
   /**
-   * Ruta en el almacén privado.
+   * Campaña vigente al momento de pedir, si la había.
    */
-  archivo?: string | null;
-  archivoNombre?: string | null;
-  firmadaPor?: (number | null) | User;
-  firmadaEn?: string | null;
-  validadaPor?: (number | null) | User;
-  validadaEn?: string | null;
-  motivoRechazo?: string | null;
-  originalRecibido?: boolean | null;
-  originalRecibidoPor?: (number | null) | User;
-  originalRecibidoEn?: string | null;
-  capturadaPor?: (number | null) | User;
+  origen?: string | null;
+  /**
+   * Solo la ve el equipo. Ej. «Quedó para el jueves 10:00».
+   */
+  notaInterna?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paq-usos".
+ */
+export interface PaqUso {
+  id: number;
+  vendido: number | PaqVendido;
+  /**
+   * Índice del renglón del paquete vendido (desde 0).
+   */
+  renglon: number;
+  cantidad: number;
+  fecha: string;
+  origen: 'cita' | 'manual' | 'entrega';
+  cita?: (number | null) | Cita;
+  venta?: (number | null) | FarVenta;
+  por?: string | null;
+  nota?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1431,6 +1277,288 @@ export interface FarPlan {
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Dónde está la existencia.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-almacenes".
+ */
+export interface FarAlmacen {
+  id: number;
+  nombre: string;
+  tipo: 'farmacia' | 'clinica' | 'sucursal';
+  activo?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Lotes con caducidad. Solo consulta.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-lotes".
+ */
+export interface FarLote {
+  id: number;
+  folio?: string | null;
+  producto: number | FarProducto;
+  almacen: number | FarAlmacen;
+  numeroLote: string;
+  caducidad: string;
+  cantidadRecibida: number;
+  /**
+   * Suma del kardex. La mantiene el sistema.
+   */
+  existencia: number;
+  costoUnidad?: number | null;
+  /**
+   * Compra COM-… o motivo del ajuste.
+   */
+  referencia?: string | null;
+  /**
+   * Un lote vencido queda bloqueado solo; también se puede bloquear a mano (retiro, cuarentena).
+   */
+  bloqueado?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Recetas internas y externas.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-recetas".
+ */
+export interface FarReceta {
+  id: number;
+  folio?: string | null;
+  origen: 'interna' | 'externa';
+  estado: 'borrador' | 'por_validar' | 'valida' | 'rechazada' | 'cancelada';
+  mascota?: (number | null) | Mascota;
+  cliente?: (number | null) | Cliente;
+  pacienteTexto?: string | null;
+  nota?: (number | null) | MasNota;
+  mvzNombre: string;
+  mvzCedula?: string | null;
+  emitidaPor?: (number | null) | User;
+  fechaEmision: string;
+  vigenteHasta: string;
+  folioCuantificado?: string | null;
+  pesoKg?: number | null;
+  indicaciones?: string | null;
+  renglones?:
+    | {
+        producto?: (number | null) | FarProducto;
+        principio?: string | null;
+        dosis?: string | null;
+        frecuencia?: string | null;
+        duracion?: string | null;
+        surtidosPermitidos?: number | null;
+        surtidosUsados?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Ruta en el almacén privado.
+   */
+  archivo?: string | null;
+  archivoNombre?: string | null;
+  firmadaPor?: (number | null) | User;
+  firmadaEn?: string | null;
+  validadaPor?: (number | null) | User;
+  validadaEn?: string | null;
+  motivoRechazo?: string | null;
+  originalRecibido?: boolean | null;
+  originalRecibidoPor?: (number | null) | User;
+  originalRecibidoEn?: string | null;
+  capturadaPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Dónde vive el dinero: bancos, efectivo, caja chica y fondos a cargo de empleados. El medio de pago (transferencia, efectivo, tarjeta) se registra aparte en cada movimiento. Desactivar no borra la historia.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "fin-cuentas".
+ */
+export interface FinCuenta {
+  id: number;
+  /**
+   * Ej. «Banco · Cuenta principal» o «Caja chica · Recepción»
+   */
+  nombre: string;
+  tipo: 'banco' | 'efectivo' | 'caja_chica' | 'fondo' | 'otro';
+  /**
+   * Lo que había en la fecha de inicio. No es una entrada del periodo.
+   */
+  saldoInicial: number;
+  /**
+   * Normalmente, la fecha de corte.
+   */
+  fechaInicio: string;
+  /**
+   * Solo para cajas o fondos que maneja una persona.
+   */
+  responsable?: (number | null) | User;
+  activa?: boolean | null;
+  notas?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-fichas".
+ */
+export interface EstFicha {
+  id: number;
+  cita: number | Cita;
+  mascota: number | Mascota;
+  dia: string;
+  queSeHizo?:
+    ('bano' | 'secado' | 'cepillado' | 'corte' | 'deslanado' | 'unas' | 'oidos' | 'glandulas' | 'dientes')[] | null;
+  corte?: string | null;
+  productos?: string | null;
+  comportamiento?: ('tranquila' | 'nerviosa' | 'bozal' | 'agresiva') | null;
+  hallazgos?: ('pulgas' | 'garrapatas' | 'heridas' | 'nudos' | 'piel' | 'oidos' | 'unas' | 'bultos' | 'otro')[] | null;
+  hallazgosNota?: string | null;
+  notaTutor?: string | null;
+  notaInterna?: string | null;
+  proximaSemanas?: number | null;
+  hallazgosAvisadosEn?: string | null;
+  recordatorioEnviadoEn?: string | null;
+  realizadoPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "est-fotos".
+ */
+export interface EstFoto {
+  id: number;
+  cita: number | Cita;
+  mascota: number | Mascota;
+  momento: 'antes' | 'despues';
+  tipo: string;
+  datos: string;
+  bytes?: number | null;
+  subidaPor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Fotos para la página principal: portada y retrato del médico. Súbelas aquí y elígelas en «Sitio público».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sitio-fotos".
+ */
+export interface SitioFoto {
+  id: number;
+  /**
+   * Ej. «Fachada de la clínica». Es también el texto que oyen las personas que usan lector de pantalla.
+   */
+  titulo: string;
+  imagen: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Entradas y salidas por lote. No se editan.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-movimientos".
+ */
+export interface FarMovimiento {
+  id: number;
+  tipo: 'compra' | 'venta' | 'ajuste' | 'merma' | 'traspaso' | 'devolucion';
+  producto: number | FarProducto;
+  lote: number | FarLote;
+  almacen: number | FarAlmacen;
+  /**
+   * Positiva entra, negativa sale.
+   */
+  cantidad: number;
+  costoUnidad?: number | null;
+  dia: string;
+  /**
+   * Folio de la compra, venta o pedido que lo originó.
+   */
+  referencia?: string | null;
+  motivo?: string | null;
+  usuario?: (number | null) | User;
+  existenciaDespues?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Claves del proveedor ligadas al catálogo. Se aprenden solas.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-proveedor-claves".
+ */
+export interface FarProveedorClave {
+  id: number;
+  proveedor: number | FarProveedor;
+  clave: string;
+  presentacion: number | FarPresentacion;
+  descripcionProveedor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Compras a proveedores (XML o a mano).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "far-compras".
+ */
+export interface FarCompra {
+  id: number;
+  folio?: string | null;
+  estado: 'borrador' | 'recibida' | 'anulada';
+  proveedor: number | FarProveedor;
+  almacen?: (number | null) | FarAlmacen;
+  fecha: string;
+  serieFactura?: string | null;
+  folioFactura?: string | null;
+  /**
+   * Único: el mismo XML no se registra dos veces.
+   */
+  uuid?: string | null;
+  origen: 'xml' | 'manual';
+  xmlTexto?: string | null;
+  renglones?:
+    | {
+        claveProveedor?: string | null;
+        descripcion?: string | null;
+        presentacion?: (number | null) | FarPresentacion;
+        producto?: (number | null) | FarProducto;
+        cantidad: number;
+        valorUnitario?: number | null;
+        importe?: number | null;
+        numeroLote?: string | null;
+        caducidad?: string | null;
+        lote?: (number | null) | FarLote;
+        id?: string | null;
+      }[]
+    | null;
+  subtotal?: number | null;
+  iva?: number | null;
+  total?: number | null;
+  condicion: 'contado' | 'credito';
+  cuenta?: (number | null) | FinCuenta;
+  venceEl?: string | null;
+  /**
+   * Se crea al recibir. Si falló, «Reintentar gasto».
+   */
+  gastoFinanzas?: (number | null) | FinOperacion;
+  notas?: string | null;
+  capturadaPor?: (number | null) | User;
+  recibidaPor?: (number | null) | User;
+  recibidaEn?: string | null;
+  anuladaPor?: (number | null) | User;
+  anuladaEn?: string | null;
+  motivoAnulacion?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1829,6 +1957,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'solicitudes';
         value: number | Solicitud;
+      } | null)
+    | ({
+        relationTo: 'paquetes';
+        value: number | Paquete;
+      } | null)
+    | ({
+        relationTo: 'paq-vendidos';
+        value: number | PaqVendido;
+      } | null)
+    | ({
+        relationTo: 'paq-usos';
+        value: number | PaqUso;
       } | null)
     | ({
         relationTo: 'est-adicionales';
@@ -2390,6 +2530,7 @@ export interface CitasSelect<T extends boolean = true> {
             };
       };
   cargoFinanzas?: T;
+  paquete?: T;
   recordatorioEnviadoEn?: T;
   creadoPor?: T;
   creadoPorTutor?: T;
@@ -2410,11 +2551,97 @@ export interface SolicitudesSelect<T extends boolean = true> {
   especie?: T;
   servicio?: T;
   servicioNombre?: T;
+  paquete?: T;
+  cliente?: T;
+  mascotaFicha?: T;
   diaPreferido?: T;
   turno?: T;
   nota?: T;
   origen?: T;
   notaInterna?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paquetes_select".
+ */
+export interface PaquetesSelect<T extends boolean = true> {
+  folio?: T;
+  nombre?: T;
+  descripcion?: T;
+  contenido?:
+    | T
+    | {
+        tipo?: T;
+        cantidad?: T;
+        servicio?: T;
+        presentacion?: T;
+        id?: T;
+      };
+  precio?: T;
+  vigenciaDias?: T;
+  preciosTalla?:
+    | T
+    | {
+        chico?: T;
+        mediano?: T;
+        grande?: T;
+        gigante?: T;
+      };
+  activo?: T;
+  enLinea?: T;
+  orden?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paq-vendidos_select".
+ */
+export interface PaqVendidosSelect<T extends boolean = true> {
+  folio?: T;
+  paquete?: T;
+  nombre?: T;
+  mascota?: T;
+  cliente?: T;
+  precio?: T;
+  talla?: T;
+  fecha?: T;
+  vence?: T;
+  estado?: T;
+  renglones?:
+    | T
+    | {
+        tipo?: T;
+        servicio?: T;
+        presentacion?: T;
+        nombre?: T;
+        total?: T;
+        id?: T;
+      };
+  cargoFinanzas?: T;
+  solicitud?: T;
+  vendidoPor?: T;
+  notas?: T;
+  motivoCancelacion?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paq-usos_select".
+ */
+export interface PaqUsosSelect<T extends boolean = true> {
+  vendido?: T;
+  renglon?: T;
+  cantidad?: T;
+  fecha?: T;
+  origen?: T;
+  cita?: T;
+  venta?: T;
+  por?: T;
+  nota?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2546,6 +2773,7 @@ export interface FarProductosSelect<T extends boolean = true> {
 export interface FarPresentacionesSelect<T extends boolean = true> {
   producto?: T;
   nombre?: T;
+  titulo?: T;
   factor?: T;
   precio?: T;
   codigoBarras?: T;

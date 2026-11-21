@@ -29,6 +29,7 @@ import { FarRecompras } from './collections/farmacia/recompras'
 import { FarPlanes } from './collections/farmacia/planes'
 import { FarmaciaConfiguracion } from './collections/farmacia/configuracion'
 import { protegerColeccion, protegerGlobal } from './lib/permisos'
+import { Paquetes, PaqUsos, PaqVendidos } from './collections/clinica/paquetes'
 import { EstAdicionales, EstFichas, EstFotos, EsteticaConfiguracion } from './collections/clinica/estetica'
 import { conModuloColeccion, conModuloGlobal } from './lib/modulosAcceso'
 import { migrations } from './migrations'
@@ -112,7 +113,7 @@ export default buildConfig({
     Roles,
     /* Clínica (octubre de 2026): pacientes, tutores y expediente. Reglas propias en collections/clinica/acceso.ts.
        Con el módulo Clínica apagado (lib/modulos.ts) responden «no» a todo. */
-    ...[Clientes, Mascotas, MasPesos, MasCartilla, MasNotas, MasDocumentos, MasFotos, CodigosVinculacion, Importaciones, Recursos, Servicios, Citas, Solicitudes].map((c) => conModuloColeccion('clinica', c)),
+    ...[Clientes, Mascotas, MasPesos, MasCartilla, MasNotas, MasDocumentos, MasFotos, CodigosVinculacion, Importaciones, Recursos, Servicios, Citas, Solicitudes, Paquetes, PaqVendidos, PaqUsos].map((c) => conModuloColeccion('clinica', c)),
     ...[EstAdicionales, EstFichas, EstFotos].map((c) => conModuloColeccion('estetica', conModuloColeccion('clinica', c))),
     /* Las cuentas del portal no se apagan con la clínica: en la fase 5 también entran a la tienda. */
     Tutores,

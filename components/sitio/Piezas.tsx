@@ -34,7 +34,7 @@ export function Icono({ n, grande }: { n: string; grande?: boolean }) {
  * primario de la marca. El botón destacado es WhatsApp (decisión de Jano,
  * 16-nov-2026); sin número capturado, «Pedir cita».
  */
-export function Cabecera({ c, activa, oscura }: { c: ContenidoSitio; activa?: 'inicio' | 'servicios'; oscura?: boolean }) {
+export function Cabecera({ c, activa, oscura }: { c: ContenidoSitio; activa?: 'inicio' | 'servicios' | 'paquetes'; oscura?: boolean }) {
   const wa = ligaWhatsApp(c.contacto.whatsapp, `Hola, quiero información para mi mascota en ${c.marca.nombre}.`)
   return (
     <header className={`st-cabecera${oscura ? ' st-cabecera--oscura' : ''}`}>
@@ -48,6 +48,11 @@ export function Cabecera({ c, activa, oscura }: { c: ContenidoSitio; activa?: 'i
           <Link href="/servicios" className={activa === 'servicios' ? 'is-on' : ''}>
             Servicios
           </Link>
+          {c.paquetes.length > 0 && (
+            <Link href="/paquetes" className={activa === 'paquetes' ? 'is-on' : ''}>
+              Paquetes
+            </Link>
+          )}
           {c.doctor && <Link href="/#doctor">El doctor</Link>}
           {c.equipo.length > 0 && !c.doctor && <Link href="/#equipo">Equipo</Link>}
           {c.tienda && <Link href="/tienda">Tienda</Link>}
@@ -82,6 +87,7 @@ export function Pie({ c }: { c: ContenidoSitio }) {
         </div>
         <div className="st-pie__ligas">
           <Link href="/servicios">Servicios</Link>
+          {c.paquetes.length > 0 && <Link href="/paquetes">Paquetes</Link>}
           {c.tienda && <Link href="/tienda">Tienda</Link>}
           <Link href="/portal">Portal del tutor</Link>
           <Link href="/aviso-de-privacidad">Aviso de privacidad</Link>

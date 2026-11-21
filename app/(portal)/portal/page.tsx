@@ -5,6 +5,7 @@ import React from 'react'
 import { portalCitas, proximasPorMascota } from '../../../lib/clinica/agenda'
 import { portalRefuerzosPendientes, portalResumen } from '../../../lib/clinica/servicio'
 import { portalBanosPendientes } from '../../../lib/clinica/esteticaPortal'
+import { portalPaquetes, type PaqueteCatalogo, type PaqueteVendidoVista } from '../../../lib/clinica/paquetes'
 import { pedidosDelTutor } from '../../../lib/farmacia/tienda'
 import { recomprasDelCliente, type RecompraVista } from '../../../lib/farmacia/recompra'
 import type { PedidoVista } from '../../../lib/farmacia/tiposTienda'
@@ -107,7 +108,7 @@ export default async function PortalInicio() {
   const vivas = r.mascotas.filter((m) => m.estado !== 'fallecido')
   const ids = vivas.map((m) => m.id)
   const cabeceras = await headers()
-  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos] = await Promise.all([
+  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos, paquetes] = await Promise.all([
     proximasPorMascota(c, ids),
     portalRefuerzosPendientes(c, ids),
     portalCitas(c),
@@ -115,6 +116,7 @@ export default async function PortalInicio() {
     tienda ? sesionDeTienda() : Promise.resolve(null),
     tienda ? recomprasDelCliente(c.payload, cabeceras, r.cliente.id).catch(() => [] as RecompraVista[]) : Promise.resolve([] as RecompraVista[]),
     portalBanosPendientes(c, ids).catch(() => []),
+    portalPaquetes(c).catch(() => ({ catalogo: [] as PaqueteCatalogo[], mios: [] as PaqueteVendidoVista[], mascotas: [] })),
   ])
   const hoy = hoyISO()
   const siguiente = [...proximas.values()].sort((a, b) => (a.dia + a.horaInicio).localeCompare(b.dia + b.horaInicio))[0] ?? null
@@ -168,6 +170,20 @@ export default async function PortalInicio() {
       detalle: ya ? `Le tocaba el ${corta(b.fecha)}` : `Le toca alrededor del ${corta(b.fecha)}`,
       accion: { href: b.ligaCita, texto: 'Pedir cita', secundaria: !ya },
     })
+  }
+  /* Paquetes (nov-2026): lo que le queda de cada servicio de sus paquetes vigentes, con «Pedir cita». */
+  for (const v of paquetes.mios.filter((x) => x.estado === 'activo')) {
+    for (const rg of v.renglones.filter((x) => x.tipo === 'servicio' && x.quedan > 0)) {
+      const servicioEnLinea = citas.servicios.some((sv) => sv.id === rg.servicioId)
+      pendientes.push({
+        clave: `paq-${v.id}-${rg.indice}`,
+        tono: 'ok',
+        icono: 'billete',
+        titulo: `${rg.nombre} de ${v.mascota.nombre}: te quedan ${rg.quedan} de ${rg.total}`,
+        detalle: `Paquete ${v.nombre}${v.vence ? ` · vence el ${corta(v.vence)}` : ''}`,
+        accion: servicioEnLinea ? { href: `/portal/citas/nueva?mascota=${v.mascota.id}&servicio=${rg.servicioId}`, texto: 'Pedir cita', secundaria: true } : null,
+      })
+    }
   }
   const visibles = pendientes.slice(0, 5)
 
@@ -303,7 +319,12 @@ export default async function PortalInicio() {
               Servicios
             </Link>
           )}
-          {wa ? (
+          {paquetes.catalogo.length > 0 || paquetes.mios.length > 0 ? (
+            <Link href="/portal/paquetes" className="pt-atajo">
+              <Icono n="billete" />
+              Paquetes
+            </Link>
+          ) : wa ? (
             <a href={wa} target="_blank" rel="noreferrer" className="pt-atajo">
               <Icono n="wa" />
               WhatsApp

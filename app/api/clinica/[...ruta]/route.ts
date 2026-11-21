@@ -45,6 +45,8 @@ import {
   subirDocumento,
   vincular,
 } from '@/lib/clinica/servicio'
+import { cancelarPaquete, entregarProducto, paquetesDeMascota, portalPaquetes, registrarUso, venderPaquete } from '@/lib/clinica/paquetes'
+import { ErrorSolicitud, portalSolicitarPaquete } from '@/lib/sitio/solicitudes'
 import { aplicar, cargarArchivo, descartar, historial, planear, plantillaXlsx } from '@/lib/clinica/importacion'
 import { leerModulos } from '@/lib/modulos'
 import {
@@ -138,6 +140,15 @@ import {
  *   GET  portal/citas/calendario?servicio&desde&hasta&ignorar   días libres, llenos y cerrados (calendario del mes)
  *   POST portal/mascotas/:id/foto (multipart: archivo) | portal/mascotas/:id/foto/quitar
  *
+ * PAQUETES (nov-2026, permiso «Agenda»; entregar producto pide «Vender» de la farmacia):
+ *   GET  mascotas/:id/paquetes                 vendidos con saldo, catálogo para vender y talla de la mascota
+ *   POST mascotas/:id/paquetes                 { paqueteId, solicitudId?, notas? } vender (entrada por cobrar en Finanzas)
+ *   POST paquetes/:id/uso                      { renglon, nota? } uso de un servicio sin cita
+ *   POST paquetes/:id/entrega                  { renglon, cantidad? } entregar producto (venta en cero, inventario FEFO)
+ *   POST paquetes/:id/cancelar                 { motivo } solo sin usos ni citas por venir; anula su entrada en Finanzas
+ *   GET  portal/paquetes                       catálogo en línea, paquetes de sus mascotas con saldo
+ *   POST portal/paquetes/solicitar             { paqueteId, mascotaId, nota? } solicitud que recepción confirma
+ *
  * FOTOS (equipo o tutor, nov-2026):
  *   GET  fotos/mascotas/:id                    la foto (equipo con «ver pacientes» o el tutor de esa mascota)
  *   POST mascotas/:id/foto (multipart: archivo) | mascotas/:id/foto/quitar   (equipo, «editar pacientes»)
@@ -215,6 +226,7 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
     }
     if (a === 'documentos' && b && d === 'archivo') return portalAbrirDocumento(c, idDeRuta(b))
     if (a === 'citas' && !b) return json(await portalCitas(c))
+    if (a === 'paquetes' && !b) return json(await portalPaquetes(c))
     if (a === 'citas' && b === 'disponibilidad') {
       const q = req.nextUrl.searchParams
       return json(await portalDisponibilidad(c, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined, extraDe(q)))
@@ -229,6 +241,14 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
     }
   } else {
     if (a === 'vincular' && !b) return json(await vincular(c, await leerJson(req)))
+    if (a === 'paquetes' && b === 'solicitar' && !d) {
+      try {
+        return json(await portalSolicitarPaquete(c.payload, c.tutor, await leerJson(req)), 201)
+      } catch (e) {
+        if (e instanceof ErrorSolicitud) return json({ error: e.message }, e.status)
+        throw e
+      }
+    }
     if (a === 'citas' && !b) return json(await portalCrearCita(c, await leerJson(req)), 201)
     if (a === 'citas' && b && d === 'reprogramar') return json(await portalReprogramar(c, idDeRuta(b), await leerJson(req)))
     if (a === 'citas' && b && d === 'cancelar') return json(await portalCancelar(c, idDeRuta(b), await leerJson(req)))
@@ -293,6 +313,7 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'agenda' && b === 'citas' && c) return json(await cita(ctx, idDeRuta(c)))
     if (a === 'mascotas' && b && c === 'citas') return json(await citasDeMascota(ctx, idDeRuta(b)))
     if (a === 'mascotas' && b && c === 'estetica') return json(await esteticasDeMascota(ctx, idDeRuta(b)))
+    if (a === 'mascotas' && b && c === 'paquetes') return json(await paquetesDeMascota(ctx, idDeRuta(b)))
     if (a === 'estetica' && !b) return json(await tableroEstetica(ctx, q.get('dia') ?? ctx.hoy))
     if (a === 'estetica' && b === 'citas' && c && ruta[3] === 'ficha') return json(await fichaEstetica(ctx, idDeRuta(c)))
   } else {
@@ -305,6 +326,10 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     }
     if (a === 'estetica' && b === 'fotos' && c && ruta[3] === 'quitar') return json(await quitarFotoEstetica(ctx, idDeRuta(c)))
     if (a === 'agenda' && b === 'arranque') return json(await arranqueAgenda(ctx))
+    if (a === 'mascotas' && b && c === 'paquetes') return json(await venderPaquete(ctx, idDeRuta(b), await leerJson(req)), 201)
+    if (a === 'paquetes' && b && c === 'uso') return json(await registrarUso(ctx, idDeRuta(b), await leerJson(req)))
+    if (a === 'paquetes' && b && c === 'entrega') return json(await entregarProducto(ctx, idDeRuta(b), await leerJson(req)))
+    if (a === 'paquetes' && b && c === 'cancelar') return json(await cancelarPaquete(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'agenda' && b === 'citas' && !c) return json(await crearCita(ctx, await leerJson(req)), 201)
     if (a === 'agenda' && b === 'citas' && c) {
       const id = idDeRuta(c)

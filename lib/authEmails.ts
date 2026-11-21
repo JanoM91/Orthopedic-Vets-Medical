@@ -14,7 +14,7 @@
  * REPLICABILIDAD: no se nombra al negocio en ningún lado; todo sale de
  * lib/site.ts y de la configuración de Payload.
  */
-import type { PayloadRequest } from 'payload'
+import { APIError, type CollectionBeforeOperationHook, type PayloadRequest } from 'payload'
 
 import { site } from './site'
 
@@ -23,8 +23,13 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
-/** Vigencia de la liga de recuperación: una hora. */
-export const VIGENCIA_RECUPERACION_MS = 60 * 60 * 1000
+/**
+ * Vigencia de la liga de recuperación: 24 horas (19-nov-2026). Era una hora y
+ * el Dr. Joni abrió su correo después: la liga ya había vencido. Sigue siendo
+ * de un solo uso y cada liga nueva anula las anteriores.
+ */
+export const VIGENCIA_RECUPERACION_MS = 24 * 60 * 60 * 1000
+const VIGENCIA_TEXTO = '24 horas'
 
 /**
  * De dónde sale el dominio de la liga.
@@ -106,8 +111,8 @@ export function htmlDeRecuperacion(args: {
         <span style="word-break:break-all">${e(args.liga)}</span>
       </p>
       <p style="color:#6B7280;font-size:14px">
-        La liga sirve <b>una sola vez</b> y vence en <b>una hora</b>. Si se te
-        pasa el tiempo, vuelve a pedirla desde la pantalla de inicio de sesión.
+        La liga sirve <b>una sola vez</b> y vence en <b>${VIGENCIA_TEXTO}</b>. Si la pediste
+        varias veces, usa solo la del correo <b>más reciente</b>: cada liga nueva anula las anteriores.
       </p>
       <p style="color:#6B7280;font-size:14px">
         <b>¿No fuiste tú?</b> Ignora este correo: tu contraseña sigue igual y
@@ -154,4 +159,29 @@ export function htmlDeInvitacion(args: { liga: string; nombre?: string; mascotas
       <p style="margin-top:24px">— ${e(site.brand.name)}</p>
     </div>
   `
+}
+
+/**
+ * Antes de restablecer (19-nov-2026): Payload contesta «Token is either invalid
+ * or has expired» y, en producción, lo oculta como «An unknown error
+ * occurred.». Con eso la persona no sabe qué pasó y vuelve a intentar con la
+ * misma liga (en los registros: siete intentos seguidos con una liga ya
+ * usada). Aquí se revisa la liga primero y se responde en español qué hacer.
+ * No revela si un correo tiene cuenta: solo habla de la liga que ya se tiene.
+ */
+export const revisarLigaDeRecuperacion: CollectionBeforeOperationHook = async ({ args, operation, req, collection }) => {
+  if (operation !== 'resetPassword') return args
+  const token = typeof args?.data?.token === 'string' ? args.data.token.trim() : ''
+  const password = typeof args?.data?.password === 'string' ? args.data.password : ''
+  if (!token) throw new APIError('La liga está incompleta. Ábrela directo desde el correo o pide otra.', 400, undefined, true)
+  if (password.length < 8) throw new APIError('La contraseña nueva debe tener al menos 8 caracteres.', 400, undefined, true)
+  const doc = (await req.payload.db.findOne({ collection: collection.slug, req, where: { resetPasswordToken: { equals: token } } })) as { resetPasswordExpiration?: string | null } | null
+  if (!doc) {
+    throw new APIError('Esta liga ya no sirve: se pidió otra más nueva. Abre el correo más reciente o pide otra liga.', 403, undefined, true)
+  }
+  const vence = doc.resetPasswordExpiration ? new Date(doc.resetPasswordExpiration).getTime() : 0
+  if (!vence || vence <= Date.now()) {
+    throw new APIError('Esta liga ya se usó o ya venció. Si ya cambiaste tu contraseña, entra con la nueva; si no, pide otra liga.', 403, undefined, true)
+  }
+  return args
 }

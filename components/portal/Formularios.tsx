@@ -37,6 +37,22 @@ function Error_({ e }: { e: string | null }) {
   ) : null
 }
 
+/** Campo de contraseña con «Mostrar» (19-nov-2026): menos errores al escribirla en el teléfono. */
+function CampoContrasena({ etiqueta, valor, onChange, autoComplete, minLength }: { etiqueta: string; valor: string; onChange: (v: string) => void; autoComplete: string; minLength?: number }) {
+  const [ver, setVer] = useState(false)
+  return (
+    <label className="pt-campo">
+      <span>{etiqueta}</span>
+      <span className="pt-clave">
+        <input className="pt-input" type={ver ? 'text' : 'password'} autoComplete={autoComplete} autoCapitalize="none" autoCorrect="off" spellCheck={false} value={valor} onChange={(e) => onChange(e.target.value)} required minLength={minLength} />
+        <button type="button" className="pt-clave__ver" onClick={() => setVer((x) => !x)} aria-pressed={ver}>
+          {ver ? 'Ocultar' : 'Mostrar'}
+        </button>
+      </span>
+    </label>
+  )
+}
+
 export function FormEntrar({ siguiente }: { siguiente?: string }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -64,10 +80,7 @@ export function FormEntrar({ siguiente }: { siguiente?: string }) {
         <span>Correo</span>
         <input className="pt-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </label>
-      <label className="pt-campo">
-        <span>Contraseña</span>
-        <input className="pt-input" type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} required />
-      </label>
+      <CampoContrasena etiqueta="Contraseña" valor={pass} onChange={setPass} autoComplete="current-password" />
       <Error_ e={error} />
       <button className="pt-btn pt-btn--primario pt-btn--bloque" disabled={ocupado}>
         {ocupado ? 'Entrando…' : 'Entrar'}
@@ -262,28 +275,36 @@ export function FormOlvide() {
 export function FormRestablecer({ token }: { token: string }) {
   const router = useRouter()
   const [pass, setPass] = useState('')
+  const [pass2, setPass2] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
   return (
     <form
       className="pt-form"
       onSubmit={async (e) => {
         e.preventDefault()
         setError(null)
+        if (pass !== pass2) return setError('Las dos contraseñas no son iguales. Escríbelas otra vez.')
+        setOcupado(true)
         try {
           await pedir('/api/tutores/reset-password', { token, password: pass })
           router.push('/portal')
           router.refresh()
         } catch (er) {
           setError(er instanceof Error ? er.message : 'La liga ya no sirve. Pide otra.')
+          setOcupado(false)
         }
       }}
     >
-      <label className="pt-campo">
-        <span>Contraseña nueva (mínimo 8 caracteres)</span>
-        <input className="pt-input" type="password" autoComplete="new-password" value={pass} onChange={(e) => setPass(e.target.value)} required minLength={8} />
-      </label>
+      <CampoContrasena etiqueta="Contraseña nueva (mínimo 8 caracteres)" valor={pass} onChange={setPass} autoComplete="new-password" minLength={8} />
+      <CampoContrasena etiqueta="Escríbela otra vez" valor={pass2} onChange={setPass2} autoComplete="new-password" minLength={8} />
       <Error_ e={error} />
-      <button className="pt-btn pt-btn--primario pt-btn--bloque">Guardar y entrar</button>
+      <button className="pt-btn pt-btn--primario pt-btn--bloque" disabled={ocupado}>
+        {ocupado ? 'Guardando…' : 'Guardar y entrar'}
+      </button>
+      <p className="pt-chico" style={{ textAlign: 'center' }}>
+        ¿La liga ya no sirve? <Link href="/portal/olvide">Pide otra</Link>
+      </p>
     </form>
   )
 }

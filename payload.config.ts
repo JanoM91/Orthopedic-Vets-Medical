@@ -6,6 +6,7 @@ import { es } from '@payloadcms/translations/languages/es'
 
 import { site } from './lib/site'
 import { resendEmailAdapter } from './lib/emailAdapter'
+import { mostrarMensajeDeError } from './lib/erroresPublicos'
 
 import { Users } from './collections/Users'
 import { Roles } from './collections/Roles'
@@ -148,6 +149,10 @@ export default buildConfig({
   globals: [FinConfiguracion, conModuloGlobal('clinica', AgendaConfiguracion), conModuloGlobal('estetica', conModuloGlobal('clinica', EsteticaConfiguracion)), SitioConfiguracion, FarmaciaConfiguracion, InstalacionConfiguracion].map(protegerGlobal),
   /* Correo de recuperación de contraseña (Resend por HTTP). Sin RESEND_API_KEY no se envía nada. Ver lib/emailAdapter.ts. */
   email: resendEmailAdapter,
+  /* En producción los errores públicos (400/403/429 con mensaje en español) salían como «An unknown error occurred.». Ver lib/erroresPublicos.ts. */
+  hooks: {
+    afterError: [mostrarMensajeDeError],
+  },
   i18n: {
     supportedLanguages: { es },
     fallbackLanguage: 'es',

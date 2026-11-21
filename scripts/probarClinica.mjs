@@ -573,6 +573,23 @@ async function main() {
       ok(r.status === 200 && r.data.mascotas?.some((m) => m.nombre === 'Toby'), 'Ve las mascotas de su ficha', r.data?.mascotas?.map((m) => m.nombre))
       r = await new Sesion().post('/api/tutores/reset-password', { token: fila?.reset_password_token, password: 'Otra-2026xx' })
       ok(r.status >= 400, 'La liga sirve una sola vez', r.status)
+      ok(r.status === 403 && /ya se usó o ya venció/.test(r.data?.errors?.[0]?.message || ''), 'Liga usada: el mensaje dice en español qué hacer', r.data)
+      r = await new Sesion().post('/api/tutores/reset-password', { token: 'f'.repeat(40), password: 'Otra-2026xx' })
+      ok(r.status === 403 && /se pidió otra más nueva/.test(r.data?.errors?.[0]?.message || ''), 'Liga reemplazada o inexistente: mensaje claro', r.data)
+      r = await new Sesion().post('/api/users/reset-password', { token: 'f'.repeat(40), password: 'Otra-2026xx' })
+      ok(r.status === 403 && /se pidió otra más nueva/.test(r.data?.errors?.[0]?.message || ''), 'Panel: el mismo mensaje claro', r.data)
+      r = await new Sesion().post('/api/users/reset-password', { token: 'f'.repeat(40), password: 'corta' })
+      ok(r.status === 400 && /al menos 8/.test(r.data?.errors?.[0]?.message || ''), 'Contraseña de menos de 8 caracteres: se pide más larga', r.data)
+      r = await new Sesion().post('/api/tutores/forgot-password', { email: cliente.email })
+      ok(r.status === 200, '«Olvidé mi contraseña» del portal responde', r.status)
+      {
+        const bd2 = new pg.Client({ connectionString: urlBase })
+        await bd2.connect()
+        const f2 = (await bd2.query('select reset_password_expiration from tutores where email = $1', [cliente.email])).rows[0]
+        await bd2.end()
+        const horas = f2 ? (new Date(f2.reset_password_expiration).getTime() - Date.now()) / 3600000 : 0
+        ok(horas > 23.5 && horas <= 24.01, 'La liga de «olvidé mi contraseña» vence en 24 horas', horas)
+      }
     } else ok(false, 'La prueba de invitación lee el token de la base LOCAL (DATABASE_URL en .env)')
   }
 
@@ -622,7 +639,7 @@ async function main() {
   let h2 = await (await fetch(`${BASE}/`)).text()
   ok(!h2.includes('Jornada de prueba'), 'Raíz: una campaña vencida no aparece')
   ok(h2.includes('id="doctor"') && h2.includes('Lo atiende la médica veterinaria Ana Prueba.') && h2.includes('1234567') && h2.includes(`/api/sitio/fotos/${fotoId}?v=`), 'Raíz: médico con credenciales y su retrato')
-  ok(h2.includes('Un solo expediente') && h2.includes('Testimonio de prueba') && h2.includes('st-mosaico'), 'Raíz: razones, testimonios y fotos de portada')
+  ok(h2.includes('Un solo expediente') && h2.includes('Testimonio de prueba') && h2.includes('st-carrusel'), 'Raíz: razones, testimonios y fotos de portada')
   r = await admin.post('/api/globals/sitio-configuracion', { ...basico, campana: { activa: true, etiqueta: 'Solo este mes', titulo: 'Jornada de prueba', boton: 'Quiero mi lugar', hasta: '2099-12-31' } })
   h2 = await (await fetch(`${BASE}/`)).text()
   ok(r.status === 200 && h2.includes('Jornada de prueba') && h2.includes('Quiero mi lugar') && h2.includes(encodeURIComponent('campaña «Jornada de prueba»')), 'Raíz: la campaña vigente aparece con su botón de WhatsApp')

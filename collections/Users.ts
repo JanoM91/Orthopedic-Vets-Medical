@@ -9,6 +9,7 @@ import {
   asuntoDeRecuperacion,
   htmlDeRecuperacion,
   ligaDeRecuperacion,
+  revisarLigaDeRecuperacion,
 } from '../lib/authEmails'
 import { rateLimit } from '../lib/rateLimit'
 import { plegarMenuAlEntrar } from '../lib/navPlegado'
@@ -148,6 +149,8 @@ export const Users: CollectionConfig = {
       },
     ],
     beforeOperation: [
+      /* Liga vencida, usada o reemplazada: mensaje claro en español (lib/authEmails.ts). */
+      revisarLigaDeRecuperacion,
       (arg) => {
         if (arg.operation !== 'forgotPassword') return arg.args
 

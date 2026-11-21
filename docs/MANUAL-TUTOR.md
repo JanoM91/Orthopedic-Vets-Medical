@@ -40,6 +40,12 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 - **Cambiar o cancelar**: desde la cita, con la anticipación que indique la clínica. Si ya es muy tarde, llámanos.
 - Algunos servicios (como cirugías) se piden y la clínica te contacta para valorarlos.
 
+## Paquetes
+
+- Algunos servicios y productos se venden en **paquete**: pagas una vez y los vas usando (por ejemplo, varias sesiones de rehabilitación). En tu app, Inicio → **Paquetes** ves cuánto le queda a cada mascota y hasta cuándo vale.
+- **Pedir un paquete**: en Paquetes toca «Lo quiero», elige a tu mascota y envía. Te escribimos para confirmarlo; se paga en la clínica.
+- **Usarlo**: pide tu cita como siempre; si el servicio está en tu paquete, se descuenta cuando te atendemos. Los productos del paquete te los entregamos en la clínica.
+
 ## Farmacia en línea
 
 1. Entra a **Tienda** (en el sitio o en la pestaña **Tienda** de la barra de abajo).

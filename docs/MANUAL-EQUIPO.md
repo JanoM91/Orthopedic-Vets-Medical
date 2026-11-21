@@ -111,3 +111,13 @@ Una persona que nunca ha venido puede pedir su primera cita en el sitio sin crea
 3. Toca **«Escribir por WhatsApp»**: se abre el chat con el mensaje listo. Acuerden día y hora.
 4. Da de alta al cliente y a su mascota en Pacientes y agenda la cita en la Agenda, como siempre.
 5. Regresa a la solicitud y cambia el **Estado** a «Cita agendada» (o «Ya le escribimos» si aún no contesta, o «Descartada»). Guarda.
+
+## Paquetes
+
+Un paquete se cobra una vez y se va usando (por ejemplo, 10 sesiones de rehabilitación o 4 baños).
+
+1. **Armarlos** (dueño o quien configura la agenda): Clínica → **Paquetes** → «Crear». Nombre, qué incluye, renglones (servicio y cuántos usos, o producto de la farmacia y cuántas piezas), precio (o precio por talla, para estética) y vigencia en días. Marca «Mostrar en el sitio y en la app» si los clientes lo pueden pedir.
+2. **Venderlo**: abre el expediente de la mascota → pestaña **Paquetes** → «+ Vender paquete». Se registra una entrada por cobrar en Finanzas, como una cita.
+3. **Usarlo**: al agendar una cita de un servicio del paquete, la cita se descuenta sola al **finalizarla** (no se cobra el servicio). Si el servicio se dio sin cita, usa «Registrar uso». Los productos se dan con «Entregar» (se descuentan del inventario).
+4. **Si lo pidieron desde el sitio o la app**: llega como solicitud (Clínica → Solicitudes de cita). Escríbeles por WhatsApp; si ya tienen ficha, «Vender el paquete» te lleva directo a venderlo.
+5. **Cancelarlo**: solo si todavía no tiene usos; se anula su entrada en Finanzas.

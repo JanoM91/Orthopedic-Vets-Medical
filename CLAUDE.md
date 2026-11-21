@@ -51,6 +51,15 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 - Portal (E3): `lib/clinica/esteticaPortal.ts`. El tutor solo ve estéticas **entregadas** de sus mascotas, nunca la nota interna ni el comportamiento. El «¿ya le toca su baño?» va en el cron de recordatorios de la clínica, una vez por ficha (`recordatorioEnviadoEn`), y no sale si ya hay otra cita de estética por venir.
 - Pruebas: `npm run test:estetica` (después de `test:clinica`, misma base local; el recordatorio usa `CRON_SECRET` de `.env`).
 
+## Reglas de los Paquetes (docs/CLINICA.md, «Paquetes con saldo de usos»)
+
+- `paquetes` (catálogo, «Configurar agenda»), `paq-vendidos` y `paq-usos` son colecciones de la clínica (`esColeccionClinica` incluye `paquetes` y `paq-`). `paq-vendidos` y `paq-usos` solo los escribe `lib/clinica/paquetes.ts` (API genérica 403 a crear, editar y borrar); toda escritura toma el candado `6 500 000 + id` del paquete vendido.
+- Saldo = total − usos − citas por venir con `citas.paquete`. La agenda liga la cita al crearla (`paqueteParaCita`) y descuenta al finalizar (`consumirConCita`, una vez por cita); una cita cubierta no genera cargo del servicio, solo de los adicionales de estética. Si cambias estados o el cargo de `agenda.ts`, revisa ese camino.
+- Lo vendido es una copia: nunca leas el contenido del catálogo para calcular el saldo de un paquete vendido. Nunca productos de Grupo I o II en un paquete; la entrega de producto es `registrarVenta` en cero con clave `paquete-<id>-r<renglón>-u<n>`.
+- Se piden con una **solicitud** (`solicitudes.paquete`; desde la app también `cliente` y `mascotaFicha`): nada se cobra en línea por ahora. El cobro entra a Finanzas al vender (`paquete-<id>`).
+- `far-presentaciones.titulo` («Producto · presentación») lo mantienen los hooks de presentaciones y productos; es su `useAsTitle`.
+- Pruebas: `npm run test:paquetes` (después de clínica y estética; con farmacia también prueba las entregas).
+
 ## Reglas de la Farmacia (docs/FARMACIA.md y docs/FARMACIA-PROMPT.md)
 
 - Colecciones `far-*` y globales `farmacia-configuracion` e `instalacion-configuracion` tienen reglas propias (`collections/farmacia/acceso.ts`) y **no** se envuelven con `protegerColeccion`. Solo el equipo entra; la tienda tiene su propia API pública (`/api/tienda`).

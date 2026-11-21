@@ -16,7 +16,8 @@
     "test:finanzas": "node --experimental-strip-types --no-warnings scripts/probarFinanzas.mjs",
     "test:clinica": "node scripts/probarClinica.mjs",
     "test:estetica": "node scripts/probarEstetica.mjs",
-    "test:farmacia": "node scripts/probarFarmacia.mjs"
+    "test:farmacia": "node scripts/probarFarmacia.mjs",
+    "test:paquetes": "node scripts/probarPaquetes.mjs"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.0.0",

@@ -507,6 +507,15 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
             ''
           )}
         </dd>
+        {cita.paquete && (
+          <>
+            <dt>Paquete</dt>
+            <dd>
+              {cita.paquete.nombre ?? 'Paquete'} · {cita.paquete.folio}
+              <span className="fz-tenue">{cita.estado === 'finalizada' ? ' · se descontó al finalizar' : ' · se descuenta al finalizar (no se cobra el servicio)'}</span>
+            </dd>
+          </>
+        )}
         <dt>Hora</dt>
         <dd>
           <span style={{ textTransform: 'capitalize' }}>{diaLargo(cita.dia)}</span> · {cita.horaInicio}–{cita.horaFin} · {cita.duracionMin} min
@@ -783,6 +792,7 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
   const [mascota, setMascota] = useState<{ id: number; nombre: string; especie: string; tutor: string } | null>(null)
   const [servicio, setServicio] = useState<number | ''>('')
   const [confirmar, setConfirmar] = useState(true)
+  const [usarPaquete, setUsarPaquete] = useState(true)
   const [notas, setNotas] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [adicionales, setAdicionales] = useState<number[]>([])
@@ -874,6 +884,9 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
           <label className="cl-check">
             <input type="checkbox" checked={confirmar} onChange={(e) => setConfirmar(e.target.checked)} /> Dejarla confirmada (ya se acordó con el tutor)
           </label>
+          <label className="cl-check">
+            <input type="checkbox" checked={usarPaquete} onChange={(e) => setUsarPaquete(e.target.checked)} /> Descontarla de su paquete si tiene saldo de este servicio
+          </label>
           <ErrorForm error={error} />
           {serv && (
             <SelectorHorario
@@ -885,7 +898,7 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
               diaInicial={diaInicial}
               horaInicial={horaInicial}
               onElegir={(d, h, r) =>
-                api.post<CitaVista>('agenda/citas', { mascotaId: mascota.id, servicioId: serv.id, dia: d, hora: h, recursoId: r, confirmar, notasInternas: notas, ...(esEstetica ? { adicionales } : {}) }).then(onListo, (e) => setError(e instanceof Error ? e.message : 'No se pudo agendar.'))
+                api.post<CitaVista>('agenda/citas', { mascotaId: mascota.id, servicioId: serv.id, dia: d, hora: h, recursoId: r, confirmar, usarPaquete, notasInternas: notas, ...(esEstetica ? { adicionales } : {}) }).then(onListo, (e) => setError(e instanceof Error ? e.message : 'No se pudo agendar.'))
               }
             />
           )}

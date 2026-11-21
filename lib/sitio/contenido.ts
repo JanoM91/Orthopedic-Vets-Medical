@@ -8,6 +8,7 @@ import { configuracion as configuracionAgenda } from '../clinica/agenda'
 import { idDe } from '../clinica/servicio'
 import { leerModulos } from '../modulos'
 import { configEstetica, esServicioEstetica, precioDesde } from '../clinica/estetica'
+import { catalogoPaquetes, type PaqueteCatalogo } from '../clinica/paquetes'
 import { site } from '../site'
 import { diaLocal } from '../localTime'
 
@@ -42,6 +43,8 @@ export type ContenidoSitio = {
   testimonios: { texto: string; autor: string | null }[]
   /** Estética encendida: nombre de su marca (grupo de servicios) y logotipo. */
   estetica: { nombre: string; logo: string | null } | null
+  /** Paquetes que se muestran en línea (nov-2026); se piden con una solicitud que recepción confirma. */
+  paquetes: PaqueteCatalogo[]
 }
 export type FotoSitio = { url: string; alt: string }
 
@@ -99,6 +102,7 @@ export async function contenidoSitio(): Promise<ContenidoSitio> {
     doctor: t(g.doctor?.nombre) ? { nombre: t(g.doctor?.nombre)!, titulo: t(g.doctor?.titulo) ?? 'el médico veterinario', presentacion: t(g.doctor?.presentacion), foto: foto(g.doctor?.foto), credenciales: (g.doctor?.credenciales ?? []).map((x) => ({ etiqueta: x.etiqueta, valor: x.valor })) } : null,
     testimonios: (g.testimonios ?? []).map((x) => ({ texto: x.texto, autor: t(x.autor) })).slice(0, 6),
     estetica: est.activa ? { nombre: est.nombreMarca, logo: est.logo } : null,
+    paquetes: modulos.clinica ? await catalogoPaquetes(payload, { soloEnLinea: true }).catch(() => []) : [],
   }
 }
 

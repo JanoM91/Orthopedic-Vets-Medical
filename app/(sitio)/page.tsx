@@ -8,6 +8,7 @@ import { BarraApp } from '../../components/app/BarraApp'
 import { partesLocales } from '../../lib/localTime'
 import { contenidoSitio, ligaWhatsApp, type ServicioPublico } from '../../lib/sitio/contenido'
 import { enlaceWhatsApp, mensajes } from '../../lib/whatsapp'
+import { TarjetaPaquete } from '../../components/sitio/TarjetaPaquete'
 import { Carrusel } from '../../components/sitio/Carrusel'
 
 export const dynamic = 'force-dynamic'
@@ -187,6 +188,29 @@ export default async function Inicio() {
             {areas.length > 0 ? <Areas areas={areas} /> : <p className="st-tenue">Pronto publicaremos nuestros servicios.</p>}
           </div>
         </section>
+
+        {c.paquetes.length > 0 && (
+          <section className="st-sec st-sec--pegada" id="paquetes" aria-labelledby="t-paquetes">
+            <div className="st-wrap">
+              <div className="st-sec__head">
+                <div>
+                  <p className="st-eyebrow">Paquetes</p>
+                  <h2 id="t-paquetes">Paga una vez, úsalo con el tiempo</h2>
+                </div>
+                {c.paquetes.length > 3 && (
+                  <Link href="/paquetes" className="st-enlace">
+                    Ver todos
+                  </Link>
+                )}
+              </div>
+              <div className="st-paquetes">
+                {c.paquetes.slice(0, 3).map((p) => (
+                  <TarjetaPaquete key={p.id} p={p} compacta />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {c.razones.length > 0 && (
           <section className="st-sec st-sec--pegada" aria-label="Por qué elegirnos">

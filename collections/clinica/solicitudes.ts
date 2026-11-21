@@ -15,6 +15,7 @@ export const ESTADOS_SOLICITUD = [
   { label: 'Nueva', value: 'nueva' },
   { label: 'Ya le escribimos', value: 'contactada' },
   { label: 'Cita agendada', value: 'agendada' },
+  { label: 'Paquete vendido', value: 'vendida' },
   { label: 'Descartada', value: 'descartada' },
 ] as const
 
@@ -48,6 +49,9 @@ export const Solicitudes: CollectionConfig = {
     { type: 'row', fields: [{ name: 'mascota', label: 'Mascota', type: 'text', required: true, admin: { readOnly: true } }, { name: 'especie', label: 'Especie', type: 'select', required: true, options: [{ label: 'Perro', value: 'perro' }, { label: 'Gato', value: 'gato' }, { label: 'Otra', value: 'otra' }], admin: { readOnly: true } }] },
     { name: 'servicio', label: 'Servicio del catálogo', type: 'relationship', relationTo: 'servicios', admin: { readOnly: true } },
     { name: 'servicioNombre', label: 'Servicio', type: 'text', admin: { readOnly: true, description: 'Como se llamaba cuando lo pidió.' } },
+    /* Paquetes (nov-2026): el cliente pide un paquete desde el sitio o la app; recepción lo confirma y lo vende en el expediente → Paquetes. */
+    { name: 'paquete', label: 'Paquete que pidió', type: 'relationship', relationTo: 'paquetes', admin: { readOnly: true } },
+    { type: 'row', fields: [{ name: 'cliente', label: 'Cliente (si ya tiene ficha)', type: 'relationship', relationTo: 'clientes', admin: { readOnly: true } }, { name: 'mascotaFicha', label: 'Mascota (si ya tiene ficha)', type: 'relationship', relationTo: 'mascotas', admin: { readOnly: true } }] },
     { type: 'row', fields: [{ name: 'diaPreferido', label: 'Día que prefiere', type: 'text', admin: { readOnly: true } }, { name: 'turno', label: 'Horario que prefiere', type: 'select', options: [{ label: 'Por la mañana', value: 'manana' }, { label: 'Por la tarde', value: 'tarde' }, { label: 'Cualquiera', value: 'cualquiera' }], admin: { readOnly: true } }] },
     { name: 'nota', label: 'Lo que nos contó', type: 'textarea', admin: { readOnly: true } },
     { name: 'origen', label: 'De dónde llegó', type: 'text', admin: { readOnly: true, description: 'Campaña vigente al momento de pedir, si la había.' } },

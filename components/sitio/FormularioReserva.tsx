@@ -9,7 +9,7 @@ import React, { useState } from 'react'
  */
 type Servicio = { id: number; nombre: string; area: string }
 
-export function FormularioReserva({ servicios, servicioInicial, hoy, whatsapp, campana }: { servicios: Servicio[]; servicioInicial: number | null; hoy: string; whatsapp: string | null; campana: string | null }) {
+export function FormularioReserva({ servicios, servicioInicial, paquete = null, hoy, whatsapp, campana }: { servicios: Servicio[]; servicioInicial: number | null; paquete?: { id: number; nombre: string; precio: string } | null; hoy: string; whatsapp: string | null; campana: string | null }) {
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [folio, setFolio] = useState<string | null>(null)
@@ -32,7 +32,8 @@ export function FormularioReserva({ servicios, servicioInicial, hoy, whatsapp, c
           correo: texto('correo'),
           mascota: texto('mascota'),
           especie: texto('especie') || 'perro',
-          servicioId: Number(texto('servicio')) || null,
+          servicioId: paquete ? null : Number(texto('servicio')) || null,
+          paqueteId: paquete?.id ?? null,
           diaPreferido: texto('dia'),
           turno: texto('turno') || 'cualquiera',
           nota: texto('nota'),
@@ -56,9 +57,9 @@ export function FormularioReserva({ servicios, servicioInicial, hoy, whatsapp, c
       <div className="st-card st-reserva__lista" role="status">
         <h2>Recibimos tu solicitud</h2>
         <p>
-          Te escribimos por WhatsApp para confirmarte el día y la hora. Tu folio es <b>{folio}</b>.
+          {paquete ? 'Te escribimos por WhatsApp para confirmar tu paquete.' : 'Te escribimos por WhatsApp para confirmarte el día y la hora.'} Tu folio es <b>{folio}</b>.
         </p>
-        <p className="st-tenue">Todavía no es una cita confirmada: queda lista cuando acordemos el horario contigo.</p>
+        <p className="st-tenue">{paquete ? 'El paquete se paga en la clínica; desde ese día puedes empezar a usarlo.' : 'Todavía no es una cita confirmada: queda lista cuando acordemos el horario contigo.'}</p>
         {whatsapp && (
           <div className="st-acciones">
             <a href={whatsapp} target="_blank" rel="noreferrer" className="st-btn st-btn--claro">
@@ -73,6 +74,16 @@ export function FormularioReserva({ servicios, servicioInicial, hoy, whatsapp, c
   return (
     <form className="st-card st-reserva" onSubmit={enviar} noValidate={false}>
       {campana && <p className="st-reserva__campana">Campaña vigente: {campana}</p>}
+      {paquete ? (
+        <div className="st-reserva__paquete">
+          <span>
+            Paquete: <b>{paquete.nombre}</b> · {paquete.precio}
+          </span>
+          <a href="/paquetes" className="st-enlace">
+            Cambiar
+          </a>
+        </div>
+      ) : (
       <div className="st-campo">
         <label htmlFor="r-servicio">¿Qué necesita tu mascota?</label>
         <select id="r-servicio" name="servicio" defaultValue={servicioInicial ? String(servicioInicial) : ''}>
@@ -90,6 +101,7 @@ export function FormularioReserva({ servicios, servicioInicial, hoy, whatsapp, c
           ))}
         </select>
       </div>
+      )}
       <div className="st-campos">
         <div className="st-campo">
           <label htmlFor="r-mascota">Nombre de tu mascota</label>
@@ -106,7 +118,7 @@ export function FormularioReserva({ servicios, servicioInicial, hoy, whatsapp, c
       </div>
       <div className="st-campos">
         <div className="st-campo">
-          <label htmlFor="r-dia">Día que prefieres (opcional)</label>
+          <label htmlFor="r-dia">{paquete ? 'Día para empezar (opcional)' : 'Día que prefieres (opcional)'}</label>
           <input id="r-dia" name="dia" type="date" min={hoy} />
         </div>
         <div className="st-campo">
@@ -143,7 +155,7 @@ export function FormularioReserva({ servicios, servicioInicial, hoy, whatsapp, c
       <label className="st-check">
         <input type="checkbox" name="privacidad" required />
         <span>
-          Acepto el <a href="/aviso-de-privacidad" target="_blank" rel="noreferrer">aviso de privacidad</a> y que me escriban por WhatsApp para agendar.
+          Acepto el <a href="/aviso-de-privacidad" target="_blank" rel="noreferrer">aviso de privacidad</a> y que me escriban por WhatsApp {paquete ? 'para confirmar mi paquete' : 'para agendar'}.
         </span>
       </label>
       {error && (

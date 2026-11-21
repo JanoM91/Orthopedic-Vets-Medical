@@ -84,6 +84,15 @@ export const FarProductos: CollectionConfig = {
         return data
       },
     ],
+    /* Paquetes (nov-2026): el título de cada presentación lleva el nombre del producto; si el producto cambia de nombre, se actualiza. */
+    afterChange: [
+      async ({ doc, previousDoc, operation, req }) => {
+        if (operation !== 'update' || !previousDoc || previousDoc.nombre === doc.nombre) return doc
+        const pres = await req.payload.find({ collection: 'far-presentaciones', depth: 0, pagination: false, overrideAccess: true, req, where: { producto: { equals: doc.id } }, select: { nombre: true } })
+        for (const p of pres.docs) await req.payload.update({ collection: 'far-presentaciones', id: p.id, overrideAccess: true, req, data: { titulo: `${doc.nombre} · ${p.nombre}` } })
+        return doc
+      },
+    ],
   },
   fields: [
     { name: 'folio', label: 'Folio', type: 'text', virtual: true, admin: { readOnly: true, position: 'sidebar' }, hooks: { afterRead: [({ data, originalDoc }) => { const id = (originalDoc as { id?: unknown } | undefined)?.id ?? (data as { id?: unknown } | undefined)?.id; return id == null ? null : folioParaId('PRD', id as number) }] } },
@@ -173,10 +182,10 @@ export const FarPresentaciones: CollectionConfig = {
   typescript: { interface: 'FarPresentacion' },
   labels: { singular: 'Presentación', plural: 'Presentaciones' },
   admin: {
-    useAsTitle: 'nombre',
+    useAsTitle: 'titulo',
     group: 'Farmacia',
     defaultColumns: ['producto', 'nombre', 'factor', 'precio', 'codigoBarras', 'activa'],
-    listSearchableFields: ['nombre', 'codigoBarras'],
+    listSearchableFields: ['titulo', 'nombre', 'codigoBarras'],
     description: 'Cómo se vende cada producto (caja, tableta, frasco) y su precio.',
   },
   access: {
@@ -194,10 +203,23 @@ export const FarPresentaciones: CollectionConfig = {
         return data
       },
     ],
+    /* «Producto · presentación» para buscarla y verla en los paquetes (nov-2026). */
+    beforeChange: [
+      async ({ data, originalDoc, req }) => {
+        const productoId = data.producto ?? originalDoc?.producto
+        const nombre = data.nombre ?? originalDoc?.nombre
+        const id = typeof productoId === 'object' && productoId ? productoId.id : productoId
+        if (!id || !nombre) return data
+        const prod = await req.payload.findByID({ collection: 'far-productos', id, depth: 0, overrideAccess: true, req }).catch(() => null)
+        data.titulo = prod ? `${prod.nombre} · ${nombre}` : nombre
+        return data
+      },
+    ],
   },
   fields: [
     { name: 'producto', label: 'Producto', type: 'relationship', relationTo: 'far-productos', required: true, index: true },
     { name: 'nombre', label: 'Nombre', type: 'text', required: true, admin: { description: 'Ej. «Caja 30 tabletas», «Tableta suelta», «Bolsa 2 kg».' } },
+    { name: 'titulo', label: 'Producto y presentación', type: 'text', index: true, admin: { hidden: true, readOnly: true } },
     {
       type: 'row',
       fields: [

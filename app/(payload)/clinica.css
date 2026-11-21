@@ -231,3 +231,12 @@
   .cl-est-col { flex: none; min-width: 0; }
   .cl-est-col.is-vacia { display: none; }
 }
+
+/* ───────── Paquetes (expediente → Paquetes, nov-2026) ───────── */
+.cl-paq-titulo { font-size: 17px; font-weight: 700; margin: 2px 0 0; }
+.cl-paq-fila { gap: 12px; align-items: center; }
+.cl-paq-barra { display: flex; height: 6px; margin-top: 6px; border-radius: 99px; background: var(--mx-borde, #e2e8f0); overflow: hidden; max-width: 320px; }
+.cl-paq-barra > span { display: block; height: 100%; background: var(--mx-acento, #0b6b59); }
+.cl-paq-barra > span.is-apartado { background: #94a3b8; }
+.cl-paq-usos summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.cl-paq-usos ul, .cl-paq-contenido { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }

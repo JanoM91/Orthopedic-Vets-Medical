@@ -18,6 +18,7 @@ import * as migration_20261116_041602_estetica_tablero from './20261116_041602_e
 import * as migration_20261116_042227_estetica_portal from './20261116_042227_estetica_portal';
 import * as migration_20261116_150807_sitio_home_b from './20261116_150807_sitio_home_b';
 import * as migration_20261116_160019_solicitudes_cita from './20261116_160019_solicitudes_cita';
+import * as migration_20261121_205724_paquetes from './20261121_205724_paquetes';
 
 export const migrations = [
   {
@@ -118,6 +119,11 @@ export const migrations = [
   {
     up: migration_20261116_160019_solicitudes_cita.up,
     down: migration_20261116_160019_solicitudes_cita.down,
-    name: '20261116_160019_solicitudes_cita'
+    name: '20261116_160019_solicitudes_cita',
+  },
+  {
+    up: migration_20261121_205724_paquetes.up,
+    down: migration_20261121_205724_paquetes.down,
+    name: '20261121_205724_paquetes'
   },
 ];

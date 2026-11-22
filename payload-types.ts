@@ -88,6 +88,7 @@ export interface Config {
     'paq-usos': PaqUso;
     'cir-presupuestos': CirPresupuesto;
     'cir-consentimientos': CirConsentimiento;
+    'cir-hojas': CirHoja;
     'est-adicionales': EstAdicional;
     'est-fichas': EstFicha;
     'est-fotos': EstFoto;
@@ -146,6 +147,7 @@ export interface Config {
     'paq-usos': PaqUsosSelect<false> | PaqUsosSelect<true>;
     'cir-presupuestos': CirPresupuestosSelect<false> | CirPresupuestosSelect<true>;
     'cir-consentimientos': CirConsentimientosSelect<false> | CirConsentimientosSelect<true>;
+    'cir-hojas': CirHojasSelect<false> | CirHojasSelect<true>;
     'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
     'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
     'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
@@ -1484,6 +1486,74 @@ export interface FinCuenta {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cir-hojas".
+ */
+export interface CirHoja {
+  id: number;
+  folio?: string | null;
+  cita?: (number | null) | Cita;
+  mascota: number | Mascota;
+  presupuesto?: (number | null) | CirPresupuesto;
+  procedimiento: string;
+  fecha: string;
+  estado: 'abierta' | 'cerrada';
+  cirujano?: (number | null) | User;
+  anestesista?: (number | null) | User;
+  ayudantes?: string | null;
+  asa?: ('I' | 'II' | 'III' | 'IV' | 'V') | null;
+  urgencia?: boolean | null;
+  pesoKg?: number | null;
+  ayunoHoras?: number | null;
+  valoracion?: string | null;
+  farmacos?:
+    | {
+        momento: 'premedicacion' | 'induccion' | 'mantenimiento' | 'analgesia' | 'antibiotico' | 'fluidos' | 'otro';
+        medicamento: string;
+        dosis: string;
+        via?: string | null;
+        hora: string;
+        por?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  tiempos?: {
+    entrada?: string | null;
+    inicioAnestesia?: string | null;
+    inicioCirugia?: string | null;
+    finCirugia?: string | null;
+    extubacion?: string | null;
+    salida?: string | null;
+  };
+  signos?:
+    | {
+        hora: string;
+        fc?: number | null;
+        fr?: number | null;
+        spo2?: number | null;
+        etco2?: number | null;
+        temp?: number | null;
+        pas?: number | null;
+        pad?: number | null;
+        pam?: number | null;
+        notas?: string | null;
+        por?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  realizado?: string | null;
+  hallazgos?: string | null;
+  implantes?: string | null;
+  complicaciones?: string | null;
+  recuperacion?: string | null;
+  indicacionesPost?: string | null;
+  creadoPor?: (number | null) | User;
+  cerradaPor?: (number | null) | User;
+  cerradaEn?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "est-fichas".
  */
 export interface EstFicha {
@@ -2053,6 +2123,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'cir-consentimientos';
         value: number | CirConsentimiento;
+      } | null)
+    | ({
+        relationTo: 'cir-hojas';
+        value: number | CirHoja;
       } | null)
     | ({
         relationTo: 'est-adicionales';
@@ -2788,6 +2862,75 @@ export interface CirConsentimientosSelect<T extends boolean = true> {
   ip?: T;
   navegador?: T;
   huella?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cir-hojas_select".
+ */
+export interface CirHojasSelect<T extends boolean = true> {
+  folio?: T;
+  cita?: T;
+  mascota?: T;
+  presupuesto?: T;
+  procedimiento?: T;
+  fecha?: T;
+  estado?: T;
+  cirujano?: T;
+  anestesista?: T;
+  ayudantes?: T;
+  asa?: T;
+  urgencia?: T;
+  pesoKg?: T;
+  ayunoHoras?: T;
+  valoracion?: T;
+  farmacos?:
+    | T
+    | {
+        momento?: T;
+        medicamento?: T;
+        dosis?: T;
+        via?: T;
+        hora?: T;
+        por?: T;
+        id?: T;
+      };
+  tiempos?:
+    | T
+    | {
+        entrada?: T;
+        inicioAnestesia?: T;
+        inicioCirugia?: T;
+        finCirugia?: T;
+        extubacion?: T;
+        salida?: T;
+      };
+  signos?:
+    | T
+    | {
+        hora?: T;
+        fc?: T;
+        fr?: T;
+        spo2?: T;
+        etco2?: T;
+        temp?: T;
+        pas?: T;
+        pad?: T;
+        pam?: T;
+        notas?: T;
+        por?: T;
+        id?: T;
+      };
+  realizado?: T;
+  hallazgos?: T;
+  implantes?: T;
+  complicaciones?: T;
+  recuperacion?: T;
+  indicacionesPost?: T;
+  creadoPor?: T;
+  cerradaPor?: T;
+  cerradaEn?: T;
   updatedAt?: T;
   createdAt?: T;
 }

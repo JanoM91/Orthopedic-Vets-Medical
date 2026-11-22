@@ -67,6 +67,7 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 - Un consentimiento es **inmutable** y guarda el texto exacto, el resumen, la firma y la huella SHA-256. Nunca recalcules lo firmado desde el presupuesto o desde el texto base actual.
 - Una cita con `presupuesto` cobra el total del presupuesto al finalizar y no se liga a paquetes. Nunca calcular ni sugerir dosis en ninguna fase de la ruta.
 - Firmas: PNG en `data:` con `MAX_FIRMA_BASE64` (`lib/clinica/firma.ts`); el lienzo es `components/FirmaLienzo.tsx`.
+- **Hoja quirúrgica** (`cir-hojas`, fase 2): solo `lib/clinica/hojaQuirurgica.ts` la escribe; fármacos y signos se **agregan** (nunca se reemplaza la lista desde el cliente) con candado `6 700 000 + id`; cerrada = inmutable. Los fármacos son texto libre del médico: no agregues cálculo, sugerencia ni validación de dosis, ni rangos «clínicos» de signos (solo rangos de captura).
 - Pruebas: `npm run test:cirugia` (después de `test:clinica`).
 
 ## Reglas de la Farmacia (docs/FARMACIA.md y docs/FARMACIA-PROMPT.md)

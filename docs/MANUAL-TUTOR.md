@@ -40,6 +40,12 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 - **Cambiar o cancelar**: desde la cita, con la anticipación que indique la clínica. Si ya es muy tarde, llámanos.
 - Algunos servicios (como cirugías) se piden y la clínica te contacta para valorarlos.
 
+## Presupuesto de cirugía
+
+- Si tu mascota necesita cirugía, la clínica te manda una **liga** por correo o WhatsApp (también aparece en **Pendientes** de tu app). No necesitas cuenta.
+- Ahí ves qué se va a hacer, el costo, las indicaciones y el **consentimiento**. Si estás de acuerdo, escribe tu nombre, **firma con el dedo** en el recuadro, marca que aceptas y toca «Aceptar y firmar». Si no, toca «No acepto».
+- Ya firmado, puedes abrir la constancia para imprimirla o guardarla en PDF. La clínica te contacta para la fecha.
+
 ## Paquetes
 
 - Algunos servicios y productos se venden en **paquete**: pagas una vez y los vas usando (por ejemplo, varias sesiones de rehabilitación). En tu app, Inicio → **Paquetes** ves cuánto le queda a cada mascota y hasta cuándo vale.

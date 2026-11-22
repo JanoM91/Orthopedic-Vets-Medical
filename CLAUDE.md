@@ -60,6 +60,15 @@ Proyecto de Exkalibur Consulting. Operación: `docs/OPERACION.md`. Arranque de u
 - `far-presentaciones.titulo` («Producto · presentación») lo mantienen los hooks de presentaciones y productos; es su `useAsTitle`.
 - Pruebas: `npm run test:paquetes` (después de clínica y estética; con farmacia también prueba las entregas).
 
+## Reglas de la Cirugía (ruta ortopédica; docs/CLINICA.md)
+
+- `cir-presupuestos` y `cir-consentimientos` (prefijo `cir-` en `esColeccionClinica`) solo los escribe `lib/clinica/cirugia.ts` (API genérica 403). El global `cirugia-configuracion` (texto base del consentimiento y vigencia) lo edita «Configurar agenda».
+- El tutor firma por la liga con token (`/presupuesto/<id>/<token>`, `app/api/presupuesto/[id]/[token]`) sin cuenta; el token nunca sale por la API genérica (`access.read: () => false`) y se borra al regresar a borrador o cancelar. Solo el equipo recibe `liga`.
+- Un consentimiento es **inmutable** y guarda el texto exacto, el resumen, la firma y la huella SHA-256. Nunca recalcules lo firmado desde el presupuesto o desde el texto base actual.
+- Una cita con `presupuesto` cobra el total del presupuesto al finalizar y no se liga a paquetes. Nunca calcular ni sugerir dosis en ninguna fase de la ruta.
+- Firmas: PNG en `data:` con `MAX_FIRMA_BASE64` (`lib/clinica/firma.ts`); el lienzo es `components/FirmaLienzo.tsx`.
+- Pruebas: `npm run test:cirugia` (después de `test:clinica`).
+
 ## Reglas de la Farmacia (docs/FARMACIA.md y docs/FARMACIA-PROMPT.md)
 
 - Colecciones `far-*` y globales `farmacia-configuracion` e `instalacion-configuracion` tienen reglas propias (`collections/farmacia/acceso.ts`) y **no** se envuelven con `protegerColeccion`. Solo el equipo entra; la tienda tiene su propia API pública (`/api/tienda`).

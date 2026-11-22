@@ -198,3 +198,19 @@ Decisiones de Jano (21-nov-2026): **saldo de usos** (se cobra una vez y se va us
 - **Pruebas**: `npm run test:paquetes` (después de `test:clinica`, `test:estetica` y, para los productos, `test:farmacia`).
 - Migración `20261121_205724_paquetes` (tablas `paquetes`, `paq_vendidos`, `paq_usos` con RLS; columnas `citas.paquete`, `solicitudes.paquete/cliente/mascota_ficha`, `far_presentaciones.titulo`; estado «vendida» en solicitudes).
 - **Pendiente**: pago en línea del paquete (cuando Mercado Pago esté activo), deshacer un uso registrado por error, aviso al tutor cuando su paquete esté por vencer.
+
+## Ruta ortopédica · fase 1: presupuesto de cirugía y consentimiento (21-nov-2026)
+
+Decisiones de Jano (21-nov-2026): la ruta ortopédica va en 4 fases (presupuesto y consentimiento → cirugía y anestesia → hospitalización → rehabilitación); se empieza por el presupuesto; el tutor firma **con el dedo** en su celular o en una tableta de la clínica; la clínica opera y hospitaliza en sus instalaciones (falta encender el recurso «Quirófano» en el panel).
+
+- **Expediente → pestaña Cirugía** (`components/admin/clinica/Cirugia.tsx`): la ven «Ver expediente» o «Agenda». El médico («Escribir expediente») arma el presupuesto: procedimiento, médico a cargo, qué se va a hacer (lo lee el tutor), riesgos particulares (entran al consentimiento), indicaciones previas, conceptos (del catálogo de servicios o libres; el importe y el total los calcula el servidor) y anticipo opcional. Se guarda en **borrador** y solo así se edita.
+- **Enviar al tutor**: pasa a «enviado», vence en N días (Clínica → «Cirugía: presupuestos y consentimiento»), genera una liga con token de 48 hex `/presupuesto/<id>/<token>`, manda correo si el tutor acepta avisos y deja el botón de WhatsApp con la liga. «Regresar a borrador» (enviado o rechazado) invalida la liga; al volver a enviarlo sale otra.
+- **El tutor** abre la liga sin cuenta (también sale en «Pendientes» de su app): ve el detalle, las indicaciones y el consentimiento ya llenado, escribe su nombre, firma con el dedo (`components/FirmaLienzo.tsx`, PNG) y marca que acepta; o lo rechaza con un motivo. La clínica recibe correo en ambos casos.
+- **Firmar aquí** (tableta en la clínica): «Agenda» o «Escribir expediente»; queda quién lo recibió (`testigo`). Se puede firmar aun en borrador.
+- **Consentimiento** (`cir-consentimientos`, folio `CON-`): guarda el texto exacto con el nombre de quien firmó, el resumen del presupuesto (JSON), la firma, vía (app o clínica), fecha y hora, IP, navegador y una **huella SHA-256** de todo. Inmutable (API genérica 403). Cambiar el texto base no cambia lo ya firmado.
+- **Texto base** (global `cirugia-configuracion`): borrador genérico con `{{tutor}}`, `{{mascota}}`, `{{especie}}`, `{{procedimiento}}`, `{{riesgos}}`, `{{clinica}}`, `{{medico}}`, `{{total}}` y `{{fecha}}`. **Debe revisarlo la clínica con su asesor legal.**
+- **Agendar cirugía**: con el presupuesto aceptado, el botón abre la agenda con la mascota y el presupuesto (`?presupuesto=`). La cita guarda `citas.presupuesto` (no se liga a paquetes); un presupuesto tiene una sola cirugía vigente; al **finalizar** se cobra en Finanzas el **total del presupuesto** (no el precio del servicio).
+- **Imprimible**: presupuesto + consentimiento + firma + huella (`/api/clinica/presupuestos/:id/imprimir` y `?imprimir=1` en la liga del tutor).
+- Código: `lib/clinica/cirugia.ts` (todo se escribe ahí; candado por presupuesto `6 600 000 + id`), `collections/clinica/cirugia.ts`, `app/(sitio)/presupuesto/[id]/[token]`, `app/api/presupuesto/[id]/[token]/route.ts`. Pruebas: `npm run test:cirugia`.
+- Migración `20261121_235641_cirugia_presupuesto` (tablas con RLS y `citas.presupuesto`).
+- **Siguientes fases**: cirugía y anestesia (hoja quirúrgica, signos vitales; nunca cálculo de dosis), hospitalización, rehabilitación. Pendiente: anticipo cobrado en línea, aviso de vencimiento.

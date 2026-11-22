@@ -129,3 +129,12 @@ Un paquete se cobra una vez y se va usando (por ejemplo, 10 sesiones de rehabili
 3. **Si está en la clínica**: «Firmar aquí» y dale la tableta: lee, escribe su nombre y firma con el dedo.
 4. **Ya aceptado**: «Agendar cirugía». Al finalizar esa cita se cobra el total del presupuesto en Finanzas.
 5. «Imprimir» da el presupuesto con el consentimiento y la firma. El texto del consentimiento se edita en Clínica → «Cirugía: presupuestos y consentimiento» (revísalo con tu asesor).
+
+## Hoja quirúrgica (en el quirófano)
+
+1. En la agenda abre la cita de la cirugía → **«Hoja quirúrgica»**. Si es una urgencia sin cita: expediente → Cirugía → «+ Hoja de urgencia».
+2. Llena equipo, ASA, peso y ayuno, y toca «Guardar».
+3. En **Tiempos**, toca «Ahora» en cada momento (o escribe la hora).
+4. **Fármacos**: medicamento, la dosis tal como la indicó el médico, vía y hora → «Agregar». La plataforma no calcula dosis.
+5. **Signos**: captura FC, FR, SpO₂, temperatura, presión… → «Agregar toma» (sin hora usa la de ahora). Las gráficas se arman solas.
+6. Al terminar, escribe lo realizado, implantes y las indicaciones, «Guardar» y **«Cerrar hoja»**. Cerrada ya no se cambia. «Imprimir» da la hoja completa.

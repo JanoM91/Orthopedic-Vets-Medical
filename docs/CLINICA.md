@@ -214,3 +214,12 @@ Decisiones de Jano (21-nov-2026): la ruta ortopédica va en 4 fases (presupuesto
 - Código: `lib/clinica/cirugia.ts` (todo se escribe ahí; candado por presupuesto `6 600 000 + id`), `collections/clinica/cirugia.ts`, `app/(sitio)/presupuesto/[id]/[token]`, `app/api/presupuesto/[id]/[token]/route.ts`. Pruebas: `npm run test:cirugia`.
 - Migración `20261121_235641_cirugia_presupuesto` (tablas con RLS y `citas.presupuesto`).
 - **Siguientes fases**: cirugía y anestesia (hoja quirúrgica, signos vitales; nunca cálculo de dosis), hospitalización, rehabilitación. Pendiente: anticipo cobrado en línea, aviso de vencimiento.
+
+## Ruta ortopédica · fase 2: hoja quirúrgica y de anestesia (22-nov-2026)
+
+- **Dónde**: en la agenda, la cita de la cirugía (con presupuesto, o cualquier cita en «llegada» o «en atención») trae **«Hoja quirúrgica»**, que la abre o la retoma; en el expediente → Cirugía están las hojas de la mascota y **«+ Hoja de urgencia»** (sin cita). Pantalla `/admin/clinica/cirugia/<id>` (`components/admin/clinica/HojaQuirurgica.tsx`), pensada para una tableta en el quirófano.
+- **Qué registra** (`cir-hojas`, folio `HQ-`; la abre y llena «Escribir expediente», la lee «Ver expediente»): equipo (cirujano, anestesia, ayudantes), ASA, urgencia, peso de hoy (sugiere el último registrado), ayuno, valoración preanestésica; **tiempos** con botón «Ahora» (entrada, inicio de anestesia, inicio y fin de cirugía, extubación, salida); **fármacos aplicados** (momento, medicamento, dosis **tal como la escribe el médico**, vía, hora, quién lo capturó); **monitoreo** (FC, FR, SpO₂, EtCO₂, temperatura, PAS/PAD/PAM, nota) con gráficas; procedimiento realizado, hallazgos, implantes, complicaciones, recuperación e indicaciones postoperatorias.
+- **Avisos**: muestra alergias y alertas de manejo de la mascota, y si la cirugía no tiene consentimiento firmado.
+- **Reglas** (`lib/clinica/hojaQuirurgica.ts`): fármacos y signos se agregan renglón por renglón con candado por hoja (`6 700 000 + id`); un renglón capturado por error se quita solo con la hoja abierta; los signos tienen rangos de **captura** (evitan teclazos, no interpretan nada) y se redondean a 2 decimales. **Nunca se calcula, sugiere ni valida una dosis.** Para **cerrar** se piden cirujano, lo realizado e inicio y fin de la cirugía; cerrada es inmutable. Una hoja por cita.
+- **Imprimible**: `/api/clinica/hojas/<id>/imprimir` con tablas y gráficas.
+- Migración `20261122_041118_cirugia_hoja` (tablas con RLS). Pruebas en `test:cirugia`.

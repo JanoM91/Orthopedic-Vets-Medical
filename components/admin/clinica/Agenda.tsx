@@ -415,6 +415,36 @@ function useReloj(activo: boolean): number {
   return t
 }
 
+/** Abre (o retoma) la hoja quirúrgica de la cita (ruta ortopédica, fase 2). */
+function BotonHoja({ citaId }: { citaId: number }) {
+  const { base } = useClinica()
+  const router = useRouter()
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  return (
+    <>
+      <Boton
+        chico
+        disabled={ocupado}
+        onClick={async () => {
+          setOcupado(true)
+          setError(null)
+          try {
+            const h = await api.post<{ id: number }>('hojas', { citaId })
+            router.push(`${base}/cirugia/${h.id}`)
+          } catch (e) {
+            setError(e instanceof Error ? e.message : 'No se pudo abrir la hoja.')
+            setOcupado(false)
+          }
+        }}
+      >
+        Hoja quirúrgica
+      </Boton>
+      {error && <span className="fz-chico" role="alert">{error}</span>}
+    </>
+  )
+}
+
 export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: CitaVista; catalogo: Catalogo; onCambio: () => void; compacto?: boolean }) {
   const { base, catalogo: cat } = useClinica()
   const router = useRouter()
@@ -593,6 +623,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
                 Abrir nota
               </Link>
             )}
+            {cat.permisos.escribirExpediente && (cita.presupuesto || ['llegada', 'atencion'].includes(cita.estado)) && <BotonHoja citaId={cita.id} />}
             {['solicitada', 'confirmada'].includes(cita.estado) && (
               <Boton chico onClick={() => setMoviendo(true)}>
                 Reprogramar
@@ -623,6 +654,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
                 Registrar cobro
               </Link>
             )}
+            {cat.permisos.escribirExpediente && cita.presupuesto && <BotonHoja citaId={cita.id} />}
           </div>
         </div>
       )}

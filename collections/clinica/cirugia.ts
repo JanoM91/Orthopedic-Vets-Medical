@@ -149,3 +149,86 @@ export const CirugiaConfiguracion: GlobalConfig = {
     { name: 'vigenciaDias', label: 'Vigencia de un presupuesto (días)', type: 'number', required: true, defaultValue: 15, min: 1, max: 180 },
   ],
 }
+
+/**
+ * RUTA ORTOPÉDICA · FASE 2: HOJA QUIRÚRGICA Y DE ANESTESIA (nov-2026).
+ * Una por cirugía (normalmente ligada a su cita; en urgencias puede abrirse
+ * sin cita). Equipo, valoración preanestésica (ASA), fármacos aplicados TAL
+ * COMO LOS ESCRIBE EL MÉDICO (la plataforma nunca calcula ni sugiere dosis),
+ * tiempos, monitoreo de signos y lo realizado. Al «cerrarla» queda inmutable.
+ * Solo la escribe `lib/clinica/hojaQuirurgica.ts` (API genérica 403).
+ */
+export const MOMENTOS_FARMACO = [
+  { label: 'Premedicación', value: 'premedicacion' },
+  { label: 'Inducción', value: 'induccion' },
+  { label: 'Mantenimiento', value: 'mantenimiento' },
+  { label: 'Analgesia', value: 'analgesia' },
+  { label: 'Antibiótico', value: 'antibiotico' },
+  { label: 'Fluidos', value: 'fluidos' },
+  { label: 'Otro', value: 'otro' },
+] as const
+export const CLASES_ASA = ['I', 'II', 'III', 'IV', 'V'] as const
+
+export const CirHojas: CollectionConfig = {
+  slug: 'cir-hojas',
+  typescript: { interface: 'CirHoja' },
+  labels: { singular: 'Hoja quirúrgica', plural: 'Hojas quirúrgicas' },
+  admin: { group: 'Clínica', useAsTitle: 'procedimiento', hidden: true },
+  defaultSort: '-createdAt',
+  access: { read: equipoCon('verExpediente'), create: nadie, update: nadie, delete: nadie },
+  fields: [
+    { name: 'folio', type: 'text', virtual: true, admin: { readOnly: true }, hooks: { afterRead: [folioDesdeId('HQ')] } },
+    { name: 'cita', type: 'relationship', relationTo: 'citas', unique: true },
+    { name: 'mascota', type: 'relationship', relationTo: 'mascotas', required: true, index: true },
+    { name: 'presupuesto', type: 'relationship', relationTo: 'cir-presupuestos' },
+    { name: 'procedimiento', type: 'text', required: true, maxLength: 160 },
+    { name: 'fecha', type: 'text', required: true, index: true },
+    { name: 'estado', type: 'select', required: true, defaultValue: 'abierta', index: true, options: [{ label: 'Abierta', value: 'abierta' }, { label: 'Cerrada', value: 'cerrada' }] },
+    { name: 'cirujano', type: 'relationship', relationTo: 'users' },
+    { name: 'anestesista', type: 'relationship', relationTo: 'users' },
+    { name: 'ayudantes', type: 'text', maxLength: 200 },
+    { name: 'asa', type: 'select', options: CLASES_ASA.map((x) => ({ label: `ASA ${x}`, value: x })) },
+    { name: 'urgencia', type: 'checkbox', defaultValue: false },
+    { name: 'pesoKg', type: 'number', min: 0, max: 200 },
+    { name: 'ayunoHoras', type: 'number', min: 0, max: 72 },
+    { name: 'valoracion', type: 'textarea', maxLength: 3000 },
+    {
+      name: 'farmacos',
+      type: 'array',
+      maxRows: 80,
+      fields: [
+        { name: 'momento', type: 'select', required: true, options: [...MOMENTOS_FARMACO] },
+        { name: 'medicamento', type: 'text', required: true, maxLength: 120 },
+        { name: 'dosis', type: 'text', required: true, maxLength: 80 },
+        { name: 'via', type: 'text', maxLength: 40 },
+        { name: 'hora', type: 'text', required: true },
+        { name: 'por', type: 'text' },
+      ],
+    },
+    {
+      name: 'tiempos',
+      type: 'group',
+      fields: ['entrada', 'inicioAnestesia', 'inicioCirugia', 'finCirugia', 'extubacion', 'salida'].map((name) => ({ name, type: 'text' as const })),
+    },
+    {
+      name: 'signos',
+      type: 'array',
+      maxRows: 300,
+      fields: [
+        { name: 'hora', type: 'text', required: true },
+        ...['fc', 'fr', 'spo2', 'etco2', 'temp', 'pas', 'pad', 'pam'].map((name) => ({ name, type: 'number' as const })),
+        { name: 'notas', type: 'text', maxLength: 200 },
+        { name: 'por', type: 'text' },
+      ],
+    },
+    { name: 'realizado', type: 'textarea', maxLength: 4000 },
+    { name: 'hallazgos', type: 'textarea', maxLength: 3000 },
+    { name: 'implantes', type: 'textarea', maxLength: 1500 },
+    { name: 'complicaciones', type: 'textarea', maxLength: 2000 },
+    { name: 'recuperacion', type: 'textarea', maxLength: 2000 },
+    { name: 'indicacionesPost', type: 'textarea', maxLength: 3000 },
+    { name: 'creadoPor', type: 'relationship', relationTo: 'users' },
+    { name: 'cerradaPor', type: 'relationship', relationTo: 'users' },
+    { name: 'cerradaEn', type: 'date' },
+  ],
+}

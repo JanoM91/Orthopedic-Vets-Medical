@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
 import type { PresupuestoVista, RenglonPresupuesto } from '../../../lib/clinica/cirugia'
+import type { HojaBreve } from '../../../lib/clinica/hojaQuirurgica'
 import type { ServicioVista } from '../../../lib/clinica/tipos'
 import { FirmaLienzo } from '../../FirmaLienzo'
 import { api, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, fecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
@@ -53,8 +55,81 @@ export function CirugiaMascota({ mascotaId, mascotaNombre, activa }: { mascotaId
       {datos.presupuestos.map((p) => (
         <TarjetaPresupuesto key={p.id} p={p} puedeEditar={datos.puedeEditar} puedeFirmar={datos.puedeFirmar} hrefAgendar={`${base}/agenda?mascota=${mascotaId}&nueva=1&presupuesto=${p.id}`} onEditar={() => setEditar(p)} onCambio={recargar} />
       ))}
+      <HojasMascota mascotaId={mascotaId} activa={activa} puedeEscribir={catalogo.permisos.escribirExpediente} />
       {editar && <EditorPresupuesto mascotaId={mascotaId} existente={editar === 'nuevo' ? null : editar} equipo={catalogo.equipo} usuarioId={catalogo.usuario.id} onCerrar={() => setEditar(null)} onGuardado={() => (setEditar(null), recargar())} />}
     </div>
+  )
+}
+
+/** Hojas quirúrgicas de la mascota y «Hoja de urgencia» (cirugía sin cita). */
+function HojasMascota({ mascotaId, activa, puedeEscribir }: { mascotaId: number; activa: boolean; puedeEscribir: boolean }) {
+  const { base, catalogo } = useClinica()
+  const router = useRouter()
+  const hojas = useCarga(() => (catalogo.permisos.verExpediente ? api.get<HojaBreve[]>(`mascotas/${mascotaId}/hojas`) : Promise.resolve([] as HojaBreve[])), [mascotaId])
+  const [urgencia, setUrgencia] = useState(false)
+  const [procedimiento, setProcedimiento] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  if (!catalogo.permisos.verExpediente) return null
+  return (
+    <section className="fz-stack fz-stack--chico" aria-labelledby="t-hojas">
+      <div className="fz-entre">
+        <h3 className="fz-h2" id="t-hojas">
+          Hojas quirúrgicas
+        </h3>
+        {puedeEscribir && activa && (
+          <Boton chico onClick={() => setUrgencia(true)}>
+            + Hoja de urgencia
+          </Boton>
+        )}
+      </div>
+      {(hojas.datos ?? []).length === 0 ? (
+        <p className="fz-tenue fz-chico">Sin hojas. Se abren desde la cita de la cirugía en la agenda («Hoja quirúrgica»).</p>
+      ) : (
+        <div className="fz-tarjeta fz-lista">
+          {(hojas.datos ?? []).map((h) => (
+            <Link key={h.id} href={`${base}/cirugia/${h.id}`} className="fz-fila cl-fila-boton">
+              <span className="fz-fila__main">
+                <span className="fz-fila__t1">{h.procedimiento}</span>
+                <span className="fz-fila__t2">
+                  {h.folio} · {fecha(h.fecha)} · {h.estado === 'cerrada' ? 'cerrada' : 'abierta'}
+                  {h.cita ? ` · ${h.cita}` : ' · urgencia'}
+                  {h.presupuesto ? ` · ${h.presupuesto}` : ''}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+      {urgencia && (
+        <Modal titulo="Hoja de urgencia" onCerrar={() => setUrgencia(false)}>
+          <form
+            className="fz-stack fz-stack--chico"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              setError(null)
+              try {
+                const h = await api.post<{ id: number }>('hojas', { mascotaId, procedimiento })
+                router.push(`${base}/cirugia/${h.id}`)
+              } catch (x) {
+                setError(x instanceof Error ? x.message : 'No se pudo abrir.')
+              }
+            }}
+          >
+            <p className="fz-chico fz-tenue">Para una cirugía que no está en la agenda. Si hay cita, ábrela desde la cita.</p>
+            <Campo etiqueta="Procedimiento *">
+              <input className="fz-input" value={procedimiento} maxLength={160} onChange={(e) => setProcedimiento(e.target.value)} required autoFocus />
+            </Campo>
+            <ErrorForm error={error} />
+            <div className="fz-acciones-fin">
+              <Boton onClick={() => setUrgencia(false)}>Todavía no</Boton>
+              <button type="submit" className="fz-btn fz-btn--teal">
+                Abrir hoja
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </section>
   )
 }
 

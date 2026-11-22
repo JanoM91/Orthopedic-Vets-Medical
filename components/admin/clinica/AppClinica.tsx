@@ -14,6 +14,7 @@
  *   agenda?nueva=1          abre «nueva cita» sin mascota (acción rápida del tablero «Hoy»)
  *   agenda?…&hora=&recurso= «nueva cita» con hora y espacio ya puestos
  *   agenda?mascota=&nueva=1&presupuesto=   «nueva cita» de la cirugía de un presupuesto aceptado
+ *   cirugia/:id             hoja quirúrgica y de anestesia
  *   mascotas/nueva?volver=agenda&dia=&hora=&recurso=
  *                           alta desde «Nueva cita»: al guardar regresa a la agenda
  *                           con la mascota nueva, la misma hora y el mismo espacio
@@ -33,6 +34,7 @@ import { FichaCliente, FormularioCliente } from './Cliente'
 import Importar from './Importar'
 import Inicio from './Inicio'
 import { Expediente, FormularioMascota } from './Mascota'
+import { HojaQuirurgica } from './HojaQuirurgica'
 
 type Props = {
   catalogo: CatalogoClinica
@@ -76,6 +78,7 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
     )
   }
   else if (seccion === 'mascotas' && numero(id)) pantalla = <Expediente key={id} id={numero(id)!} pestana={query.ver ?? null} />
+  else if (seccion === 'cirugia' && numero(id)) pantalla = p.verExpediente ? <HojaQuirurgica key={id} id={numero(id)!} /> : <Aviso>Tu rol no incluye el expediente.</Aviso>
   else if (seccion === 'importar') pantalla = p.importar ? <Importar /> : <Aviso>Tu rol no incluye importar archivos.</Aviso>
   else if (seccion === 'estetica') pantalla = catalogo.estetica?.activa && p.estetica ? <Estetica diaInicial={query.dia ?? null} /> : <Aviso>{catalogo.estetica?.activa ? 'Tu rol no incluye la estética.' : 'El módulo de Estética está apagado (Sistema → Instalación: módulos).'}</Aviso>
   else if (seccion === 'agenda') pantalla = p.agenda ? <Agenda diaInicial={query.dia ?? null} mascotaInicial={numero(query.mascota)} nuevaInicial={query.nueva === '1'} horaInicial={query.hora ?? null} recursoInicial={numero(query.recurso)} presupuestoInicial={numero(query.presupuesto)} /> : <Aviso>Tu rol no incluye la agenda.</Aviso>

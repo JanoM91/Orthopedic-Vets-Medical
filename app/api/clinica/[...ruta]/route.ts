@@ -45,6 +45,7 @@ import {
   subirDocumento,
   vincular,
 } from '@/lib/clinica/servicio'
+import { abrirHoja, agregarFarmaco, agregarSignos, cerrarHoja, guardarHoja, hojaQuirurgica, hojasDeMascota, htmlHoja, quitarRenglon } from '@/lib/clinica/hojaQuirurgica'
 import { cancelarPresupuesto, enviarPresupuesto, firmarEnClinica, guardarPresupuesto, htmlPresupuestoEquipo, presupuesto, presupuestosDeMascota, regresarABorrador } from '@/lib/clinica/cirugia'
 import { cancelarPaquete, entregarProducto, paquetesDeMascota, portalPaquetes, registrarUso, venderPaquete } from '@/lib/clinica/paquetes'
 import { ErrorSolicitud, portalSolicitarPaquete } from '@/lib/sitio/solicitudes'
@@ -159,6 +160,15 @@ import {
  *   POST presupuestos/:id/enviar | borrador | cancelar { motivo }
  *   POST presupuestos/:id/firmar               { nombre, firma, acepto } firma en la clínica («Agenda» o «Escribir expediente»)
  *   (El tutor firma por /api/presupuesto/:id/:token, sin cuenta.)
+ *
+ * CIRUGÍA · HOJA QUIRÚRGICA Y DE ANESTESIA (fase 2; ver lib/clinica/hojaQuirurgica.ts):
+ *   POST hojas                                 { citaId } o { mascotaId, procedimiento } abrir (o la que ya existe)
+ *   GET  hojas/:id | hojas/:id/imprimir        («Ver expediente»)
+ *   GET  mascotas/:id/hojas
+ *   POST hojas/:id                             guardar campos (solo abierta)
+ *   POST hojas/:id/farmacos | signos           agregar un renglón (lo que escribe el médico; nunca se calcula dosis)
+ *   POST hojas/:id/quitar                      { lista, indice } quitar un renglón capturado por error
+ *   POST hojas/:id/cerrar                      queda inmutable
  *
  * FOTOS (equipo o tutor, nov-2026):
  *   GET  fotos/mascotas/:id                    la foto (equipo con «ver pacientes» o el tutor de esa mascota)
@@ -328,6 +338,9 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'mascotas' && b && c === 'presupuestos') return json(await presupuestosDeMascota(ctx, idDeRuta(b)))
     if (a === 'presupuestos' && b && !c) return json(await presupuesto(ctx, idDeRuta(b)))
     if (a === 'presupuestos' && b && c === 'imprimir') return html(await htmlPresupuestoEquipo(ctx, idDeRuta(b)))
+    if (a === 'mascotas' && b && c === 'hojas') return json(await hojasDeMascota(ctx, idDeRuta(b)))
+    if (a === 'hojas' && b && !c) return json(await hojaQuirurgica(ctx, idDeRuta(b)))
+    if (a === 'hojas' && b && c === 'imprimir') return html(await htmlHoja(ctx, idDeRuta(b)))
     if (a === 'estetica' && !b) return json(await tableroEstetica(ctx, q.get('dia') ?? ctx.hoy))
     if (a === 'estetica' && b === 'citas' && c && ruta[3] === 'ficha') return json(await fichaEstetica(ctx, idDeRuta(c)))
   } else {
@@ -342,6 +355,15 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'agenda' && b === 'arranque') return json(await arranqueAgenda(ctx))
     if (a === 'mascotas' && b && c === 'paquetes') return json(await venderPaquete(ctx, idDeRuta(b), await leerJson(req)), 201)
     if (a === 'mascotas' && b && c === 'presupuestos') return json(await guardarPresupuesto(ctx, idDeRuta(b), await leerJson(req)), 201)
+    if (a === 'hojas' && !b) return json(await abrirHoja(ctx, await leerJson(req)), 201)
+    if (a === 'hojas' && b) {
+      const id = idDeRuta(b)
+      if (!c) return json(await guardarHoja(ctx, id, await leerJson(req)))
+      if (c === 'farmacos') return json(await agregarFarmaco(ctx, id, await leerJson(req)))
+      if (c === 'signos') return json(await agregarSignos(ctx, id, await leerJson(req)))
+      if (c === 'quitar') return json(await quitarRenglon(ctx, id, await leerJson(req)))
+      if (c === 'cerrar') return json(await cerrarHoja(ctx, id))
+    }
     if (a === 'presupuestos' && b) {
       const id = idDeRuta(b)
       if (!c) return json(await guardarPresupuesto(ctx, (await presupuesto(ctx, id)).mascota.id, await leerJson(req), id))

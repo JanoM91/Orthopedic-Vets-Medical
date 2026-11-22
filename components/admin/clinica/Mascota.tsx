@@ -14,6 +14,7 @@ import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
 import { EsteticaExpediente } from './Estetica'
 import { PaquetesMascota } from './Paquetes'
+import { CirugiaMascota } from './Cirugia'
 import {
   api, Avatar, Aviso, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, ESPECIE_LABEL, ESTERIL_LABEL, etiquetaDe, fecha, hoyISO, Icono, InputFecha, Modal, momento, Pastilla, SEXO_LABEL, telefonoBonito,
   TIPO_CARTILLA_LABEL, useCarga, useClinica,
@@ -307,8 +308,8 @@ export function FormularioMascota({ existente, clienteInicial, onGuardado, onCan
 
 /* ═══════════════════════════ expediente ═══════════════════════════ */
 
-type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'recetas' | 'documentos' | 'citas' | 'paquetes'
-const PESTANAS: Pestana[] = ['resumen', 'cartilla', 'pesos', 'notas', 'recetas', 'documentos', 'citas', 'paquetes']
+type Pestana = 'resumen' | 'cartilla' | 'pesos' | 'notas' | 'recetas' | 'documentos' | 'citas' | 'paquetes' | 'cirugia'
+const PESTANAS: Pestana[] = ['resumen', 'cartilla', 'pesos', 'notas', 'recetas', 'documentos', 'citas', 'paquetes', 'cirugia']
 
 /**
  * Foto de la mascota en el expediente (nov-2026): la misma que ve el tutor en
@@ -431,6 +432,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
     ...(datos.notas ? ([['recetas', 'Recetas', null]] as [Pestana, string, number | null][]) : []),
     ['documentos', 'Documentos', datos.documentos.length],
     ...(p.agenda ? ([['citas', 'Citas', null], ['paquetes', 'Paquetes', null]] as [Pestana, string, number | null][]) : []),
+    ...(p.verExpediente || p.agenda ? ([['cirugia', 'Cirugía', null]] as [Pestana, string, number | null][]) : []),
   ]
 
   return (
@@ -633,6 +635,7 @@ export function Expediente({ id, pestana }: { id: number; pestana: string | null
       {tab === 'recetas' && datos.notas && <RecetasMascota mascotaId={m.id} puedeEmitir={p.escribirExpediente} notas={datos.notas.map((n) => ({ id: n.id, titulo: `${n.fecha} · ${n.titulo}` }))} rutaFarmacia={`${rutaAdmin}/farmacia`} />}
       {tab === 'documentos' && <Documentos mascotaId={m.id} lista={datos.documentos} onCambio={recargar} />}
       {tab === 'citas' && <CitasMascota mascotaId={m.id} onCambio={citas.recargar} />}
+      {tab === 'cirugia' && (p.verExpediente || p.agenda) && <CirugiaMascota mascotaId={m.id} mascotaNombre={m.nombre} activa={m.estado === 'activo'} />}
       {tab === 'paquetes' && p.agenda && <PaquetesMascota mascotaId={m.id} mascotaNombre={m.nombre} activa={m.estado === 'activo'} />}
     </div>
   )

@@ -240,3 +240,16 @@
 .cl-paq-barra > span.is-apartado { background: #94a3b8; }
 .cl-paq-usos summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
 .cl-paq-usos ul, .cl-paq-contenido { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* ───────── Cirugía: presupuesto y consentimiento (nov-2026) ───────── */
+.cl-pre-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.cl-pre-acciones .fz-btn { text-decoration: none; }
+.cl-pre-consentimiento { white-space: pre-line; max-height: 38vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--mx-borde, #e2e8f0); border-radius: 10px; background: #f8fafc; font-size: 15px; line-height: 1.55; }
+.cl-pre-renglones { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.cl-pre-renglon { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(160px, 2fr) 72px 110px 40px; gap: 6px; align-items: center; }
+.cl-pre-num { text-align: right; }
+.cl-pre-totalform { font-size: 17px; margin: 0; align-self: flex-end; }
+@media (max-width: 720px) {
+  .cl-pre-renglon { grid-template-columns: 1fr 1fr 40px; padding-bottom: 8px; border-bottom: 1px solid var(--mx-borde, #e2e8f0); }
+  .cl-pre-renglon > select, .cl-pre-renglon > input[aria-label='Concepto'] { grid-column: 1 / -1; }
+}

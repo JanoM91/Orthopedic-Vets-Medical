@@ -15,6 +15,7 @@ import { iconoDeServicio } from '../iconosServicio'
 import { fechaLarga, horaLegible } from '../whatsapp'
 import { avisarCita } from './avisos'
 import { consumirConCita, paqueteParaCita } from './paquetes'
+import { revisarPresupuestoParaCita } from './cirugia'
 import { adicionales as listaAdicionales, type AdicionalVista, configEstetica, type ConfigEstetica, cotizar, type Cotizacion, datosCita, esServicioEstetica, NOMBRE_TALLA, porTalla, precioDesde, tallaDeMascota } from './estetica'
 import { type Ctx, type CtxTutor, ErrorClinica, idDe, urlFoto, vistaMascota } from './servicio'
 import type { CitaVista, ConfiguracionAgenda, DiaCalendario, DisponibilidadDia, RecursoVista, ServicioVista } from './tipos'
@@ -134,6 +135,7 @@ export function vistaCita(c: Cita, hoy: string): CitaVista {
       c.estetica?.cotizada
         ? { talla: c.estetica.talla ?? null, nombreTalla: c.estetica.talla ? NOMBRE_TALLA[c.estetica.talla] : null, precioBase: c.estetica.precioBase ?? null, total: c.estetica.total ?? null, adicionales: (c.estetica.adicionales ?? []).map((a) => ({ nombre: a.nombre, precio: a.precio })) }
         : null,
+    presupuesto: idDe(c.presupuesto) ? { id: idDe(c.presupuesto)!, folio: folioParaId('PRE', idDe(c.presupuesto)!), procedimiento: typeof c.presupuesto === 'object' && c.presupuesto ? c.presupuesto.procedimiento : null } : null,
     paquete: idDe(c.paquete) ? { id: idDe(c.paquete)!, folio: folioParaId('PQV', idDe(c.paquete)!), nombre: typeof c.paquete === 'object' && c.paquete ? c.paquete.nombre : null } : null,
     esHoy: c.dia === hoy,
     siguientes: TRANSICIONES[c.estado as EstadoCita] ?? [],
@@ -308,6 +310,8 @@ const esquemaNueva = z.object({
   adicionales: z.array(z.number().int().positive()).max(10).optional().default([]),
   /** Paquetes: `false` = no descontar esta cita del paquete de la mascota (solo el equipo). */
   usarPaquete: z.boolean().optional().default(true),
+  /** Ruta ortopédica: cirugía de un presupuesto aceptado (solo el equipo). */
+  presupuestoId: z.number().int().positive().nullable().optional(),
 })
 
 type Actor = { tipo: 'equipo'; user: User; nombre: string } | { tipo: 'tutor'; tutor: Tutor; clienteId: number; nombre: string }
@@ -366,8 +370,11 @@ async function crear(payload: Payload, actor: Actor, entrada: unknown, hoy: stri
 
   const creada = await conCandado(payload, actor, recursoId, async (req) => {
     revisarTraslape(await citasQueOcupan(payload, recursoId, d.data.dia, req), ini, fin)
+    /* Cirugía de un presupuesto aceptado: se cobra el presupuesto, no el servicio ni un paquete. */
+    const presupuesto = actor.tipo === 'equipo' && d.data.presupuestoId ? d.data.presupuestoId : null
+    if (presupuesto) await revisarPresupuestoParaCita(payload, presupuesto, mascota.id, req)
     /* Paquetes: la cita aparta un uso del paquete vigente con saldo de este servicio (el equipo puede no ligarla). */
-    const paquete = actor.tipo === 'tutor' || d.data.usarPaquete ? await paqueteParaCita(payload, mascota.id, servicio.id, d.data.dia, req) : null
+    const paquete = !presupuesto && (actor.tipo === 'tutor' || d.data.usarPaquete) ? await paqueteParaCita(payload, mascota.id, servicio.id, d.data.dia, req) : null
     return payload.create({
       collection: 'citas',
       req,
@@ -384,13 +391,14 @@ async function crear(payload: Payload, actor: Actor, entrada: unknown, hoy: stri
         duracionMin: duracion,
         ...(cot ? { estetica: datosCita(cot) } : {}),
         paquete,
+        presupuesto,
         inicio: ini.toISOString(),
         fin: fin.toISOString(),
         estado,
         origen: actor.tipo === 'tutor' ? 'portal' : 'panel',
         notasTutor: d.data.notasTutor || null,
         notasInternas: actor.tipo === 'equipo' ? d.data.notasInternas || null : null,
-        historial: [{ estado, fecha: new Date().toISOString(), por: actor.nombre, detalle: [actor.tipo === 'tutor' ? 'Pedida desde el portal' : 'Agendada en el panel', paquete ? `del paquete ${folioParaId('PQV', paquete)}` : null].filter(Boolean).join(', ') }],
+        historial: [{ estado, fecha: new Date().toISOString(), por: actor.nombre, detalle: [actor.tipo === 'tutor' ? 'Pedida desde el portal' : 'Agendada en el panel', paquete ? `del paquete ${folioParaId('PQV', paquete)}` : null, presupuesto ? `del presupuesto ${folioParaId('PRE', presupuesto)}` : null].filter(Boolean).join(', ') }],
         creadoPor: actor.tipo === 'equipo' ? actor.user.id : null,
         creadoPorTutor: actor.tipo === 'tutor' ? actor.tutor.id : null,
       },
@@ -482,7 +490,7 @@ export async function aplicarEstado(ctx: Ctx, id: number, entrada: unknown, extr
   let esteticaFinal: ReturnType<typeof datosCita> | null = null
   /* Paquetes: si la cita está ligada a un paquete con saldo, se descuenta el uso y no se cobra el servicio. */
   let delPaquete: string | null = null
-  if (d.data.estado === 'finalizada' && idDe(cita.paquete)) {
+  if (d.data.estado === 'finalizada' && idDe(cita.paquete) && !idDe(cita.presupuesto)) {
     const r = await consumirConCita(ctx.payload, ctx.user, cita, ctx.hoy)
     delPaquete = r.cubierta ? r.folio : null
   }
@@ -531,6 +539,29 @@ async function importeEstetica(ctx: Ctx, cita: Cita, servicio: Servicio): Promis
 async function registrarCargo(ctx: Ctx, cita: Cita, cubiertaPorPaquete = false): Promise<{ cargoId: number | null; estetica: ReturnType<typeof datosCita> | null }> {
   const servicio = await ctx.payload.findByID({ collection: 'servicios', id: idDe(cita.servicio)!, depth: 0, overrideAccess: true }).catch(() => null)
   if (!servicio) return { cargoId: null, estetica: null }
+  /* Cirugía de un presupuesto aceptado: se cobra el total del presupuesto (no el precio del servicio). */
+  const preId = idDe(cita.presupuesto)
+  if (preId) {
+    const pre = await ctx.payload.findByID({ collection: 'cir-presupuestos', id: preId, depth: 0, overrideAccess: true }).catch(() => null)
+    if (pre && pre.estado === 'aceptado' && pre.total > 0) {
+      const mascota = await ctx.payload.findByID({ collection: 'mascotas', id: idDe(cita.mascota)!, depth: 0, overrideAccess: true }).catch(() => null)
+      const cliente = cita.cliente ? await ctx.payload.findByID({ collection: 'clientes', id: idDe(cita.cliente)!, depth: 0, overrideAccess: true }).catch(() => null) : null
+      const areaId = idDe(servicio.area)
+      const r = await registrarEnFinanzas({ ...ctx, p: calcularPermisos({ esSuperadmin: true }, null) }, {
+        tipo: 'entrada',
+        importe: pre.total,
+        fechaReal: ctx.hoy,
+        estado: 'pendiente',
+        concepto: `${pre.procedimiento} · ${mascota?.nombre ?? 'mascota'} (presupuesto ${folioParaId('PRE', pre.id)})`,
+        categoria: idDe(servicio.categoriaFinanzas),
+        asignacion: areaId ? 'actividad' : 'pendiente',
+        actividad: areaId,
+        contraparte: cliente ? cliente.nombreCompleto || cliente.nombre : null,
+        notas: `Cita ${folioParaId('CIT', cita.id)} del ${cita.dia} ${cita.horaInicio}; total del presupuesto aceptado.`,
+      }, `cita-${cita.id}`)
+      return { cargoId: r.operacion.id, estetica: null }
+    }
+  }
   if (cubiertaPorPaquete) {
     /* El servicio ya se pagó con el paquete: solo se cobran los adicionales de estética que se hayan pactado. */
     const ads = cita.estetica?.adicionales ?? []

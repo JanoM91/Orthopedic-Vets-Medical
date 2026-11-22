@@ -121,3 +121,11 @@ Un paquete se cobra una vez y se va usando (por ejemplo, 10 sesiones de rehabili
 3. **Usarlo**: al agendar una cita de un servicio del paquete, la cita se descuenta sola al **finalizarla** (no se cobra el servicio). Si el servicio se dio sin cita, usa «Registrar uso». Los productos se dan con «Entregar» (se descuentan del inventario).
 4. **Si lo pidieron desde el sitio o la app**: llega como solicitud (Clínica → Solicitudes de cita). Escríbeles por WhatsApp; si ya tienen ficha, «Vender el paquete» te lleva directo a venderlo.
 5. **Cancelarlo**: solo si todavía no tiene usos; se anula su entrada en Finanzas.
+
+## Presupuesto de cirugía y consentimiento
+
+1. **Armarlo** (médico): expediente de la mascota → **Cirugía** → «+ Nuevo presupuesto». Procedimiento, qué se va a hacer, riesgos de este caso, indicaciones, conceptos con precio y anticipo. Se guarda como borrador.
+2. **Enviarlo**: «Enviar al tutor». Le llega un correo con la liga (si tiene correo) y tú puedes mandarla con «Mandar liga» por WhatsApp. El tutor firma desde su celular, sin cuenta.
+3. **Si está en la clínica**: «Firmar aquí» y dale la tableta: lee, escribe su nombre y firma con el dedo.
+4. **Ya aceptado**: «Agendar cirugía». Al finalizar esa cita se cobra el total del presupuesto en Finanzas.
+5. «Imprimir» da el presupuesto con el consentimiento y la firma. El texto del consentimiento se edita en Clínica → «Cirugía: presupuestos y consentimiento» (revísalo con tu asesor).

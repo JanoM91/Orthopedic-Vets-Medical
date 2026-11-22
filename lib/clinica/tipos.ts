@@ -278,6 +278,8 @@ export type CitaVista = {
   cargoFinanzas: number | null
   /** Estética: lo pactado al agendar (total null = por confirmar). */
   estetica: { talla: 'chico' | 'mediano' | 'grande' | 'gigante' | null; nombreTalla: string | null; precioBase: number | null; total: number | null; adicionales: { nombre: string; precio: number }[] } | null
+  /** Cirugía de un presupuesto aceptado: al finalizar se cobra el presupuesto (nov-2026). */
+  presupuesto: { id: number; folio: string; procedimiento: string | null } | null
   /** Paquete del que se descuenta al finalizar (nov-2026). */
   paquete: { id: number; folio: string; nombre: string | null } | null
   esHoy: boolean

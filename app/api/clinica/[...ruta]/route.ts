@@ -45,6 +45,7 @@ import {
   subirDocumento,
   vincular,
 } from '@/lib/clinica/servicio'
+import { cancelarPresupuesto, enviarPresupuesto, firmarEnClinica, guardarPresupuesto, htmlPresupuestoEquipo, presupuesto, presupuestosDeMascota, regresarABorrador } from '@/lib/clinica/cirugia'
 import { cancelarPaquete, entregarProducto, paquetesDeMascota, portalPaquetes, registrarUso, venderPaquete } from '@/lib/clinica/paquetes'
 import { ErrorSolicitud, portalSolicitarPaquete } from '@/lib/sitio/solicitudes'
 import { aplicar, cargarArchivo, descartar, historial, planear, plantillaXlsx } from '@/lib/clinica/importacion'
@@ -148,6 +149,16 @@ import {
  *   POST paquetes/:id/cancelar                 { motivo } solo sin usos ni citas por venir; anula su entrada en Finanzas
  *   GET  portal/paquetes                       catálogo en línea, paquetes de sus mascotas con saldo
  *   POST portal/paquetes/solicitar             { paqueteId, mascotaId, nota? } solicitud que recepción confirma
+ *
+ * CIRUGÍA · PRESUPUESTO Y CONSENTIMIENTO (nov-2026; ver lib/clinica/cirugia.ts):
+ *   GET  mascotas/:id/presupuestos             lista («Ver expediente» o «Agenda»)
+ *   POST mascotas/:id/presupuestos             crear borrador («Escribir expediente»)
+ *   GET  presupuestos/:id                      detalle con el texto del consentimiento
+ *   GET  presupuestos/:id/imprimir             presupuesto y consentimiento imprimibles (HTML)
+ *   POST presupuestos/:id                      cambiar el borrador
+ *   POST presupuestos/:id/enviar | borrador | cancelar { motivo }
+ *   POST presupuestos/:id/firmar               { nombre, firma, acepto } firma en la clínica («Agenda» o «Escribir expediente»)
+ *   (El tutor firma por /api/presupuesto/:id/:token, sin cuenta.)
  *
  * FOTOS (equipo o tutor, nov-2026):
  *   GET  fotos/mascotas/:id                    la foto (equipo con «ver pacientes» o el tutor de esa mascota)
@@ -314,6 +325,9 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'mascotas' && b && c === 'citas') return json(await citasDeMascota(ctx, idDeRuta(b)))
     if (a === 'mascotas' && b && c === 'estetica') return json(await esteticasDeMascota(ctx, idDeRuta(b)))
     if (a === 'mascotas' && b && c === 'paquetes') return json(await paquetesDeMascota(ctx, idDeRuta(b)))
+    if (a === 'mascotas' && b && c === 'presupuestos') return json(await presupuestosDeMascota(ctx, idDeRuta(b)))
+    if (a === 'presupuestos' && b && !c) return json(await presupuesto(ctx, idDeRuta(b)))
+    if (a === 'presupuestos' && b && c === 'imprimir') return html(await htmlPresupuestoEquipo(ctx, idDeRuta(b)))
     if (a === 'estetica' && !b) return json(await tableroEstetica(ctx, q.get('dia') ?? ctx.hoy))
     if (a === 'estetica' && b === 'citas' && c && ruta[3] === 'ficha') return json(await fichaEstetica(ctx, idDeRuta(c)))
   } else {
@@ -327,6 +341,15 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'estetica' && b === 'fotos' && c && ruta[3] === 'quitar') return json(await quitarFotoEstetica(ctx, idDeRuta(c)))
     if (a === 'agenda' && b === 'arranque') return json(await arranqueAgenda(ctx))
     if (a === 'mascotas' && b && c === 'paquetes') return json(await venderPaquete(ctx, idDeRuta(b), await leerJson(req)), 201)
+    if (a === 'mascotas' && b && c === 'presupuestos') return json(await guardarPresupuesto(ctx, idDeRuta(b), await leerJson(req)), 201)
+    if (a === 'presupuestos' && b) {
+      const id = idDeRuta(b)
+      if (!c) return json(await guardarPresupuesto(ctx, (await presupuesto(ctx, id)).mascota.id, await leerJson(req), id))
+      if (c === 'enviar') return json(await enviarPresupuesto(ctx, id))
+      if (c === 'borrador') return json(await regresarABorrador(ctx, id))
+      if (c === 'cancelar') return json(await cancelarPresupuesto(ctx, id, await leerJson(req)))
+      if (c === 'firmar') return json(await firmarEnClinica(ctx, id, await leerJson(req), req.headers))
+    }
     if (a === 'paquetes' && b && c === 'uso') return json(await registrarUso(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'paquetes' && b && c === 'entrega') return json(await entregarProducto(ctx, idDeRuta(b), await leerJson(req)))
     if (a === 'paquetes' && b && c === 'cancelar') return json(await cancelarPaquete(ctx, idDeRuta(b), await leerJson(req)))

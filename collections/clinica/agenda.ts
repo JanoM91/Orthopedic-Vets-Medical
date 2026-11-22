@@ -218,6 +218,8 @@ export const Citas: CollectionConfig = {
     { name: 'cargoFinanzas', label: 'Cargo en Finanzas', type: 'relationship', relationTo: 'fin-operaciones', access: { read: soloEquipoLee } },
     /* Paquetes (nov-2026): la cita se descuenta de este paquete al finalizar (lib/clinica/paquetes.ts). */
     { name: 'paquete', label: 'Paquete', type: 'relationship', relationTo: 'paq-vendidos', index: true },
+    /* Ruta ortopédica (nov-2026): cirugía de un presupuesto aceptado; al finalizar se cobra el total del presupuesto. */
+    { name: 'presupuesto', label: 'Presupuesto de cirugía', type: 'relationship', relationTo: 'cir-presupuestos', index: true },
     { name: 'recordatorioEnviadoEn', label: 'Recordatorio enviado', type: 'date', admin: { readOnly: true, description: 'Lo escribe el recordatorio diario (un solo correo por cita).' }, access: { read: soloEquipoLee } },
     { name: 'creadoPor', type: 'relationship', relationTo: 'users' },
     { name: 'creadoPorTutor', type: 'relationship', relationTo: 'tutores' },

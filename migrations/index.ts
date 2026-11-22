@@ -19,6 +19,7 @@ import * as migration_20261116_042227_estetica_portal from './20261116_042227_es
 import * as migration_20261116_150807_sitio_home_b from './20261116_150807_sitio_home_b';
 import * as migration_20261116_160019_solicitudes_cita from './20261116_160019_solicitudes_cita';
 import * as migration_20261121_205724_paquetes from './20261121_205724_paquetes';
+import * as migration_20261121_235641_cirugia_presupuesto from './20261121_235641_cirugia_presupuesto';
 
 export const migrations = [
   {
@@ -124,6 +125,11 @@ export const migrations = [
   {
     up: migration_20261121_205724_paquetes.up,
     down: migration_20261121_205724_paquetes.down,
-    name: '20261121_205724_paquetes'
+    name: '20261121_205724_paquetes',
+  },
+  {
+    up: migration_20261121_235641_cirugia_presupuesto.up,
+    down: migration_20261121_235641_cirugia_presupuesto.down,
+    name: '20261121_235641_cirugia_presupuesto'
   },
 ];

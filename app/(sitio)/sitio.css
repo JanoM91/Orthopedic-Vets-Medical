@@ -412,3 +412,20 @@ h2 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.01em; }
 .st-paquete .st-btn { align-self: flex-start; margin-top: auto; }
 .st-reserva__paquete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--st-bg, #eef4f1); }
 .st-reserva__paquete b { font-size: 16px; }
+
+/* ───────── Presupuesto de cirugía (liga del tutor, nov-2026) ───────── */
+.st-presupuesto { display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+.st-presupuesto h1 { margin: 0; }
+.st-presupuesto h2 { margin: 0 0 4px; font-size: 18px; }
+.st-pre-texto { white-space: pre-line; margin: 0; }
+.st-pre-consentimiento { font-size: 15px; line-height: 1.6; max-height: 420px; overflow: auto; padding-right: 6px; }
+.st-pre-renglones { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.st-pre-renglones li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--st-line); padding-bottom: 8px; }
+.st-pre-renglones b { white-space: nowrap; }
+.st-pre-total { font-size: 18px; border-bottom: 0 !important; }
+.st-pre-aviso { padding: 12px 14px; border-radius: 12px; background: #f1f5f9; }
+.st-pre-aviso--ok { background: #e6f4ef; color: #0b4d3f; }
+.st-pre-aviso--malo { background: #fef2f2; color: #991b1b; }
+.st-pre-firma { gap: 12px; }
+.st-pre-firmada { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 10px; }
+.st-pre-firmada img { max-width: 280px; max-height: 120px; border-bottom: 1px solid var(--st-ink, #0f172a); }

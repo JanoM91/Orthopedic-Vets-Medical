@@ -17,7 +17,8 @@
     "test:clinica": "node scripts/probarClinica.mjs",
     "test:estetica": "node scripts/probarEstetica.mjs",
     "test:farmacia": "node scripts/probarFarmacia.mjs",
-    "test:paquetes": "node scripts/probarPaquetes.mjs"
+    "test:paquetes": "node scripts/probarPaquetes.mjs",
+    "test:cirugia": "node scripts/probarCirugia.mjs"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.0.0",

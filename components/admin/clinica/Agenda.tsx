@@ -111,7 +111,7 @@ export function acomodar(citas: CitaVista[], de: number, intervalo: number, alto
 
 /* ───────────────────────────── pantalla ───────────────────────────── */
 
-export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = false, horaInicial = null, recursoInicial = null }: { diaInicial: string | null; mascotaInicial: number | null; nuevaInicial?: boolean; horaInicial?: string | null; recursoInicial?: number | null }) {
+export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = false, horaInicial = null, recursoInicial = null, presupuestoInicial = null }: { diaInicial: string | null; mascotaInicial: number | null; nuevaInicial?: boolean; horaInicial?: string | null; recursoInicial?: number | null; presupuestoInicial?: number | null }) {
   const { catalogo: cat, base } = useClinica()
   const [dia, setDia] = useState(diaInicial && /^\d{4}-\d{2}-\d{2}$/.test(diaInicial) ? diaInicial : hoyISO())
   const agenda = useCarga(() => api.get<{ dia: string; citas: CitaVista[]; porConfirmar: CitaVista[]; abierto: boolean; de: string; a: string }>('agenda', { dia }), [dia])
@@ -346,6 +346,7 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
             horaInicial={nueva.hora ?? null}
             recursoInicial={nueva.recurso ?? null}
             mascotaInicial={mascotaInicial}
+            presupuestoInicial={presupuestoInicial}
             onListo={(x) => {
               setNueva(null)
               if (x.dia !== dia) setDia(x.dia)
@@ -507,6 +508,15 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
             ''
           )}
         </dd>
+        {cita.presupuesto && (
+          <>
+            <dt>Presupuesto</dt>
+            <dd>
+              {cita.presupuesto.procedimiento ?? 'Cirugía'} · {cita.presupuesto.folio}
+              <span className="fz-tenue">{cita.estado === 'finalizada' ? ' · cobrado al finalizar' : ' · al finalizar se cobra el total del presupuesto'}</span>
+            </dd>
+          </>
+        )}
         {cita.paquete && (
           <>
             <dt>Paquete</dt>
@@ -785,7 +795,7 @@ function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, horaInic
 
 /* ───────────────────────────── nueva cita ───────────────────────────── */
 
-function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mascotaInicial, onListo }: { catalogo: Catalogo; diaInicial: string; horaInicial: string | null; recursoInicial: number | null; mascotaInicial: number | null; onListo: (c: CitaVista) => void }) {
+function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mascotaInicial, presupuestoInicial = null, onListo }: { catalogo: Catalogo; diaInicial: string; horaInicial: string | null; recursoInicial: number | null; mascotaInicial: number | null; presupuestoInicial?: number | null; onListo: (c: CitaVista) => void }) {
   const { base, catalogo: cat } = useClinica()
   const [q, setQ] = useState('')
   const [res, setRes] = useState<ResultadoBusqueda['mascotas']>([])
@@ -793,6 +803,20 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
   const [servicio, setServicio] = useState<number | ''>('')
   const [confirmar, setConfirmar] = useState(true)
   const [usarPaquete, setUsarPaquete] = useState(true)
+  /* Cirugía de un presupuesto aceptado (expediente → Cirugía → «Agendar cirugía»). */
+  const [presupuesto, setPresupuesto] = useState<{ id: number; folio: string; procedimiento: string; total: number; mascotaId: number } | null>(null)
+  useEffect(() => {
+    if (!presupuestoInicial) return
+    api.get<{ id: number; folio: string; procedimiento: string; total: number; estado: string; mascota: { id: number }; renglones: { servicioId: number | null }[] }>(`presupuestos/${presupuestoInicial}`).then(
+      (p) => {
+        if (p.estado !== 'aceptado') return
+        setPresupuesto({ id: p.id, folio: p.folio, procedimiento: p.procedimiento, total: p.total, mascotaId: p.mascota.id })
+        const s = p.renglones.map((r) => r.servicioId).find((sid) => sid && catalogo.servicios.some((x) => x.id === sid && x.activo))
+        if (s) setServicio(s)
+      },
+      () => undefined,
+    )
+  }, [presupuestoInicial, catalogo.servicios])
   const [notas, setNotas] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [adicionales, setAdicionales] = useState<number[]>([])
@@ -884,9 +908,15 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
           <label className="cl-check">
             <input type="checkbox" checked={confirmar} onChange={(e) => setConfirmar(e.target.checked)} /> Dejarla confirmada (ya se acordó con el tutor)
           </label>
-          <label className="cl-check">
-            <input type="checkbox" checked={usarPaquete} onChange={(e) => setUsarPaquete(e.target.checked)} /> Descontarla de su paquete si tiene saldo de este servicio
-          </label>
+          {presupuesto && presupuesto.mascotaId === mascota.id ? (
+            <p className="cl-preparada">
+              Cirugía del presupuesto {presupuesto.folio}: {presupuesto.procedimiento}. Al finalizarla se cobra el total del presupuesto ({new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(presupuesto.total)}).
+            </p>
+          ) : (
+            <label className="cl-check">
+              <input type="checkbox" checked={usarPaquete} onChange={(e) => setUsarPaquete(e.target.checked)} /> Descontarla de su paquete si tiene saldo de este servicio
+            </label>
+          )}
           <ErrorForm error={error} />
           {serv && (
             <SelectorHorario
@@ -898,7 +928,7 @@ function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mas
               diaInicial={diaInicial}
               horaInicial={horaInicial}
               onElegir={(d, h, r) =>
-                api.post<CitaVista>('agenda/citas', { mascotaId: mascota.id, servicioId: serv.id, dia: d, hora: h, recursoId: r, confirmar, usarPaquete, notasInternas: notas, ...(esEstetica ? { adicionales } : {}) }).then(onListo, (e) => setError(e instanceof Error ? e.message : 'No se pudo agendar.'))
+                api.post<CitaVista>('agenda/citas', { mascotaId: mascota.id, servicioId: serv.id, dia: d, hora: h, recursoId: r, confirmar, usarPaquete, notasInternas: notas, ...(presupuesto && presupuesto.mascotaId === mascota.id ? { presupuestoId: presupuesto.id } : {}), ...(esEstetica ? { adicionales } : {}) }).then(onListo, (e) => setError(e instanceof Error ? e.message : 'No se pudo agendar.'))
               }
             />
           )}

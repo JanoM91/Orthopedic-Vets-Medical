@@ -86,6 +86,8 @@ export interface Config {
     paquetes: Paquete;
     'paq-vendidos': PaqVendido;
     'paq-usos': PaqUso;
+    'cir-presupuestos': CirPresupuesto;
+    'cir-consentimientos': CirConsentimiento;
     'est-adicionales': EstAdicional;
     'est-fichas': EstFicha;
     'est-fotos': EstFoto;
@@ -142,6 +144,8 @@ export interface Config {
     paquetes: PaquetesSelect<false> | PaquetesSelect<true>;
     'paq-vendidos': PaqVendidosSelect<false> | PaqVendidosSelect<true>;
     'paq-usos': PaqUsosSelect<false> | PaqUsosSelect<true>;
+    'cir-presupuestos': CirPresupuestosSelect<false> | CirPresupuestosSelect<true>;
+    'cir-consentimientos': CirConsentimientosSelect<false> | CirConsentimientosSelect<true>;
     'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
     'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
     'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
@@ -185,6 +189,7 @@ export interface Config {
   globals: {
     'fin-configuracion': FinConfiguracion;
     'agenda-configuracion': AgendaConfiguracion;
+    'cirugia-configuracion': CirugiaConfiguracion;
     'estetica-configuracion': EsteticaConfiguracion;
     'sitio-configuracion': SitioConfiguracion;
     'farmacia-configuracion': FarmaciaConfiguracion;
@@ -193,6 +198,7 @@ export interface Config {
   globalsSelect: {
     'fin-configuracion': FinConfiguracionSelect<false> | FinConfiguracionSelect<true>;
     'agenda-configuracion': AgendaConfiguracionSelect<false> | AgendaConfiguracionSelect<true>;
+    'cirugia-configuracion': CirugiaConfiguracionSelect<false> | CirugiaConfiguracionSelect<true>;
     'estetica-configuracion': EsteticaConfiguracionSelect<false> | EsteticaConfiguracionSelect<true>;
     'sitio-configuracion': SitioConfiguracionSelect<false> | SitioConfiguracionSelect<true>;
     'farmacia-configuracion': FarmaciaConfiguracionSelect<false> | FarmaciaConfiguracionSelect<true>;
@@ -837,6 +843,7 @@ export interface Cita {
   };
   cargoFinanzas?: (number | null) | FinOperacion;
   paquete?: (number | null) | PaqVendido;
+  presupuesto?: (number | null) | CirPresupuesto;
   /**
    * Lo escribe el recordatorio diario (un solo correo por cita).
    */
@@ -1131,6 +1138,75 @@ export interface Solicitud {
    * Solo la ve el equipo. Ej. «Quedó para el jueves 10:00».
    */
   notaInterna?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cir-presupuestos".
+ */
+export interface CirPresupuesto {
+  id: number;
+  folio?: string | null;
+  mascota: number | Mascota;
+  cliente?: (number | null) | Cliente;
+  medico?: (number | null) | User;
+  procedimiento: string;
+  explicacion?: string | null;
+  riesgos?: string | null;
+  indicaciones?: string | null;
+  renglones: {
+    concepto: string;
+    servicio?: (number | null) | Servicio;
+    cantidad: number;
+    precioUnitario: number;
+    importe: number;
+    id?: string | null;
+  }[];
+  total: number;
+  anticipo?: number | null;
+  vence?: string | null;
+  estado: 'borrador' | 'enviado' | 'aceptado' | 'rechazado' | 'cancelado';
+  enviadoEn?: string | null;
+  respondidoEn?: string | null;
+  motivoRechazo?: string | null;
+  motivoCancelacion?: string | null;
+  consentimiento?: (number | null) | CirConsentimiento;
+  notasInternas?: string | null;
+  creadoPor?: (number | null) | User;
+  token?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cir-consentimientos".
+ */
+export interface CirConsentimiento {
+  id: number;
+  folio?: string | null;
+  presupuesto: number | CirPresupuesto;
+  mascota: number | Mascota;
+  cliente?: (number | null) | Cliente;
+  texto: string;
+  resumen:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  firma: string;
+  nombreFirmante: string;
+  via: 'portal' | 'clinica';
+  tutor?: (number | null) | Tutor;
+  testigo?: (number | null) | User;
+  firmadoEn: string;
+  ip?: string | null;
+  navegador?: string | null;
+  huella: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -1971,6 +2047,14 @@ export interface PayloadLockedDocument {
         value: number | PaqUso;
       } | null)
     | ({
+        relationTo: 'cir-presupuestos';
+        value: number | CirPresupuesto;
+      } | null)
+    | ({
+        relationTo: 'cir-consentimientos';
+        value: number | CirConsentimiento;
+      } | null)
+    | ({
         relationTo: 'est-adicionales';
         value: number | EstAdicional;
       } | null)
@@ -2531,6 +2615,7 @@ export interface CitasSelect<T extends boolean = true> {
       };
   cargoFinanzas?: T;
   paquete?: T;
+  presupuesto?: T;
   recordatorioEnviadoEn?: T;
   creadoPor?: T;
   creadoPorTutor?: T;
@@ -2642,6 +2727,67 @@ export interface PaqUsosSelect<T extends boolean = true> {
   venta?: T;
   por?: T;
   nota?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cir-presupuestos_select".
+ */
+export interface CirPresupuestosSelect<T extends boolean = true> {
+  folio?: T;
+  mascota?: T;
+  cliente?: T;
+  medico?: T;
+  procedimiento?: T;
+  explicacion?: T;
+  riesgos?: T;
+  indicaciones?: T;
+  renglones?:
+    | T
+    | {
+        concepto?: T;
+        servicio?: T;
+        cantidad?: T;
+        precioUnitario?: T;
+        importe?: T;
+        id?: T;
+      };
+  total?: T;
+  anticipo?: T;
+  vence?: T;
+  estado?: T;
+  enviadoEn?: T;
+  respondidoEn?: T;
+  motivoRechazo?: T;
+  motivoCancelacion?: T;
+  consentimiento?: T;
+  notasInternas?: T;
+  creadoPor?: T;
+  token?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cir-consentimientos_select".
+ */
+export interface CirConsentimientosSelect<T extends boolean = true> {
+  folio?: T;
+  presupuesto?: T;
+  mascota?: T;
+  cliente?: T;
+  texto?: T;
+  resumen?: T;
+  firma?: T;
+  nombreFirmante?: T;
+  via?: T;
+  tutor?: T;
+  testigo?: T;
+  firmadoEn?: T;
+  ip?: T;
+  navegador?: T;
+  huella?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3515,6 +3661,22 @@ export interface AgendaConfiguracion {
   createdAt?: string | null;
 }
 /**
+ * Texto base del consentimiento informado que firma el tutor y vigencia de los presupuestos. Revisa el texto con tu asesor antes de usarlo.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cirugia-configuracion".
+ */
+export interface CirugiaConfiguracion {
+  id: number;
+  /**
+   * Se llena solo con: {{tutor}}, {{mascota}}, {{especie}}, {{procedimiento}}, {{riesgos}}, {{clinica}}, {{medico}}, {{total}} y {{fecha}}. Lo que firma el tutor queda guardado tal cual; cambiar este texto no cambia lo ya firmado.
+   */
+  textoConsentimiento: string;
+  vigenciaDias: number;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * Nombre de la estética y límites de peso de cada talla. Los precios van en cada servicio de estética.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3846,6 +4008,17 @@ export interface AgendaConfiguracionSelect<T extends boolean = true> {
   cancelacionHoras?: T;
   correoAvisos?: T;
   recordatoriosActivos?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cirugia-configuracion_select".
+ */
+export interface CirugiaConfiguracionSelect<T extends boolean = true> {
+  textoConsentimiento?: T;
+  vigenciaDias?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

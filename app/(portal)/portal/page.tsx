@@ -6,6 +6,7 @@ import { portalCitas, proximasPorMascota } from '../../../lib/clinica/agenda'
 import { portalRefuerzosPendientes, portalResumen } from '../../../lib/clinica/servicio'
 import { portalBanosPendientes } from '../../../lib/clinica/esteticaPortal'
 import { portalPaquetes, type PaqueteCatalogo, type PaqueteVendidoVista } from '../../../lib/clinica/paquetes'
+import { portalPresupuestosPendientes } from '../../../lib/clinica/cirugia'
 import { pedidosDelTutor } from '../../../lib/farmacia/tienda'
 import { recomprasDelCliente, type RecompraVista } from '../../../lib/farmacia/recompra'
 import type { PedidoVista } from '../../../lib/farmacia/tiposTienda'
@@ -108,7 +109,7 @@ export default async function PortalInicio() {
   const vivas = r.mascotas.filter((m) => m.estado !== 'fallecido')
   const ids = vivas.map((m) => m.id)
   const cabeceras = await headers()
-  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos, paquetes] = await Promise.all([
+  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos, paquetes, presupuestos] = await Promise.all([
     proximasPorMascota(c, ids),
     portalRefuerzosPendientes(c, ids),
     portalCitas(c),
@@ -117,6 +118,7 @@ export default async function PortalInicio() {
     tienda ? recomprasDelCliente(c.payload, cabeceras, r.cliente.id).catch(() => [] as RecompraVista[]) : Promise.resolve([] as RecompraVista[]),
     portalBanosPendientes(c, ids).catch(() => []),
     portalPaquetes(c).catch(() => ({ catalogo: [] as PaqueteCatalogo[], mios: [] as PaqueteVendidoVista[], mascotas: [] })),
+    portalPresupuestosPendientes(c, ids).catch(() => []),
   ])
   const hoy = hoyISO()
   const siguiente = [...proximas.values()].sort((a, b) => (a.dia + a.horaInicio).localeCompare(b.dia + b.horaInicio))[0] ?? null
@@ -124,6 +126,17 @@ export default async function PortalInicio() {
   const nombreDe = new Map(r.mascotas.map((m) => [m.id, m.nombre]))
 
   const pendientes: Pendiente[] = []
+  /* Presupuestos de cirugía por revisar y firmar (ruta ortopédica, nov-2026): primero en la lista. */
+  for (const pr of presupuestos) {
+    pendientes.push({
+      clave: `pre-${pr.id}`,
+      tono: 'warn',
+      icono: 'file',
+      titulo: `Presupuesto de ${pr.mascota}: ${pr.procedimiento}`,
+      detalle: `${pesos(pr.total)} · revísalo y fírmalo${pr.vence ? ` antes del ${corta(pr.vence)}` : ''}`,
+      accion: { href: pr.liga, texto: 'Revisar y firmar' },
+    })
+  }
   for (const x of refuerzos) {
     const mascota = nombreDe.get(x.mascotaId) ?? ''
     pendientes.push({

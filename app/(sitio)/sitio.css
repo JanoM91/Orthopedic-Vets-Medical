@@ -429,3 +429,4 @@ h2 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.01em; }
 .st-pre-firma { gap: 12px; }
 .st-pre-firmada { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 10px; }
 .st-pre-firmada img { max-width: 280px; max-height: 120px; border-bottom: 1px solid var(--st-ink, #0f172a); }
+.st-hos-parte img { width: 100%; max-width: 520px; border-radius: 12px; }

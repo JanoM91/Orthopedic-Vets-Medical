@@ -46,6 +46,12 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 - Ahí ves qué se va a hacer, el costo, las indicaciones y el **consentimiento**. Si estás de acuerdo, escribe tu nombre, **firma con el dedo** en el recuadro, marca que aceptas y toca «Aceptar y firmar». Si no, toca «No acepto».
 - Ya firmado, puedes abrir la constancia para imprimirla o guardarla en PDF. La clínica te contacta para la fecha.
 
+## Si tu mascota se queda internada
+
+- La clínica te manda una **liga** (por correo o WhatsApp) y en tu app aparece en **Pendientes**. Ahí lees el **parte del día**: cómo sigue tu mascota, a veces con foto.
+- Al darla de alta verás las **indicaciones para casa**. La liga sigue sirviendo 30 días después.
+- Si tienes dudas, llama a la clínica: el teléfono está en la misma página.
+
 ## Paquetes
 
 - Algunos servicios y productos se venden en **paquete**: pagas una vez y los vas usando (por ejemplo, varias sesiones de rehabilitación). En tu app, Inicio → **Paquetes** ves cuánto le queda a cada mascota y hasta cuándo vale.

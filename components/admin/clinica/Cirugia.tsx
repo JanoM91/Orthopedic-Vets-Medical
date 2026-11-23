@@ -7,6 +7,7 @@ import type { PresupuestoVista, RenglonPresupuesto } from '../../../lib/clinica/
 import type { HojaBreve } from '../../../lib/clinica/hojaQuirurgica'
 import type { ServicioVista } from '../../../lib/clinica/tipos'
 import { FirmaLienzo } from '../../FirmaLienzo'
+import { HospitalMascota } from './Hospital'
 import { api, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, fecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
 
 /**
@@ -56,6 +57,7 @@ export function CirugiaMascota({ mascotaId, mascotaNombre, activa }: { mascotaId
         <TarjetaPresupuesto key={p.id} p={p} puedeEditar={datos.puedeEditar} puedeFirmar={datos.puedeFirmar} hrefAgendar={`${base}/agenda?mascota=${mascotaId}&nueva=1&presupuesto=${p.id}`} onEditar={() => setEditar(p)} onCambio={recargar} />
       ))}
       <HojasMascota mascotaId={mascotaId} activa={activa} puedeEscribir={catalogo.permisos.escribirExpediente} />
+      <HospitalMascota mascotaId={mascotaId} mascotaNombre={mascotaNombre} activa={activa} />
       {editar && <EditorPresupuesto mascotaId={mascotaId} existente={editar === 'nuevo' ? null : editar} equipo={catalogo.equipo} usuarioId={catalogo.usuario.id} onCerrar={() => setEditar(null)} onGuardado={() => (setEditar(null), recargar())} />}
     </div>
   )

@@ -223,3 +223,17 @@ Decisiones de Jano (21-nov-2026): la ruta ortopédica va en 4 fases (presupuesto
 - **Reglas** (`lib/clinica/hojaQuirurgica.ts`): fármacos y signos se agregan renglón por renglón con candado por hoja (`6 700 000 + id`); un renglón capturado por error se quita solo con la hoja abierta; los signos tienen rangos de **captura** (evitan teclazos, no interpretan nada) y se redondean a 2 decimales. **Nunca se calcula, sugiere ni valida una dosis.** Para **cerrar** se piden cirujano, lo realizado e inicio y fin de la cirugía; cerrada es inmutable. Una hoja por cita.
 - **Imprimible**: `/api/clinica/hojas/<id>/imprimir` con tablas y gráficas.
 - Migración `20261122_041118_cirugia_hoja` (tablas con RLS). Pruebas en `test:cirugia`.
+
+## Ruta ortopédica · fase 3: hospitalización (22-nov-2026)
+
+Decisiones de Jano (22-nov-2026): el cobro es **solo lo que capture el equipo** y el tutor recibe un **parte del día** (texto y foto opcional) en su app o con una liga sin cuenta.
+
+- **Dónde**: Pacientes → **Hospital** (`/admin/clinica/hospital`, tablero de internados con tomas atrasadas, pendientes y «Sin parte hoy», y altas recientes). Se interna con «+ Internar», desde la hoja quirúrgica (botón «Internar», hereda hoja y presupuesto) o desde el expediente → Cirugía. Ficha `/admin/clinica/hospital/<id>` (`components/admin/clinica/Hospital.tsx`). «Hoy» muestra cuántos internados y tomas atrasadas hay.
+- **Qué registra** (`hos-internamientos`, folio `HOS-`): motivo, jaula o espacio, médico, ingreso y alta; **indicaciones** del médico (tratamiento, dosis tal como la escribe, vía, frecuencia en texto y las **horas** HH:MM que él fija; vacío = según necesidad), que se suspenden pero no se editan; **aplicaciones** por toma (aplicada u omitida con motivo); **observaciones** (temperatura, FC, FR, dolor 0–10, apetito, orina, heces, notas); **cargos** que captura el equipo; **partes** para el tutor; alta con resumen interno e indicaciones para casa.
+- **Tomas del día** (`tomasDelDia`): salen solo de las horas de cada indicación activa; estados pendiente, atrasada (más de 30 min), aplicada u omitida. Una toma programada se registra una sola vez. Se navega por día.
+- **Permisos**: internar, indicar, suspender, publicar partes y dar de alta piden «Escribir expediente»; registrar tomas, observaciones y cargos, «Escribir expediente» o «Agenda»; leer, «Ver expediente» o «Agenda». Los cargos y el resumen de alta solo los lee el equipo.
+- **Alta**: pide indicaciones para casa; la suma de los cargos entra a Finanzas como entrada pendiente (`hospitalizacion-<id>`, idempotente) y se avisa al tutor por correo.
+- **Tutor**: cada parte le llega por correo (si tiene) y el equipo puede mandar la liga por WhatsApp. La liga `/hospital/<id>/<token>` vale mientras está internada y 30 días después del alta; en la app aparece en Pendientes («X está internada» / «ya puede irse a casa», hasta 3 días después del alta). Solo ve partes, fotos, indicaciones para casa y el teléfono de la clínica.
+- **Nunca** se calcula ni sugiere dosis, horario ni frecuencia.
+- Migración `20261123_001039_hospital` (6 tablas con RLS). Pruebas en `test:cirugia`.
+

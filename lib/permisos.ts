@@ -113,7 +113,7 @@ const OPERACIONES = ['read', 'create', 'update', 'delete', 'readVersions'] as co
 const CON_REGLAS_PROPIAS = new Set(['users', 'roles'])
 /** Colecciones de la clínica: sus reglas (collections/clinica/acceso.ts) ya distinguen equipo, tutores y visitantes. */
 export const COLECCIONES_CLINICA = new Set(['clientes', 'mascotas', 'tutores', 'codigos-vinculacion', 'importaciones', 'recursos', 'servicios', 'citas', 'sitio-fotos', 'solicitudes', 'paquetes'])
-export const esColeccionClinica = (slug: string): boolean => COLECCIONES_CLINICA.has(slug) || slug.startsWith('mas-') || slug.startsWith('est-') || slug.startsWith('paq-') || slug.startsWith('cir-')
+export const esColeccionClinica = (slug: string): boolean => COLECCIONES_CLINICA.has(slug) || slug.startsWith('mas-') || slug.startsWith('est-') || slug.startsWith('paq-') || slug.startsWith('cir-') || slug.startsWith('hos-')
 
 /** Colecciones de la farmacia (collections/farmacia/*): reglas propias por permiso del rol. */
 export const esColeccionFarmacia = (slug: string): boolean => slug.startsWith('far-')

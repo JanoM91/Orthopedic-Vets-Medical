@@ -45,6 +45,7 @@ import {
   subirDocumento,
   vincular,
 } from '@/lib/clinica/servicio'
+import { agregarCargo, agregarIndicacion, agregarObservacion, darAlta, internamiento, internamientosDeMascota, internar, publicarParte, quitarCargo, registrarAplicacion, suspenderIndicacion, tableroHospital } from '@/lib/clinica/hospital'
 import { abrirHoja, agregarFarmaco, agregarSignos, cerrarHoja, guardarHoja, hojaQuirurgica, hojasDeMascota, htmlHoja, quitarRenglon } from '@/lib/clinica/hojaQuirurgica'
 import { cancelarPresupuesto, enviarPresupuesto, firmarEnClinica, guardarPresupuesto, htmlPresupuestoEquipo, presupuesto, presupuestosDeMascota, regresarABorrador } from '@/lib/clinica/cirugia'
 import { cancelarPaquete, entregarProducto, paquetesDeMascota, portalPaquetes, registrarUso, venderPaquete } from '@/lib/clinica/paquetes'
@@ -169,6 +170,18 @@ import {
  *   POST hojas/:id/farmacos | signos           agregar un renglón (lo que escribe el médico; nunca se calcula dosis)
  *   POST hojas/:id/quitar                      { lista, indice } quitar un renglón capturado por error
  *   POST hojas/:id/cerrar                      queda inmutable
+ *
+ * HOSPITALIZACIÓN (fase 3; ver lib/clinica/hospital.ts):
+ *   GET  hospital                              internados y altas recientes
+ *   POST hospital                              { mascotaId, motivo, espacio?, hojaId?, medicoId? } internar
+ *   GET  hospital/:id?dia=                     ficha con las tomas del día
+ *   GET  mascotas/:id/internamientos
+ *   POST hospital/:id/indicaciones             { tratamiento, dosis?, via?, frecuencia?, horas?, nota? } («Escribir expediente»)
+ *   POST hospital/:id/indicaciones/suspender   { clave }
+ *   POST hospital/:id/aplicaciones             { clave, programada?, estado, motivo?, nota? } («Agenda» o «Escribir expediente»)
+ *   POST hospital/:id/observaciones | cargos | cargos/quitar
+ *   POST hospital/:id/partes                   { texto, foto? } parte para el tutor (correo)
+ *   POST hospital/:id/alta                     { resumen?, indicacionesAlta } (suma de cargos a Finanzas)
  *
  * FOTOS (equipo o tutor, nov-2026):
  *   GET  fotos/mascotas/:id                    la foto (equipo con «ver pacientes» o el tutor de esa mascota)
@@ -339,6 +352,9 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'presupuestos' && b && !c) return json(await presupuesto(ctx, idDeRuta(b)))
     if (a === 'presupuestos' && b && c === 'imprimir') return html(await htmlPresupuestoEquipo(ctx, idDeRuta(b)))
     if (a === 'mascotas' && b && c === 'hojas') return json(await hojasDeMascota(ctx, idDeRuta(b)))
+    if (a === 'mascotas' && b && c === 'internamientos') return json(await internamientosDeMascota(ctx, idDeRuta(b)))
+    if (a === 'hospital' && !b) return json(await tableroHospital(ctx))
+    if (a === 'hospital' && b && !c) return json(await internamiento(ctx, idDeRuta(b), q.get('dia')))
     if (a === 'hojas' && b && !c) return json(await hojaQuirurgica(ctx, idDeRuta(b)))
     if (a === 'hojas' && b && c === 'imprimir') return html(await htmlHoja(ctx, idDeRuta(b)))
     if (a === 'estetica' && !b) return json(await tableroEstetica(ctx, q.get('dia') ?? ctx.hoy))
@@ -355,6 +371,19 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'agenda' && b === 'arranque') return json(await arranqueAgenda(ctx))
     if (a === 'mascotas' && b && c === 'paquetes') return json(await venderPaquete(ctx, idDeRuta(b), await leerJson(req)), 201)
     if (a === 'mascotas' && b && c === 'presupuestos') return json(await guardarPresupuesto(ctx, idDeRuta(b), await leerJson(req)), 201)
+    if (a === 'hospital' && !b) return json(await internar(ctx, await leerJson(req)), 201)
+    if (a === 'hospital' && b) {
+      const id = idDeRuta(b)
+      const d = ruta[3]
+      if (c === 'indicaciones' && !d) return json(await agregarIndicacion(ctx, id, await leerJson(req)))
+      if (c === 'indicaciones' && d === 'suspender') return json(await suspenderIndicacion(ctx, id, await leerJson(req)))
+      if (c === 'aplicaciones') return json(await registrarAplicacion(ctx, id, await leerJson(req)))
+      if (c === 'observaciones') return json(await agregarObservacion(ctx, id, await leerJson(req)))
+      if (c === 'cargos' && !d) return json(await agregarCargo(ctx, id, await leerJson(req)))
+      if (c === 'cargos' && d === 'quitar') return json(await quitarCargo(ctx, id, await leerJson(req)))
+      if (c === 'partes') return json(await publicarParte(ctx, id, await leerJson(req)))
+      if (c === 'alta') return json(await darAlta(ctx, id, await leerJson(req)))
+    }
     if (a === 'hojas' && !b) return json(await abrirHoja(ctx, await leerJson(req)), 201)
     if (a === 'hojas' && b) {
       const id = idDeRuta(b)

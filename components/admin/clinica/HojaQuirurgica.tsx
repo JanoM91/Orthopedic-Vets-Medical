@@ -4,6 +4,7 @@ import Link from 'next/link'
 import React, { useState } from 'react'
 import type { HojaVista, SignoVista } from '../../../lib/clinica/hojaQuirurgica'
 import { api, Aviso, Ayuda, Boton, Campo, Confirmar, ErrorForm, fecha, momento, Pastilla, useCarga, useClinica } from './comun'
+import { Internar } from './Hospital'
 
 /**
  * Hoja quirúrgica y de anestesia (ruta ortopédica, fase 2, nov-2026). Pensada
@@ -51,6 +52,7 @@ export function HojaQuirurgica({ id }: { id: number }) {
   const { base, catalogo } = useClinica()
   const { datos: h, error, cargando, poner } = useCarga(() => api.get<Hoja>(`hojas/${id}`), [id])
   const [cerrar, setCerrar] = useState(false)
+  const [internar, setInternar] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   if (error) return <Aviso tono="malo">{error}</Aviso>
   if (cargando || !h) return <p className="fz-tenue">Cargando…</p>
@@ -95,6 +97,11 @@ export function HojaQuirurgica({ id }: { id: number }) {
               Cerrar hoja
             </Boton>
           )}
+          {h.puedeEscribir && (
+            <Boton onClick={() => setInternar(true)}>
+              Internar
+            </Boton>
+          )}
         </div>
       </div>
       {h.mascota.alergias && (
@@ -127,6 +134,7 @@ export function HojaQuirurgica({ id }: { id: number }) {
       <SeccionSignos h={h} editable={editable} onAgregar={(c) => mandar('/signos', c)} onQuitar={(i) => mandar('/quitar', { lista: 'signos', indice: i })} />
       <SeccionTextos h={h} editable={editable} onGuardar={(c) => mandar('', c)} />
 
+      {internar && <Internar mascota={{ id: h.mascota.id, nombre: h.mascota.nombre }} hojaId={h.id} motivoInicial={`Postoperatorio: ${h.procedimiento}`.slice(0, 200)} onCerrar={() => setInternar(false)} />}
       {cerrar && (
         <Confirmar
           titulo="Cerrar la hoja quirúrgica"

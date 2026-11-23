@@ -138,3 +138,14 @@ Un paquete se cobra una vez y se va usando (por ejemplo, 10 sesiones de rehabili
 4. **Fármacos**: medicamento, la dosis tal como la indicó el médico, vía y hora → «Agregar». La plataforma no calcula dosis.
 5. **Signos**: captura FC, FR, SpO₂, temperatura, presión… → «Agregar toma» (sin hora usa la de ahora). Las gráficas se arman solas.
 6. Al terminar, escribe lo realizado, implantes y las indicaciones, «Guardar» y **«Cerrar hoja»**. Cerrada ya no se cambia. «Imprimir» da la hoja completa.
+
+## Hospital (pacientes internados)
+
+1. **Internar**: Pacientes → Hospital → «+ Internar» (o desde la hoja quirúrgica, botón «Internar»). Motivo y jaula.
+2. **Indicaciones** (médico): tratamiento, dosis tal como la indicas, vía, frecuencia y las **horas** de cada toma (por ejemplo 08:00, 16:00, 00:00). Sin horas = según necesidad. Para cambiar una, suspéndela y agrega la nueva. La plataforma no calcula dosis ni horarios.
+3. **Tomas**: en la ficha, cada toma del día con su hora. Toca «Aplicada» o «No se aplicó» (pide el motivo). En rojo las atrasadas más de 30 minutos.
+4. **Observaciones**: temperatura, FC, FR, dolor, apetito, orina y heces cuando revises al paciente.
+5. **Parte para el tutor** (médico): unas líneas de cómo sigue y, si quieres, una foto. Le llega por correo y con «Liga al tutor» se la mandas por WhatsApp. El tutor nunca ve medicamentos ni cargos.
+6. **Cargos**: captura lo que se cobra (días, medicamentos, material). Al dar de alta, la suma queda pendiente de cobro en Finanzas.
+7. **Dar de alta** (médico): escribe las indicaciones para casa (las ve el tutor) y un resumen interno.
+

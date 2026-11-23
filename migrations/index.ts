@@ -21,6 +21,7 @@ import * as migration_20261116_160019_solicitudes_cita from './20261116_160019_s
 import * as migration_20261121_205724_paquetes from './20261121_205724_paquetes';
 import * as migration_20261121_235641_cirugia_presupuesto from './20261121_235641_cirugia_presupuesto';
 import * as migration_20261122_041118_cirugia_hoja from './20261122_041118_cirugia_hoja';
+import * as migration_20261123_001039_hospital from './20261123_001039_hospital';
 
 export const migrations = [
   {
@@ -136,6 +137,11 @@ export const migrations = [
   {
     up: migration_20261122_041118_cirugia_hoja.up,
     down: migration_20261122_041118_cirugia_hoja.down,
-    name: '20261122_041118_cirugia_hoja'
+    name: '20261122_041118_cirugia_hoja',
+  },
+  {
+    up: migration_20261123_001039_hospital.up,
+    down: migration_20261123_001039_hospital.down,
+    name: '20261123_001039_hospital'
   },
 ];

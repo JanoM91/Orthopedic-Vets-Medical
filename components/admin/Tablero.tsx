@@ -12,6 +12,7 @@ import { catalogo as catalogoFarmacia, contextoDesdeReq as contextoFarmacia } fr
 import type { CatalogoFarmacia } from '../../lib/farmacia/tipos'
 import { formatoMXN } from '../../lib/finanzas/reglas'
 import { solicitudesNuevas } from '../../lib/sitio/solicitudes'
+import { resumenHospital } from '../../lib/clinica/hospital'
 import { contextoDesdeReq as contextoFinanzas, pendientes as pendientesFinanzas } from '../../lib/finanzas/servicio'
 import type { OperacionVista } from '../../lib/finanzas/tipos'
 import { diaLocal, partesLocales } from '../../lib/localTime'
@@ -81,7 +82,9 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
   if (conEstetica && !conAgenda && !conFinanzas && !conFarmacia) redirect(`${rutaAdmin}/clinica/estetica`)
   const conPlanes = conFarmacia && modulos.tienda && p.farmacia.vender
 
-  const [agenda, farmacia, finanzas, estetica, planesDetenidos, puesta, solicitudes] = await Promise.all([
+  const conHospital = modulos.clinica && (p.clinica.verExpediente || p.clinica.agenda)
+
+  const [agenda, farmacia, finanzas, estetica, planesDetenidos, puesta, solicitudes, hospital] = await Promise.all([
     conAgenda
       ? intentar(async () => {
           const ctx = await contextoClinica(req)
@@ -117,6 +120,8 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
     p.gestionarUsuarios ? intentar(() => puestaAPunto(req.payload, modulos, rutaAdmin)) : null,
     /* Solicitudes de primera cita del sitio que nadie ha atendido (nov-2026). */
     conAgenda ? intentar(() => solicitudesNuevas(req.payload)) : null,
+    /* Hospitalización (ruta ortopédica, fase 3): internados y tomas atrasadas. */
+    conHospital ? intentar(() => resumenHospital(req.payload)) : null,
   ])
 
   const ahora = new Date()
@@ -191,6 +196,7 @@ export default async function Tablero({ initPageResult }: AdminViewServerProps) 
   if (farmacia?.ok && farmacia.datos.pedidosTienda) pendientes.push({ clave: 'pedidos', tipo: 'Tienda', tono: 'farmacia', texto: plural(farmacia.datos.pedidosTienda, 'pedido de la tienda por atender', 'pedidos de la tienda por atender'), href: `${base.farmacia}/pedidos` })
   if (planesDetenidos?.ok && planesDetenidos.datos) pendientes.push({ clave: 'planes', tipo: 'Tienda', tono: 'farmacia', texto: plural(planesDetenidos.datos, 'plan de compra detenido', 'planes de compra detenidos'), href: `${base.farmacia}/planes?grupo=detenidos` })
   if (solicitudes?.ok && solicitudes.datos) pendientes.push({ clave: 'solicitudes', tipo: 'Sitio', tono: 'aviso', texto: plural(solicitudes.datos, 'solicitud de primera cita por atender', 'solicitudes de primera cita por atender'), href: `${rutaAdmin}/collections/solicitudes?where[estado][equals]=nueva` })
+  if (hospital?.ok && hospital.datos.internados) pendientes.push({ clave: 'hospital', tipo: 'Hospital', tono: 'aviso', texto: `${plural(hospital.datos.internados, 'paciente internado', 'pacientes internados')}${hospital.datos.atrasadas ? ` · ${plural(hospital.datos.atrasadas, 'toma atrasada', 'tomas atrasadas')}` : ''}`, href: `${base.clinica}/hospital` })
   if (agenda?.ok && porConfirmar) pendientes.push({ clave: 'por-confirmar', tipo: 'Agenda', tono: 'aviso', texto: plural(porConfirmar, 'cita por confirmar', 'citas por confirmar'), href: `${base.clinica}/agenda` })
 
   /* ───────── estética del día ───────── */

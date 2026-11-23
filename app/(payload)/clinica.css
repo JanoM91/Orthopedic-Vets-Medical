@@ -280,3 +280,37 @@
   .cl-hq-fila { grid-template-columns: 52px 1fr 40px; }
   .cl-hq-fila > span:nth-child(2), .cl-hq-fila > span:nth-child(4) { display: none; }
 }
+
+/* ───────── Hospitalización (nov-2026) ───────── */
+.cl-pre-texto { white-space: pre-line; margin: 0; }
+.cl-hos-tablero { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.cl-hos-tarjeta { display: flex; gap: 12px; align-items: flex-start; padding: 14px; text-decoration: none; color: inherit; border-left: 4px solid transparent; }
+.cl-hos-tarjeta.is-atrasada { border-left-color: #b42330; }
+.cl-hos-tarjeta__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cl-hos-tarjeta__estado { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.cl-hos-dia { display: flex; gap: 6px; }
+.cl-hos-toma, .cl-hos-ind { display: grid; grid-template-columns: 56px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--mx-borde, #e2e8f0); }
+.cl-hos-ind { grid-template-columns: 1fr auto; }
+.cl-hos-toma.is-atrasada .cl-hos-toma__hora { color: #b42330; }
+.cl-hos-toma__hora { font-size: 18px; }
+.cl-hos-toma__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cl-hos-toma__btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.cl-hos-form { display: grid; grid-template-columns: 2fr 1.4fr 1fr 1.4fr; gap: 6px; }
+.cl-hos-form--cargo { grid-template-columns: 2fr 90px 130px auto; }
+.cl-hos-obs { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px 8px; align-items: end; }
+.cl-hos-obs__nota { grid-column: span 2; }
+.cl-hos-nota { white-space: normal !important; min-width: 180px; }
+.cl-hos-cargo { display: grid; grid-template-columns: 1fr auto 40px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--mx-borde, #e2e8f0); }
+.cl-hos-parte { border-top: 1px solid var(--mx-borde, #e2e8f0); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.cl-hos-parte__foto { max-width: 320px; width: 100%; border-radius: 10px; }
+.cl-hos-parte__mini { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
+@media (max-width: 900px) {
+  .cl-hos-form { grid-template-columns: 1fr 1fr; }
+  .cl-hos-form > input:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .cl-hos-toma { grid-template-columns: 48px 1fr; }
+  .cl-hos-toma > .fz-pill { grid-column: 2; justify-self: start; }
+  .cl-hos-toma__btns { grid-column: 1 / -1; }
+  .cl-hos-form--cargo { grid-template-columns: 1fr 1fr; }
+}

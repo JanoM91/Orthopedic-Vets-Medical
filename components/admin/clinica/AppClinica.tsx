@@ -15,6 +15,7 @@
  *   agenda?…&hora=&recurso= «nueva cita» con hora y espacio ya puestos
  *   agenda?mascota=&nueva=1&presupuesto=   «nueva cita» de la cirugía de un presupuesto aceptado
  *   cirugia/:id             hoja quirúrgica y de anestesia
+ *   hospital | hospital/:id  internados y ficha del internamiento
  *   mascotas/nueva?volver=agenda&dia=&hora=&recurso=
  *                           alta desde «Nueva cita»: al guardar regresa a la agenda
  *                           con la mascota nueva, la misma hora y el mismo espacio
@@ -35,6 +36,7 @@ import Importar from './Importar'
 import Inicio from './Inicio'
 import { Expediente, FormularioMascota } from './Mascota'
 import { HojaQuirurgica } from './HojaQuirurgica'
+import { FichaInternamiento, TableroHospital } from './Hospital'
 
 type Props = {
   catalogo: CatalogoClinica
@@ -78,6 +80,8 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
     )
   }
   else if (seccion === 'mascotas' && numero(id)) pantalla = <Expediente key={id} id={numero(id)!} pestana={query.ver ?? null} />
+  else if (seccion === 'hospital' && !id) pantalla = p.verExpediente || p.agenda ? <TableroHospital /> : <Aviso>Tu rol no incluye el hospital.</Aviso>
+  else if (seccion === 'hospital' && numero(id)) pantalla = p.verExpediente || p.agenda ? <FichaInternamiento key={id} id={numero(id)!} /> : <Aviso>Tu rol no incluye el hospital.</Aviso>
   else if (seccion === 'cirugia' && numero(id)) pantalla = p.verExpediente ? <HojaQuirurgica key={id} id={numero(id)!} /> : <Aviso>Tu rol no incluye el expediente.</Aviso>
   else if (seccion === 'importar') pantalla = p.importar ? <Importar /> : <Aviso>Tu rol no incluye importar archivos.</Aviso>
   else if (seccion === 'estetica') pantalla = catalogo.estetica?.activa && p.estetica ? <Estetica diaInicial={query.dia ?? null} /> : <Aviso>{catalogo.estetica?.activa ? 'Tu rol no incluye la estética.' : 'El módulo de Estética está apagado (Sistema → Instalación: módulos).'}</Aviso>
@@ -103,6 +107,11 @@ export default function AppClinica({ catalogo: inicial, ruta, query, rutaAdmin, 
             {p.agenda && (
               <Link href={`${base}/agenda`} className={seccion === 'agenda' ? 'is-on' : ''}>
                 Agenda
+              </Link>
+            )}
+            {(p.verExpediente || p.agenda) && (
+              <Link href={`${base}/hospital`} className={seccion === 'hospital' ? 'is-on' : ''}>
+                Hospital
               </Link>
             )}
             {catalogo.estetica?.activa && p.estetica && (

@@ -7,6 +7,7 @@ import { portalRefuerzosPendientes, portalResumen } from '../../../lib/clinica/s
 import { portalBanosPendientes } from '../../../lib/clinica/esteticaPortal'
 import { portalPaquetes, type PaqueteCatalogo, type PaqueteVendidoVista } from '../../../lib/clinica/paquetes'
 import { portalPresupuestosPendientes } from '../../../lib/clinica/cirugia'
+import { portalInternamientos } from '../../../lib/clinica/hospital'
 import { pedidosDelTutor } from '../../../lib/farmacia/tienda'
 import { recomprasDelCliente, type RecompraVista } from '../../../lib/farmacia/recompra'
 import type { PedidoVista } from '../../../lib/farmacia/tiposTienda'
@@ -109,7 +110,7 @@ export default async function PortalInicio() {
   const vivas = r.mascotas.filter((m) => m.estado !== 'fallecido')
   const ids = vivas.map((m) => m.id)
   const cabeceras = await headers()
-  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos, paquetes, presupuestos] = await Promise.all([
+  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos, paquetes, presupuestos, internados] = await Promise.all([
     proximasPorMascota(c, ids),
     portalRefuerzosPendientes(c, ids),
     portalCitas(c),
@@ -119,6 +120,7 @@ export default async function PortalInicio() {
     portalBanosPendientes(c, ids).catch(() => []),
     portalPaquetes(c).catch(() => ({ catalogo: [] as PaqueteCatalogo[], mios: [] as PaqueteVendidoVista[], mascotas: [] })),
     portalPresupuestosPendientes(c, ids).catch(() => []),
+    portalInternamientos(c, ids).catch(() => []),
   ])
   const hoy = hoyISO()
   const siguiente = [...proximas.values()].sort((a, b) => (a.dia + a.horaInicio).localeCompare(b.dia + b.horaInicio))[0] ?? null
@@ -126,6 +128,17 @@ export default async function PortalInicio() {
   const nombreDe = new Map(r.mascotas.map((m) => [m.id, m.nombre]))
 
   const pendientes: Pendiente[] = []
+  /* Hospitalización (nov-2026): partes del día y, al alta, indicaciones para casa. */
+  for (const hz of internados) {
+    pendientes.push({
+      clave: `hos-${hz.id}`,
+      tono: 'ok',
+      icono: 'paw',
+      titulo: hz.estado === 'internado' ? `${hz.mascota} está internada` : `${hz.mascota} ya puede irse a casa`,
+      detalle: hz.estado === 'internado' ? (hz.ultimoParte ? `Último parte: ${corta(hz.ultimoParte)}` : 'Aún sin parte del médico') : 'Revisa las indicaciones para casa',
+      accion: { href: hz.liga, texto: hz.estado === 'internado' ? 'Ver cómo sigue' : 'Ver indicaciones' },
+    })
+  }
   /* Presupuestos de cirugía por revisar y firmar (ruta ortopédica, nov-2026): primero en la lista. */
   for (const pr of presupuestos) {
     pendientes.push({

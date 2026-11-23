@@ -89,6 +89,7 @@ export interface Config {
     'cir-presupuestos': CirPresupuesto;
     'cir-consentimientos': CirConsentimiento;
     'cir-hojas': CirHoja;
+    'hos-internamientos': HosInternamiento;
     'est-adicionales': EstAdicional;
     'est-fichas': EstFicha;
     'est-fotos': EstFoto;
@@ -148,6 +149,7 @@ export interface Config {
     'cir-presupuestos': CirPresupuestosSelect<false> | CirPresupuestosSelect<true>;
     'cir-consentimientos': CirConsentimientosSelect<false> | CirConsentimientosSelect<true>;
     'cir-hojas': CirHojasSelect<false> | CirHojasSelect<true>;
+    'hos-internamientos': HosInternamientosSelect<false> | HosInternamientosSelect<true>;
     'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
     'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
     'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
@@ -1554,6 +1556,103 @@ export interface CirHoja {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hos-internamientos".
+ */
+export interface HosInternamiento {
+  id: number;
+  folio?: string | null;
+  mascota: number | Mascota;
+  cliente?: (number | null) | Cliente;
+  hoja?: (number | null) | CirHoja;
+  presupuesto?: (number | null) | CirPresupuesto;
+  medico?: (number | null) | User;
+  motivo: string;
+  espacio?: string | null;
+  estado: 'internado' | 'alta';
+  ingreso: string;
+  alta?: string | null;
+  indicaciones?:
+    | {
+        clave: string;
+        tratamiento: string;
+        dosis?: string | null;
+        via?: string | null;
+        frecuencia?: string | null;
+        /**
+         * Horas que fija el médico, HH:MM separadas por coma. Vacío = según necesidad.
+         */
+        horas?: string | null;
+        nota?: string | null;
+        activa?: boolean | null;
+        desde?: string | null;
+        por?: string | null;
+        suspendidaEn?: string | null;
+        suspendidaPor?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  aplicaciones?:
+    | {
+        indicacion: string;
+        /**
+         * AAAA-MM-DD HH:MM o vacío (según necesidad).
+         */
+        programada?: string | null;
+        estado: 'aplicada' | 'omitida';
+        en: string;
+        motivo?: string | null;
+        nota?: string | null;
+        por?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  observaciones?:
+    | {
+        en: string;
+        temp?: number | null;
+        fc?: number | null;
+        fr?: number | null;
+        dolor?: number | null;
+        apetito?: ('completo' | 'parcial' | 'nada' | 'ayuno') | null;
+        orina?: boolean | null;
+        heces?: boolean | null;
+        notas?: string | null;
+        por?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  cargos?:
+    | {
+        concepto: string;
+        cantidad: number;
+        precioUnitario: number;
+        importe: number;
+        fecha: string;
+        por?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  partes?:
+    | {
+        en: string;
+        texto: string;
+        foto?: string | null;
+        por?: string | null;
+        avisado?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  resumenAlta?: string | null;
+  indicacionesAlta?: string | null;
+  cargoFinanzas?: (number | null) | FinOperacion;
+  token?: string | null;
+  creadoPor?: (number | null) | User;
+  altaPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "est-fichas".
  */
 export interface EstFicha {
@@ -2127,6 +2226,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'cir-hojas';
         value: number | CirHoja;
+      } | null)
+    | ({
+        relationTo: 'hos-internamientos';
+        value: number | HosInternamiento;
       } | null)
     | ({
         relationTo: 'est-adicionales';
@@ -2931,6 +3034,96 @@ export interface CirHojasSelect<T extends boolean = true> {
   creadoPor?: T;
   cerradaPor?: T;
   cerradaEn?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hos-internamientos_select".
+ */
+export interface HosInternamientosSelect<T extends boolean = true> {
+  folio?: T;
+  mascota?: T;
+  cliente?: T;
+  hoja?: T;
+  presupuesto?: T;
+  medico?: T;
+  motivo?: T;
+  espacio?: T;
+  estado?: T;
+  ingreso?: T;
+  alta?: T;
+  indicaciones?:
+    | T
+    | {
+        clave?: T;
+        tratamiento?: T;
+        dosis?: T;
+        via?: T;
+        frecuencia?: T;
+        horas?: T;
+        nota?: T;
+        activa?: T;
+        desde?: T;
+        por?: T;
+        suspendidaEn?: T;
+        suspendidaPor?: T;
+        id?: T;
+      };
+  aplicaciones?:
+    | T
+    | {
+        indicacion?: T;
+        programada?: T;
+        estado?: T;
+        en?: T;
+        motivo?: T;
+        nota?: T;
+        por?: T;
+        id?: T;
+      };
+  observaciones?:
+    | T
+    | {
+        en?: T;
+        temp?: T;
+        fc?: T;
+        fr?: T;
+        dolor?: T;
+        apetito?: T;
+        orina?: T;
+        heces?: T;
+        notas?: T;
+        por?: T;
+        id?: T;
+      };
+  cargos?:
+    | T
+    | {
+        concepto?: T;
+        cantidad?: T;
+        precioUnitario?: T;
+        importe?: T;
+        fecha?: T;
+        por?: T;
+        id?: T;
+      };
+  partes?:
+    | T
+    | {
+        en?: T;
+        texto?: T;
+        foto?: T;
+        por?: T;
+        avisado?: T;
+        id?: T;
+      };
+  resumenAlta?: T;
+  indicacionesAlta?: T;
+  cargoFinanzas?: T;
+  token?: T;
+  creadoPor?: T;
+  altaPor?: T;
   updatedAt?: T;
   createdAt?: T;
 }

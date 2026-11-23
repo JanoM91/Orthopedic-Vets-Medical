@@ -8,6 +8,7 @@ import { portalBanosPendientes } from '../../../lib/clinica/esteticaPortal'
 import { portalPaquetes, type PaqueteCatalogo, type PaqueteVendidoVista } from '../../../lib/clinica/paquetes'
 import { portalPresupuestosPendientes } from '../../../lib/clinica/cirugia'
 import { portalInternamientos } from '../../../lib/clinica/hospital'
+import { portalRehabilitaciones } from '../../../lib/clinica/rehabilitacion'
 import { pedidosDelTutor } from '../../../lib/farmacia/tienda'
 import { recomprasDelCliente, type RecompraVista } from '../../../lib/farmacia/recompra'
 import type { PedidoVista } from '../../../lib/farmacia/tiposTienda'
@@ -110,7 +111,7 @@ export default async function PortalInicio() {
   const vivas = r.mascotas.filter((m) => m.estado !== 'fallecido')
   const ids = vivas.map((m) => m.id)
   const cabeceras = await headers()
-  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos, paquetes, presupuestos, internados] = await Promise.all([
+  const [proximas, refuerzos, citas, pedidos, sesion, recompras, banos, paquetes, presupuestos, internados, rehabilitaciones] = await Promise.all([
     proximasPorMascota(c, ids),
     portalRefuerzosPendientes(c, ids),
     portalCitas(c),
@@ -121,6 +122,7 @@ export default async function PortalInicio() {
     portalPaquetes(c).catch(() => ({ catalogo: [] as PaqueteCatalogo[], mios: [] as PaqueteVendidoVista[], mascotas: [] })),
     portalPresupuestosPendientes(c, ids).catch(() => []),
     portalInternamientos(c, ids).catch(() => []),
+    portalRehabilitaciones(c, ids).catch(() => []),
   ])
   const hoy = hoyISO()
   const siguiente = [...proximas.values()].sort((a, b) => (a.dia + a.horaInicio).localeCompare(b.dia + b.horaInicio))[0] ?? null
@@ -137,6 +139,19 @@ export default async function PortalInicio() {
       titulo: hz.estado === 'internado' ? `${hz.mascota} está internada` : `${hz.mascota} ya puede irse a casa`,
       detalle: hz.estado === 'internado' ? (hz.ultimoParte ? `Último parte: ${corta(hz.ultimoParte)}` : 'Aún sin parte del médico') : 'Revisa las indicaciones para casa',
       accion: { href: hz.liga, texto: hz.estado === 'internado' ? 'Ver cómo sigue' : 'Ver indicaciones' },
+    })
+  }
+  /* Rehabilitación (nov-2026): los ejercicios de hoy y, al terminar, el resumen del equipo. */
+  for (const rh of rehabilitaciones) {
+    if (rh.estado === 'activo' && !rh.esperadasHoy) continue
+    const listo = rh.estado === 'activo' && rh.hechasHoy >= rh.esperadasHoy
+    pendientes.push({
+      clave: `reh-${rh.id}`,
+      tono: listo ? 'ok' : 'warn',
+      icono: 'paw',
+      titulo: rh.estado === 'activo' ? `Ejercicios de hoy de ${rh.mascota}` : `${rh.mascota} terminó su rehabilitación`,
+      detalle: rh.estado === 'activo' ? (listo ? '¡Listos por hoy!' : `Llevan ${rh.hechasHoy} de ${rh.esperadasHoy}`) : 'Lee el resumen y lo que sigue en casa',
+      accion: { href: `/portal/rehabilitacion/${rh.id}`, texto: rh.estado === 'activo' ? (listo ? 'Ver avance' : 'Marcar ejercicios') : 'Ver resumen', secundaria: listo },
     })
   }
   /* Presupuestos de cirugía por revisar y firmar (ruta ortopédica, nov-2026): primero en la lista. */

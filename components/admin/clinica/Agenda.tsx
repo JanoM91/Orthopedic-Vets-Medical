@@ -10,6 +10,7 @@ import { site } from '../../../lib/site'
 import { mensajes } from '../../../lib/whatsapp'
 import type { CatalogoEstetica } from '../../../lib/clinica/agenda'
 import type { Cotizacion } from '../../../lib/clinica/estetica'
+import { BotonSesionRehab } from './Rehabilitacion'
 
 /**
  * Agenda del panel: un día, una columna por recurso (espacio), las citas como
@@ -111,7 +112,7 @@ export function acomodar(citas: CitaVista[], de: number, intervalo: number, alto
 
 /* ───────────────────────────── pantalla ───────────────────────────── */
 
-export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = false, horaInicial = null, recursoInicial = null, presupuestoInicial = null }: { diaInicial: string | null; mascotaInicial: number | null; nuevaInicial?: boolean; horaInicial?: string | null; recursoInicial?: number | null; presupuestoInicial?: number | null }) {
+export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = false, horaInicial = null, recursoInicial = null, presupuestoInicial = null, servicioInicial = null }: { diaInicial: string | null; mascotaInicial: number | null; nuevaInicial?: boolean; horaInicial?: string | null; recursoInicial?: number | null; presupuestoInicial?: number | null; servicioInicial?: number | null }) {
   const { catalogo: cat, base } = useClinica()
   const [dia, setDia] = useState(diaInicial && /^\d{4}-\d{2}-\d{2}$/.test(diaInicial) ? diaInicial : hoyISO())
   const agenda = useCarga(() => api.get<{ dia: string; citas: CitaVista[]; porConfirmar: CitaVista[]; abierto: boolean; de: string; a: string }>('agenda', { dia }), [dia])
@@ -347,6 +348,7 @@ export default function Agenda({ diaInicial, mascotaInicial, nuevaInicial = fals
             recursoInicial={nueva.recurso ?? null}
             mascotaInicial={mascotaInicial}
             presupuestoInicial={presupuestoInicial}
+            servicioInicial={servicioInicial}
             onListo={(x) => {
               setNueva(null)
               if (x.dia !== dia) setDia(x.dia)
@@ -624,6 +626,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
               </Link>
             )}
             {cat.permisos.escribirExpediente && (cita.presupuesto || ['llegada', 'atencion'].includes(cita.estado)) && <BotonHoja citaId={cita.id} />}
+            {cat.permisos.escribirExpediente && ['llegada', 'atencion'].includes(cita.estado) && <BotonSesionRehab citaId={cita.id} />}
             {['solicitada', 'confirmada'].includes(cita.estado) && (
               <Boton chico onClick={() => setMoviendo(true)}>
                 Reprogramar
@@ -655,6 +658,7 @@ export function DetalleCita({ cita, catalogo, onCambio, compacto }: { cita: Cita
               </Link>
             )}
             {cat.permisos.escribirExpediente && cita.presupuesto && <BotonHoja citaId={cita.id} />}
+            {cat.permisos.escribirExpediente && cita.estado === 'finalizada' && <BotonSesionRehab citaId={cita.id} />}
           </div>
         </div>
       )}
@@ -827,12 +831,13 @@ function SelectorHorario({ catalogo, servicioId, recursoId, diaInicial, horaInic
 
 /* ───────────────────────────── nueva cita ───────────────────────────── */
 
-function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mascotaInicial, presupuestoInicial = null, onListo }: { catalogo: Catalogo; diaInicial: string; horaInicial: string | null; recursoInicial: number | null; mascotaInicial: number | null; presupuestoInicial?: number | null; onListo: (c: CitaVista) => void }) {
+function FormularioCita({ catalogo, diaInicial, horaInicial, recursoInicial, mascotaInicial, presupuestoInicial = null, servicioInicial = null, onListo }: { catalogo: Catalogo; diaInicial: string; horaInicial: string | null; recursoInicial: number | null; mascotaInicial: number | null; presupuestoInicial?: number | null; servicioInicial?: number | null; onListo: (c: CitaVista) => void }) {
   const { base, catalogo: cat } = useClinica()
   const [q, setQ] = useState('')
   const [res, setRes] = useState<ResultadoBusqueda['mascotas']>([])
   const [mascota, setMascota] = useState<{ id: number; nombre: string; especie: string; tutor: string } | null>(null)
-  const [servicio, setServicio] = useState<number | ''>('')
+  /* Sesión de rehabilitación (expediente → plan → «Agendar sesión»): llega con el servicio del plan. */
+  const [servicio, setServicio] = useState<number | ''>(servicioInicial && catalogo.servicios.some((x) => x.id === servicioInicial && x.activo) ? servicioInicial : '')
   const [confirmar, setConfirmar] = useState(true)
   const [usarPaquete, setUsarPaquete] = useState(true)
   /* Cirugía de un presupuesto aceptado (expediente → Cirugía → «Agendar cirugía»). */

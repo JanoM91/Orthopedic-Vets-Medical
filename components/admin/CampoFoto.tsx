@@ -41,6 +41,9 @@ const CampoFoto: TextareaFieldClientComponent = ({ path, field }) => {
   }
 
   const etiqueta = typeof field?.label === 'string' ? field.label : 'Foto'
+  /* La ayuda sale de `admin.description` del campo; sin ella, la de «Fotos del sitio». */
+  const descripcion = (field?.admin as { description?: unknown } | undefined)?.description
+  const ayuda = typeof descripcion === 'string' ? descripcion : 'La foto se reduce sola antes de guardarse. Horizontal para la portada; vertical para el retrato.'
   const id = `campo-foto-${path.replace(/\W+/g, '-')}`
   return (
     <div className="field-type" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
@@ -55,7 +58,12 @@ const CampoFoto: TextareaFieldClientComponent = ({ path, field }) => {
         <p style={{ margin: 0, color: '#56655f' }}>Todavía no hay foto.</p>
       )}
       <input ref={entrada} id={id} type="file" accept="image/*" onChange={elegir} disabled={ocupado} style={{ fontSize: 16, minHeight: 44 }} />
-      <p style={{ margin: 0, fontSize: 13, color: '#56655f' }}>{ocupado ? 'Preparando la foto…' : 'La foto se reduce sola antes de guardarse. Horizontal para la portada; vertical para el retrato.'}</p>
+      <p style={{ margin: 0, fontSize: 13, color: '#56655f' }}>{ocupado ? 'Preparando la foto…' : ayuda}</p>
+      {value && !field?.required && (
+        <button type="button" className="btn btn--style-secondary btn--size-small" style={{ alignSelf: 'flex-start', margin: 0 }} onClick={() => setValue('')}>
+          Quitar foto
+        </button>
+      )}
       {(error || (showError && errorMessage)) && (
         <p role="alert" style={{ margin: 0, color: '#ad2a20', fontWeight: 600 }}>
           {error || errorMessage}

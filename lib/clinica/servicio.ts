@@ -767,7 +767,7 @@ export async function quitarFoto(ctx: Ctx, mascotaId: number): Promise<MascotaVi
 }
 
 /** El tutor solo cambia la foto de sus mascotas (la regla de acceso decide si la ve). */
-async function mascotaDelTutor(c: CtxTutor, mascotaId: number): Promise<Mascota> {
+export async function mascotaDelTutor(c: CtxTutor, mascotaId: number): Promise<Mascota> {
   const r = await c.payload.find({ collection: 'mascotas', depth: 1, limit: 1, ...acceso(c), where: { id: { equals: mascotaId } } })
   if (!r.docs[0]) throw noEncontrado('Esa mascota no está entre las tuyas.')
   return r.docs[0]

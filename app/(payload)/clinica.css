@@ -314,3 +314,38 @@
   .cl-hos-toma__btns { grid-column: 1 / -1; }
   .cl-hos-form--cargo { grid-template-columns: 1fr 1fr; }
 }
+
+/* ───────── Rehabilitación (nov-2026) ───────── */
+.cl-reh-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cl-reh-datos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.cl-reh-dato { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }
+.cl-reh-escalas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cl-reh-medicion { display: grid; grid-template-columns: 1.2fr 1fr 1fr 90px 44px; gap: 6px; align-items: center; }
+.cl-reh-botones { display: flex; flex-wrap: wrap; gap: 6px; }
+.cl-reh-sesion { border-top: 1px solid var(--mx-borde, #e2e8f0); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.cl-reh-sesion > .fz-entre { width: 100%; }
+.cl-reh-sesion p { margin: 0; }
+.cl-reh-ej { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--mx-borde, #e2e8f0); }
+.cl-reh-ej__foto { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: #eef4f1; display: block; }
+.cl-reh-form-ej { display: grid; grid-template-columns: 2fr 1.4fr 1fr 1.6fr auto; gap: 6px; }
+.cl-reh-casa { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cl-reh-casa table { border-collapse: separate; border-spacing: 3px; font-size: 12.5px; }
+.cl-reh-casa th { font-weight: 600; text-align: left; white-space: nowrap; padding: 2px 6px; }
+.cl-reh-casa thead th { text-align: center; color: var(--mx-texto-tenue, #64748b); font-weight: 500; }
+.cl-reh-casa td { text-align: center; min-width: 38px; height: 30px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.cl-reh-casa td.is-ok { background: #d1f2e6; color: #0b6b59; font-weight: 600; }
+.cl-reh-casa td.is-parcial { background: #fdf0d5; color: #8a5a00; }
+.cl-reh-casa td.is-nada { background: #f1f5f9; color: #94a3b8; }
+.cl-reh-casa td.is-na { background: transparent; }
+@media (max-width: 900px) {
+  .cl-reh-form-ej { grid-template-columns: 1fr 1fr; }
+  .cl-reh-form-ej > select:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .cl-reh-escalas { grid-template-columns: 1fr 1fr; }
+  .cl-reh-medicion { grid-template-columns: 1fr 1fr 44px; }
+  .cl-reh-medicion > select:nth-child(3) { grid-column: 1; }
+  .cl-reh-medicion > input { grid-column: 2; }
+  .cl-reh-medicion > button { grid-column: 3; grid-row: 1; }
+  .cl-reh-dos { grid-template-columns: 1fr; }
+}

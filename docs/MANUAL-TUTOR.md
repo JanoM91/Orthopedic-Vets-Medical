@@ -52,6 +52,13 @@ Si olvidas tu contraseña: «Olvidé mi contraseña» en la pantalla de entrada;
 - Al darla de alta verás las **indicaciones para casa**. La liga sigue sirviendo 30 días después.
 - Si tienes dudas, llama a la clínica: el teléfono está en la misma página.
 
+## Rehabilitación
+
+- Si tu mascota está en rehabilitación, en tu app aparece en **Pendientes** («Ejercicios de hoy») y en la ficha de tu mascota.
+- Ahí ves el objetivo, cuántas sesiones lleva, la próxima cita y los **ejercicios para casa**: foto, cómo se hace y, a veces, un video.
+- Cada vez que hagan un ejercicio toca **«Lo hicimos»**. Si se te pasó marcarlo, cambia a **Ayer**.
+- En «Cómo va» ves la gráfica de dolor y cojera y lo que el equipo te escribe en cada sesión.
+
 ## Paquetes
 
 - Algunos servicios y productos se venden en **paquete**: pagas una vez y los vas usando (por ejemplo, varias sesiones de rehabilitación). En tu app, Inicio → **Paquetes** ves cuánto le queda a cada mascota y hasta cuándo vale.

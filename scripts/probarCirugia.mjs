@@ -1,6 +1,7 @@
 /**
- * Prueba de integración de la RUTA ORTOPÉDICA, fase 1: presupuesto de cirugía
- * y consentimiento informado (nov-2026), contra la app corriendo con una base
+ * Prueba de integración de la RUTA ORTOPÉDICA (nov-2026): presupuesto de cirugía
+ * y consentimiento (fase 1), hoja quirúrgica (2), hospitalización (3) y
+ * rehabilitación (4), contra la app corriendo con una base
  * Postgres LOCAL (nunca la de producción).
  *
  *   npm run start
@@ -325,6 +326,143 @@ async function main() {
   ok(h.includes('Indicaciones para casa') && h.includes('Reposo 2 semanas') && !h.includes('Evolución favorable'), 'El tutor ve las indicaciones para casa (no el resumen interno)')
   r = await medico.get('/api/clinica/hospital')
   ok(r.status === 200 && r.data.altasRecientes.some((x) => x.id === hos.id), 'Aparece en «Altas recientes» del tablero', r.data?.altasRecientes?.length)
+
+  console.log('\nRehabilitación (fase 4)')
+  const FOTOJ = 'data:image/jpeg;base64,' + Buffer.alloc(1200, 9).toString('base64')
+  r = await recepcion.post('/api/reh-ejercicios', { nombre: `Sentarse y pararse ${sufijo}`, comoSeHace: 'x' })
+  ok(r.status === 403, 'Recepción no edita el catálogo de ejercicios (pide «Escribir expediente»)', r.status)
+  r = await medico.post('/api/reh-ejercicios', { nombre: `Caminata corta ${sufijo}`, comoSeHace: 'Diez minutos con correa corta.', video: 'http://inseguro.mx/v' })
+  ok(r.status === 400, 'Un video sin https se rechaza', r.status)
+  r = await medico.post('/api/reh-ejercicios', { nombre: `Sentarse y pararse ${sufijo}`, comoSeHace: 'Pídele que se siente y se pare despacio, con premio.', foto: FOTOJ, video: 'https://www.youtube.com/watch?v=abc' })
+  const ej1 = r.data?.doc
+  const ej2 = (await medico.post('/api/reh-ejercicios', { nombre: `Caminata corta ${sufijo}`, comoSeHace: 'Diez minutos con correa corta.' })).data?.doc
+  ok(ej1?.id && ej2?.id, 'El médico agrega ejercicios al catálogo (con foto y video)')
+  r = await recepcion.post('/api/clinica/rehabilitacion', { mascotaId: max.id, motivo: 'Rehabilitación' })
+  ok(r.status === 403, 'Recepción no crea planes', r.status)
+  r = await medico.post('/api/clinica/rehabilitacion', { mascotaId: max.id, motivo: 'Rehabilitación postoperatoria de fémur', objetivo: 'Que apoye la pata y camine 20 minutos', servicioId: servicio.id, sesionesPrevistas: 3, frecuencia: '2 por semana', hojaId: hq.id })
+  const plan = r.data
+  ok(r.status === 201 && plan.estado === 'activo' && plan.servicio?.id === servicio.id && plan.hoja?.id === hq.id && plan.paquete === null, 'Plan creado desde la hoja, con el servicio de la sesión', plan && { e: plan.estado, s: plan.servicio, h: plan.hoja })
+  r = await medico.post('/api/clinica/rehabilitacion', { mascotaId: max.id, motivo: 'Otro plan' })
+  ok(r.status === 400 && /ya tiene un plan activo/.test(r.data.error), 'Un plan activo por mascota', r.data)
+  const rp = `/api/clinica/rehabilitacion/${plan.id}`
+  r = await medico.post(`${rp}/ejercicios`, { ejercicioId: ej1.id, vecesAlDia: 9 })
+  ok(r.status === 400, 'Veces al día: de 1 a 6', r.status)
+  r = await medico.post(`${rp}/ejercicios`, { ejercicioId: ej1.id, repeticiones: '10, dos series', vecesAlDia: 2, nota: 'Después de comer' })
+  ok(r.status === 200 && r.data.ejercicios.length === 1 && /\/ejercicios\/\d+\/foto\?v=/.test(r.data.ejercicios[0].foto ?? '') && r.data.ejercicios[0].video, 'Ejercicio asignado con repeticiones, veces al día, foto y video', r.data?.ejercicios?.[0])
+  r = await medico.post(`${rp}/ejercicios`, { ejercicioId: ej1.id, vecesAlDia: 1 })
+  ok(r.status === 400 && /ya está en el plan/.test(r.data.error), 'El mismo ejercicio no se asigna dos veces', r.data)
+  r = await medico.post(`${rp}/ejercicios`, { ejercicioId: ej2.id, vecesAlDia: 1 })
+  const [e1, e2] = r.data.ejercicios
+
+  /* Cobro: paquetes y por sesión (lo hace la agenda). */
+  const paqR = (await admin.post('/api/paquetes', { nombre: `Rehabilitación ${sufijo}`, contenido: [{ tipo: 'servicio', servicio: servicio.id, cantidad: 2 }], precio: 700, vigenciaDias: 60 })).data?.doc
+  await recepcion.post(`/api/clinica/mascotas/${max.id}/paquetes`, { paqueteId: paqR.id })
+  r = await medico.get(rp)
+  ok(r.data?.paquete?.quedan === 2 && r.data.paquete.total === 2, 'El plan muestra el saldo del paquete de ese servicio', r.data?.paquete)
+  r = await recepcion.post('/api/clinica/agenda/citas', { mascotaId: max.id, servicioId: servicio.id, dia, hora: '11:00', confirmar: true })
+  const s1 = r.data
+  ok(r.status === 201 && s1.paquete?.id, 'La sesión agendada se liga sola al paquete', s1?.paquete ?? r.data)
+  for (const e of ['llegada', 'atencion']) await recepcion.post(`/api/clinica/agenda/citas/${s1.id}/estado`, { estado: e })
+  r = await medico.get(`/api/clinica/rehabilitacion/cita/${s1.id}`)
+  ok(r.data?.planId === plan.id && r.data.sesionId === null, 'Desde la cita se encuentra el plan de la mascota', r.data)
+  r = await recepcion.post(`${rp}/sesiones`, { dolor: 3 })
+  ok(r.status === 403, 'Recepción no registra sesiones', r.status)
+  r = await medico.post(`${rp}/sesiones`, { citaId: s1.id, dolor: 11 })
+  ok(r.status === 400 && /0 a 10/.test(r.data.error), 'Dolor fuera de 0–10: error de captura', r.data)
+  r = await medico.post(`${rp}/sesiones`, { citaId: s1.id, mediciones: [{ articulacion: 'rodilla', lado: 'der', movimiento: 'flexion', grados: 250 }] })
+  ok(r.status === 400 && /error de captura/.test(r.data.error), 'Un ángulo de 250° se rechaza', r.data)
+  r = await medico.post(`${rp}/sesiones`, { citaId: s1.id })
+  ok(r.status === 400 && /al menos/.test(r.data.error), 'Una sesión vacía no se guarda', r.data)
+  r = await medico.post(`${rp}/sesiones`, { citaId: (await recepcion.post('/api/clinica/agenda/citas', { mascotaId: otra.id, servicioId: servicio.id, dia, hora: '15:00', confirmar: true })).data.id, dolor: 5 })
+  ok(r.status === 400 && /no es de esta mascota/.test(r.data.error), 'No se liga la cita de otra mascota', r.data)
+  r = await medico.post(`${rp}/sesiones`, { citaId: s1.id, dolor: 6, cojera: 4, mediciones: [{ articulacion: 'rodilla', lado: 'der', movimiento: 'flexion', grados: 85 }], perimetroDer: 31.25, terapias: 'Hidroterapia 15 min', notaInterna: 'Edema leve en rodilla', notaTutor: 'Buen inicio; sigan con los ejercicios.' })
+  const ses1 = r.data?.sesionesLista?.[0]
+  ok(r.status === 201 && r.data.sesiones === 1 && ses1?.numero === 1 && ses1.perimetroDer === 31.3 && ses1.cita?.id === s1.id && ses1.mediciones[0].grados === 85, 'Sesión 1 ligada a su cita: dolor, cojera, goniometría y perímetro', ses1)
+  r = await medico.post(`${rp}/sesiones`, { citaId: s1.id, dolor: 5 })
+  ok(r.status === 400 && /ya tiene su sesión/.test(r.data.error), 'Una sesión por cita', r.data)
+  r = await recepcion.post(`/api/clinica/agenda/citas/${s1.id}/estado`, { estado: 'finalizada' })
+  ok(r.status === 200 && r.data.cargoFinanzas === null, 'Al finalizar la sesión se descuenta del paquete (sin cargo)', r.data && { c: r.data.cargoFinanzas })
+  r = await medico.get(`/api/clinica/rehabilitacion/cita/${s1.id}`)
+  ok(r.data?.sesionId === ses1.id, 'La cita ya muestra su sesión', r.data)
+  r = await recepcion.post('/api/clinica/agenda/citas', { mascotaId: max.id, servicioId: servicio.id, dia, hora: '12:00', confirmar: true, usarPaquete: false })
+  const s2 = r.data
+  for (const e of ['llegada', 'atencion']) await recepcion.post(`/api/clinica/agenda/citas/${s2.id}/estado`, { estado: e })
+  r = await medico.post(`${rp}/sesiones`, { citaId: s2.id, dolor: 3, cojera: 2, mediciones: [{ articulacion: 'rodilla', lado: 'der', movimiento: 'flexion', grados: 100 }], notaTutor: 'Ya apoya mejor la pata.' })
+  ok(r.status === 201 && r.data.sesiones === 2 && r.data.sesionesLista[0].numero === 2, 'Sesión 2', r.data?.sesiones)
+  r = await recepcion.post(`/api/clinica/agenda/citas/${s2.id}/estado`, { estado: 'finalizada' })
+  const opR = r.data?.cargoFinanzas ? (await admin.get(`/api/finanzas/operaciones/${r.data.cargoFinanzas}`)).data?.operacion : null
+  ok(opR?.totalCentavos === 40000, 'Una sesión fuera del paquete se cobra como cita ($400)', opR && { t: opR.totalCentavos })
+  r = await medico.post(`${rp}/sesiones`, { dolor: 2, notaInterna: 'capturada por error' })
+  ok(r.status === 201 && r.data.sesiones === 3 && r.data.sesionesLista[0].cita === null && r.data.sesionesLista[0].quitable, 'Sesión sin cita (no cobra)', r.data?.sesionesLista?.[0])
+  r = await medico.post(`${rp}/sesiones/quitar`, { sesionId: r.data.sesionesLista[0].id })
+  ok(r.status === 200 && r.data.sesiones === 2, 'Una sesión capturada por error se quita el mismo día', r.data?.sesiones)
+
+  /* Tutor */
+  r = await tutor.get(`/api/clinica/portal/rehabilitacion/${plan.id}`)
+  const pt = r.data
+  const texto = JSON.stringify(pt ?? {})
+  ok(r.status === 200 && pt.ejercicios.length === 2 && pt.avance.length === 2 && pt.avance[0].dolor === 6 && pt.avance[1].notaTutor === 'Ya apoya mejor la pata.', 'El tutor ve sus ejercicios y el avance de dolor y cojera', pt && { e: pt.ejercicios?.length, a: pt.avance })
+  ok(!texto.includes('Edema') && !texto.includes('flexion') && !texto.includes('Hidroterapia'), 'El tutor no recibe la nota interna, la goniometría ni lo que se hizo')
+  const casa = (cuerpo) => tutor.post(`/api/clinica/portal/rehabilitacion/${plan.id}/casa`, cuerpo)
+  r = await casa({ clave: e1.clave, dia: hoyMx, accion: 'sumar' })
+  r = await casa({ clave: e1.clave, dia: hoyMx, accion: 'sumar' })
+  ok(r.status === 200 && r.data.ejercicios.find((x) => x.clave === e1.clave).hoy === 2, 'El tutor marca las dos veces de hoy', r.data?.ejercicios)
+  r = await casa({ clave: e1.clave, dia: hoyMx, accion: 'sumar' })
+  ok(r.status === 400 && /Ya marcaste/.test(r.data.error), 'No pasa de las veces indicadas', r.data)
+  r = await casa({ clave: e1.clave, dia: hoyMx, accion: 'restar' })
+  ok(r.status === 200 && r.data.ejercicios.find((x) => x.clave === e1.clave).hoy === 1 && r.data.semana.at(-1).hechas === 1 && r.data.semana.at(-1).esperadas === 3, 'Desmarca una vez; la semana cuenta 1 de 3 hoy', r.data?.semana?.at(-1))
+  const ayerMx = new Date(Date.parse(hoyMx + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10)
+  r = await casa({ clave: e1.clave, dia: ayerMx, accion: 'sumar' })
+  ok(r.status === 400 && /no está en el plan/.test(r.data.error), 'Ayer aún no tenía ese ejercicio', r.data)
+  r = await casa({ clave: e1.clave, dia: '2020-01-01', accion: 'sumar' })
+  ok(r.status === 400 && /hoy o lo de ayer/.test(r.data.error), 'Solo se marca hoy o ayer', r.data)
+  r = await visitante.post(`/api/clinica/portal/rehabilitacion/${plan.id}/casa`, { clave: e1.clave, dia: hoyMx, accion: 'sumar' })
+  ok(r.status === 401, 'Sin sesión no se marca', r.status)
+  r = await tutor.get(`/portal/rehabilitacion/${plan.id}`)
+  h = String(r.data)
+  ok(r.status === 200 && h.includes('Ejercicios para casa') && h.includes(`Sentarse y pararse ${sufijo}`) && h.includes('Buen inicio') && h.includes('Cómo va') && !h.includes('Edema'), 'Página del plan en la app del tutor')
+  r = await tutor.get('/portal')
+  ok(String(r.data).includes('Ejercicios de hoy de') && String(r.data).includes(`/portal/rehabilitacion/${plan.id}`), 'En Pendientes: los ejercicios de hoy')
+  r = await tutor.get(`/portal/mascotas/${max.id}`)
+  ok(String(r.data).includes(`/portal/rehabilitacion/${plan.id}`), 'La ficha de la mascota enlaza su plan')
+  const urlFoto = pt.ejercicios.find((x) => x.clave === e1.clave).foto
+  r = await visitante.get(urlFoto)
+  ok(r.status === 401, 'La foto del ejercicio pide sesión', r.status)
+  r = await fetch(BASE + urlFoto, { headers: { cookie: tutor.cookie } })
+  ok(r.status === 200 && r.headers.get('content-type') === 'image/jpeg', 'El tutor ve la foto del ejercicio', r.status)
+  r = await tutor.get('/api/reh-planes')
+  ok(r.status === 403 || (r.data?.docs ?? []).length === 0, 'El tutor no lee planes por la API genérica', r.status)
+  r = await admin.patch(`/api/reh-planes/${plan.id}`, { motivo: 'x' })
+  ok(r.status === 403, 'Nadie edita planes por la API genérica', r.status)
+  r = await admin.post('/api/reh-sesiones', { plan: plan.id, mascota: max.id, fecha: new Date().toISOString() })
+  ok(r.status === 403, 'Nadie crea sesiones por la API genérica', r.status)
+
+  /* Equipo: lo que marcó el tutor, tablero y fin del plan */
+  r = await medico.get(rp)
+  const filaE1 = r.data?.casa?.filas?.find((x) => x.clave === e1.clave)
+  ok(filaE1?.hechas.at(-1) === 1 && filaE1.hechas.at(-2) === null && typeof r.data.cumplimiento7 === 'number', 'El equipo ve lo que marcó el tutor (14 días) y el % de la semana', filaE1 && { h: filaE1.hechas.slice(-2), c: r.data.cumplimiento7 })
+  r = await medico.post(`${rp}/ejercicios/quitar`, { clave: e2.clave })
+  ok(r.status === 200 && r.data.ejercicios.find((x) => x.clave === e2.clave)?.activo === false, 'Quitar un ejercicio', r.status)
+  r = await tutor.get(`/api/clinica/portal/rehabilitacion/${plan.id}`)
+  ok(r.data?.ejercicios?.length === 1, 'El ejercicio quitado ya no le aparece al tutor', r.data?.ejercicios?.length)
+  r = await medico.post(rp, { motivo: 'Rehabilitación postoperatoria de fémur derecho', objetivo: 'Que camine 20 minutos', servicioId: servicio.id, sesionesPrevistas: 4, frecuencia: '2 por semana' })
+  ok(r.status === 200 && r.data.sesionesPrevistas === 4 && r.data.motivo.endsWith('derecho'), 'Editar el plan', r.data?.sesionesPrevistas)
+  r = await medico.get('/api/clinica/rehabilitacion')
+  ok(r.status === 200 && r.data.activos.some((x) => x.id === plan.id && x.sesiones === 2), 'Aparece en el tablero de Rehabilitación', r.data?.activos?.length)
+  r = await medico.get(`/api/clinica/mascotas/${max.id}/rehabilitacion`)
+  ok(r.data?.[0]?.id === plan.id, 'Y en el expediente de la mascota', r.data?.length)
+  r = await medico.post(`${rp}/terminar`, { resumenFinal: 'Bien' })
+  ok(r.status === 400, 'Terminar pide un resumen para el tutor', r.status)
+  r = await medico.post(`${rp}/terminar`, { resumenFinal: 'Terminó bien: ya apoya y camina 20 minutos. Sigan con caminatas diarias.' })
+  ok(r.status === 200 && r.data.estado === 'terminado' && r.data.fin, 'Plan terminado', r.data?.estado)
+  r = await medico.post(`${rp}/sesiones`, { dolor: 1 })
+  ok(r.status === 400 && /terminó/.test(r.data.error), 'Terminado ya no cambia', r.data)
+  r = await casa({ clave: e1.clave, dia: hoyMx, accion: 'sumar' })
+  ok(r.status === 400, 'El tutor ya no marca en un plan terminado', r.status)
+  r = await tutor.get(`/portal/rehabilitacion/${plan.id}`)
+  ok(String(r.data).includes('Resumen del equipo') && String(r.data).includes('camina 20 minutos'), 'El tutor ve el resumen final')
+  r = await tutor.get('/portal')
+  ok(String(r.data).includes('terminó su rehabilitación'), 'En Pendientes: «terminó su rehabilitación»')
 
   console.log(`\n${total - fallas}/${total} correctas`)
   process.exit(fallas ? 1 : 0)

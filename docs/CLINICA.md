@@ -237,3 +237,14 @@ Decisiones de Jano (22-nov-2026): el cobro es **solo lo que capture el equipo** 
 - **Nunca** se calcula ni sugiere dosis, horario ni frecuencia.
 - Migración `20261123_001039_hospital` (6 tablas con RLS). Pruebas en `test:cirugia`.
 
+## Ruta ortopédica · fase 4: rehabilitación (23-nov-2026)
+
+Decisiones de Jano (23-nov-2026): el cobro es **por paquete o por sesión**; el tutor ve en su app el **plan, los ejercicios y su avance**; el equipo mide con **escalas comunes**; los ejercicios salen de un **catálogo de la clínica**.
+
+- **Catálogo** (`reh-ejercicios`, Clínica → «Ejercicios de rehabilitación», lo edita «Escribir expediente»): nombre, cómo se hace (lo lee el tutor), foto (se reduce en el navegador) y liga de video `https://` opcional. «Disponible para asignar» lo retira sin tocar los planes que ya lo tienen.
+- **Plan** (`reh-planes`, folio `REH-`; uno activo por mascota): Pacientes → **Rehabilitación** (`/admin/clinica/rehabilitacion`, tarjetas con sesiones y % de lo hecho en casa la última semana), expediente → Cirugía → «+ Plan de rehabilitación» o, desde una hoja quirúrgica cerrada, «Plan de rehabilitación». Motivo y objetivo (los ve el tutor), servicio de la sesión, sesiones previstas, frecuencia y **ejercicios para casa** (copia del catálogo con repeticiones, veces al día 1–6 y nota). Ficha `/admin/clinica/rehabilitacion/<id>`: datos, saldo del paquete de ese servicio, próximas citas, «Agendar sesión» (abre la agenda con la mascota y el servicio), registrar sesión, avance en gráficas, sesiones, ejercicios y lo que marcó el tutor en 14 días. «Terminar plan» pide un resumen para el tutor.
+- **Sesión** (`reh-sesiones`): dolor 0–10, cojera 0–5, goniometría por articulación (hombro, codo, carpo, cadera, rodilla, tarso), lado y flexión o extensión, perímetro del muslo izquierdo y derecho, qué se hizo, nota para el tutor y nota interna. Son rangos de **captura**; la plataforma no interpreta los valores. Se liga a la cita de hoy (en la agenda, una cita en llegada, en atención o finalizada trae «Sesión de rehabilitación»); una sesión por cita; se quita solo el mismo día.
+- **Cobro**: el de la agenda. Cada sesión es una cita con el servicio del plan; si la mascota tiene un paquete con saldo de ese servicio, la cita se liga y se descuenta al finalizar; si no, se cobra la cita. Una sesión sin cita no cobra.
+- **Tutor**: `/portal/rehabilitacion/<id>` (también en Pendientes del inicio y en la ficha de la mascota): objetivo, sesiones, próxima cita o «Pedir mi siguiente sesión», ejercicios con foto, cómo se hace y video, contador «Lo hicimos» por ejercicio (hoy o ayer, hasta las veces indicadas), su semana, gráfica de dolor y cojera y la nota del equipo por sesión. Nunca ve la nota interna ni la goniometría.
+- Migración `20261123_190050_rehabilitacion` (6 tablas con RLS). Pruebas en `test:cirugia`.
+

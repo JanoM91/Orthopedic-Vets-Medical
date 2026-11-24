@@ -8,6 +8,7 @@ import type { HojaBreve } from '../../../lib/clinica/hojaQuirurgica'
 import type { ServicioVista } from '../../../lib/clinica/tipos'
 import { FirmaLienzo } from '../../FirmaLienzo'
 import { HospitalMascota } from './Hospital'
+import { RehabilitacionMascota } from './Rehabilitacion'
 import { api, Aviso, Ayuda, Boton, BotonWhatsApp, Campo, Confirmar, ErrorForm, fecha, Modal, momento, Pastilla, useCarga, useClinica } from './comun'
 
 /**
@@ -58,6 +59,7 @@ export function CirugiaMascota({ mascotaId, mascotaNombre, activa }: { mascotaId
       ))}
       <HojasMascota mascotaId={mascotaId} activa={activa} puedeEscribir={catalogo.permisos.escribirExpediente} />
       <HospitalMascota mascotaId={mascotaId} mascotaNombre={mascotaNombre} activa={activa} />
+      <RehabilitacionMascota mascotaId={mascotaId} mascotaNombre={mascotaNombre} activa={activa} />
       {editar && <EditorPresupuesto mascotaId={mascotaId} existente={editar === 'nuevo' ? null : editar} equipo={catalogo.equipo} usuarioId={catalogo.usuario.id} onCerrar={() => setEditar(null)} onGuardado={() => (setEditar(null), recargar())} />}
     </div>
   )

@@ -149,3 +149,13 @@ Un paquete se cobra una vez y se va usando (por ejemplo, 10 sesiones de rehabili
 6. **Cargos**: captura lo que se cobra (días, medicamentos, material). Al dar de alta, la suma queda pendiente de cobro en Finanzas.
 7. **Dar de alta** (médico): escribe las indicaciones para casa (las ve el tutor) y un resumen interno.
 
+## Rehabilitación
+
+1. **Catálogo de ejercicios** (una vez): Clínica → «Ejercicios de rehabilitación» → crear. Nombre, cómo se hace (con palabras del tutor), una foto y, si quieres, la liga de un video.
+2. **Plan**: Pacientes → Rehabilitación → «+ Nuevo plan» (o desde la hoja quirúrgica o el expediente). Motivo, objetivo, el servicio que se agenda en cada sesión, cuántas sesiones y cada cuánto.
+3. **Ejercicios para casa**: en el plan, elige del catálogo, escribe repeticiones y cuántas veces al día. Avísale al tutor con «Avisar al tutor».
+4. **Agendar**: «Agendar sesión» abre la agenda con la mascota y el servicio. Si tiene paquete, se descuenta; si no, se cobra al finalizar la cita.
+5. **En cada sesión**: en la cita, «Sesión de rehabilitación». Captura dolor, cojera, ángulos, perímetro del muslo, qué se hizo, una nota para el tutor y, si hace falta, una nota interna. Las gráficas se arman solas.
+6. **Seguimiento**: «Lo que marcó el tutor» muestra qué ejercicios hizo cada día.
+7. **Terminar**: «Terminar plan» con un resumen para el tutor.
+

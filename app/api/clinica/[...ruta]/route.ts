@@ -46,6 +46,7 @@ import {
   vincular,
 } from '@/lib/clinica/servicio'
 import { agregarCargo, agregarIndicacion, agregarObservacion, darAlta, internamiento, internamientosDeMascota, internar, publicarParte, quitarCargo, registrarAplicacion, suspenderIndicacion, tableroHospital } from '@/lib/clinica/hospital'
+import { abrirFotoEjercicio, agregarEjercicio, catalogoEjercicios, crearPlan, editarPlan, planesDeMascota, planRehabilitacion, portalMarcar, portalPlan, quitarEjercicio, quitarSesion, rehabilitacionDeCita, registrarSesion, tableroRehabilitacion, terminarPlan } from '@/lib/clinica/rehabilitacion'
 import { abrirHoja, agregarFarmaco, agregarSignos, cerrarHoja, guardarHoja, hojaQuirurgica, hojasDeMascota, htmlHoja, quitarRenglon } from '@/lib/clinica/hojaQuirurgica'
 import { cancelarPresupuesto, enviarPresupuesto, firmarEnClinica, guardarPresupuesto, htmlPresupuestoEquipo, presupuesto, presupuestosDeMascota, regresarABorrador } from '@/lib/clinica/cirugia'
 import { cancelarPaquete, entregarProducto, paquetesDeMascota, portalPaquetes, registrarUso, venderPaquete } from '@/lib/clinica/paquetes'
@@ -183,6 +184,21 @@ import {
  *   POST hospital/:id/partes                   { texto, foto? } parte para el tutor (correo)
  *   POST hospital/:id/alta                     { resumen?, indicacionesAlta } (suma de cargos a Finanzas)
  *
+ * REHABILITACIÓN (fase 4; ver lib/clinica/rehabilitacion.ts):
+ *   GET  rehabilitacion                         planes activos y terminados recientes
+ *   GET  rehabilitacion/ejercicios              catálogo de ejercicios disponibles
+ *   GET  rehabilitacion/ejercicios/:id/foto     foto del ejercicio (equipo o tutor con sesión)
+ *   GET  rehabilitacion/cita/:citaId            plan activo de la mascota de esa cita y su sesión, si existe
+ *   GET  rehabilitacion/:id                     plan con sesiones, ejercicios y registro en casa
+ *   GET  mascotas/:id/rehabilitacion            planes de la mascota
+ *   POST rehabilitacion                         { mascotaId, motivo, objetivo?, servicioId?, sesionesPrevistas?, frecuencia?, hojaId? }
+ *   POST rehabilitacion/:id                     editar datos del plan
+ *   POST rehabilitacion/:id/ejercicios          { ejercicioId, repeticiones?, vecesAlDia, nota? } | ejercicios/quitar { clave }
+ *   POST rehabilitacion/:id/sesiones            { citaId?, dolor?, cojera?, mediciones?, perimetroIzq?, perimetroDer?, terapias?, notaInterna?, notaTutor? } | sesiones/quitar { sesionId }
+ *   POST rehabilitacion/:id/terminar            { resumenFinal }
+ *   GET  portal/rehabilitacion/:id              plan para el tutor (sin nota interna ni goniometría)
+ *   POST portal/rehabilitacion/:id/casa         { clave, dia (hoy o ayer), accion: sumar | restar }
+ *
  * FOTOS (equipo o tutor, nov-2026):
  *   GET  fotos/mascotas/:id                    la foto (equipo con «ver pacientes» o el tutor de esa mascota)
  *   POST mascotas/:id/foto (multipart: archivo) | mascotas/:id/foto/quitar   (equipo, «editar pacientes»)
@@ -261,6 +277,7 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
     if (a === 'documentos' && b && d === 'archivo') return portalAbrirDocumento(c, idDeRuta(b))
     if (a === 'citas' && !b) return json(await portalCitas(c))
     if (a === 'paquetes' && !b) return json(await portalPaquetes(c))
+    if (a === 'rehabilitacion' && b && !d) return json(await portalPlan(c, idDeRuta(b)))
     if (a === 'citas' && b === 'disponibilidad') {
       const q = req.nextUrl.searchParams
       return json(await portalDisponibilidad(c, idDeRuta(q.get('servicio') ?? undefined), q.get('dia') ?? '', q.get('ignorar') ? idDeRuta(q.get('ignorar')!) : undefined, extraDe(q)))
@@ -275,6 +292,7 @@ async function atenderPortal(metodo: 'GET' | 'POST', req: NextRequest, ruta: str
     }
   } else {
     if (a === 'vincular' && !b) return json(await vincular(c, await leerJson(req)))
+    if (a === 'rehabilitacion' && b && d === 'casa') return json(await portalMarcar(c, idDeRuta(b), await leerJson(req)))
     if (a === 'paquetes' && b === 'solicitar' && !d) {
       try {
         return json(await portalSolicitarPaquete(c.payload, c.tutor, await leerJson(req)), 201)
@@ -308,6 +326,8 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
   if (metodo === 'GET' && ruta[0] === 'fotos' && ruta[1] === 'mascotas' && ruta[2] && !ruta[3]) return abrirFoto(payloadModulos, req.headers, idDeRuta(ruta[2]))
   /* Fotos de estética (E2): equipo con «Estética» o «Ver pacientes», o el tutor de la mascota. */
   if (metodo === 'GET' && ruta[0] === 'estetica' && ruta[1] === 'fotos' && ruta[2] && !ruta[3]) return abrirFotoEstetica(payloadModulos, req.headers, idDeRuta(ruta[2]))
+  /* Fotos del catálogo de ejercicios (rehabilitación): equipo o tutor con sesión. */
+  if (metodo === 'GET' && ruta[0] === 'rehabilitacion' && ruta[1] === 'ejercicios' && ruta[2] && ruta[3] === 'foto') return abrirFotoEjercicio(payloadModulos, req.headers, idDeRuta(ruta[2]))
 
   const payload = payloadModulos
   const ctx: Ctx | null = await contextoDesdeHeaders(payload, req.headers)
@@ -353,6 +373,11 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'presupuestos' && b && c === 'imprimir') return html(await htmlPresupuestoEquipo(ctx, idDeRuta(b)))
     if (a === 'mascotas' && b && c === 'hojas') return json(await hojasDeMascota(ctx, idDeRuta(b)))
     if (a === 'mascotas' && b && c === 'internamientos') return json(await internamientosDeMascota(ctx, idDeRuta(b)))
+    if (a === 'mascotas' && b && c === 'rehabilitacion') return json(await planesDeMascota(ctx, idDeRuta(b)))
+    if (a === 'rehabilitacion' && !b) return json(await tableroRehabilitacion(ctx))
+    if (a === 'rehabilitacion' && b === 'ejercicios' && !c) return json(await catalogoEjercicios(ctx))
+    if (a === 'rehabilitacion' && b === 'cita' && c) return json(await rehabilitacionDeCita(ctx, idDeRuta(c)))
+    if (a === 'rehabilitacion' && b && b !== 'ejercicios' && b !== 'cita' && !c) return json(await planRehabilitacion(ctx, idDeRuta(b)))
     if (a === 'hospital' && !b) return json(await tableroHospital(ctx))
     if (a === 'hospital' && b && !c) return json(await internamiento(ctx, idDeRuta(b), q.get('dia')))
     if (a === 'hojas' && b && !c) return json(await hojaQuirurgica(ctx, idDeRuta(b)))
@@ -371,6 +396,17 @@ async function atender(metodo: 'GET' | 'POST', req: NextRequest, ruta: string[])
     if (a === 'agenda' && b === 'arranque') return json(await arranqueAgenda(ctx))
     if (a === 'mascotas' && b && c === 'paquetes') return json(await venderPaquete(ctx, idDeRuta(b), await leerJson(req)), 201)
     if (a === 'mascotas' && b && c === 'presupuestos') return json(await guardarPresupuesto(ctx, idDeRuta(b), await leerJson(req)), 201)
+    if (a === 'rehabilitacion' && !b) return json(await crearPlan(ctx, await leerJson(req)), 201)
+    if (a === 'rehabilitacion' && b) {
+      const id = idDeRuta(b)
+      const d = ruta[3]
+      if (!c) return json(await editarPlan(ctx, id, await leerJson(req)))
+      if (c === 'ejercicios' && !d) return json(await agregarEjercicio(ctx, id, await leerJson(req)))
+      if (c === 'ejercicios' && d === 'quitar') return json(await quitarEjercicio(ctx, id, await leerJson(req)))
+      if (c === 'sesiones' && !d) return json(await registrarSesion(ctx, id, await leerJson(req)), 201)
+      if (c === 'sesiones' && d === 'quitar') return json(await quitarSesion(ctx, id, await leerJson(req)))
+      if (c === 'terminar') return json(await terminarPlan(ctx, id, await leerJson(req)))
+    }
     if (a === 'hospital' && !b) return json(await internar(ctx, await leerJson(req)), 201)
     if (a === 'hospital' && b) {
       const id = idDeRuta(b)

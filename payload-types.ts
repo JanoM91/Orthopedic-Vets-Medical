@@ -90,6 +90,9 @@ export interface Config {
     'cir-consentimientos': CirConsentimiento;
     'cir-hojas': CirHoja;
     'hos-internamientos': HosInternamiento;
+    'reh-ejercicios': RehEjercicio;
+    'reh-planes': RehPlan;
+    'reh-sesiones': RehSesion;
     'est-adicionales': EstAdicional;
     'est-fichas': EstFicha;
     'est-fotos': EstFoto;
@@ -150,6 +153,9 @@ export interface Config {
     'cir-consentimientos': CirConsentimientosSelect<false> | CirConsentimientosSelect<true>;
     'cir-hojas': CirHojasSelect<false> | CirHojasSelect<true>;
     'hos-internamientos': HosInternamientosSelect<false> | HosInternamientosSelect<true>;
+    'reh-ejercicios': RehEjerciciosSelect<false> | RehEjerciciosSelect<true>;
+    'reh-planes': RehPlanesSelect<false> | RehPlanesSelect<true>;
+    'reh-sesiones': RehSesionesSelect<false> | RehSesionesSelect<true>;
     'est-adicionales': EstAdicionalesSelect<false> | EstAdicionalesSelect<true>;
     'est-fichas': EstFichasSelect<false> | EstFichasSelect<true>;
     'est-fotos': EstFotosSelect<false> | EstFotosSelect<true>;
@@ -1652,6 +1658,116 @@ export interface HosInternamiento {
   createdAt: string;
 }
 /**
+ * Ejercicios para casa que el equipo asigna en cada plan de rehabilitación. El tutor ve el nombre, cómo se hace, la foto y el video.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reh-ejercicios".
+ */
+export interface RehEjercicio {
+  id: number;
+  /**
+   * Ej. «Sentarse y pararse», «Caminata con correa corta».
+   */
+  nombre: string;
+  comoSeHace: string;
+  /**
+   * Opcional. Una foto clara de cómo se hace; se reduce sola antes de guardarse.
+   */
+  foto?: string | null;
+  /**
+   * Opcional: liga de YouTube, Google Drive u otro sitio. El tutor la abre en su celular.
+   */
+  video?: string | null;
+  /**
+   * Quítalo para dejar de asignarlo (los planes que ya lo tienen lo conservan).
+   */
+  activo?: boolean | null;
+  orden?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reh-planes".
+ */
+export interface RehPlan {
+  id: number;
+  folio?: string | null;
+  mascota: number | Mascota;
+  cliente?: (number | null) | Cliente;
+  responsable?: (number | null) | User;
+  hoja?: (number | null) | CirHoja;
+  motivo: string;
+  objetivo?: string | null;
+  servicio?: (number | null) | Servicio;
+  sesionesPrevistas?: number | null;
+  frecuencia?: string | null;
+  estado: 'activo' | 'terminado';
+  inicio: string;
+  fin?: string | null;
+  ejercicios?:
+    | {
+        clave: string;
+        ejercicio?: (number | null) | RehEjercicio;
+        nombre: string;
+        comoSeHace?: string | null;
+        repeticiones?: string | null;
+        vecesAlDia: number;
+        nota?: string | null;
+        activo?: boolean | null;
+        desde?: string | null;
+        por?: string | null;
+        quitadoEn?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  casa?:
+    | {
+        dia: string;
+        clave: string;
+        veces: number;
+        en?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  resumenFinal?: string | null;
+  creadoPor?: (number | null) | User;
+  terminadoPor?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reh-sesiones".
+ */
+export interface RehSesion {
+  id: number;
+  plan: number | RehPlan;
+  mascota: number | Mascota;
+  cita?: (number | null) | Cita;
+  fecha: string;
+  terapeuta?: (number | null) | User;
+  por?: string | null;
+  dolor?: number | null;
+  cojera?: number | null;
+  mediciones?:
+    | {
+        articulacion: 'hombro' | 'codo' | 'carpo' | 'cadera' | 'rodilla' | 'tarso';
+        lado: 'izq' | 'der';
+        movimiento: 'flexion' | 'extension';
+        grados: number;
+        id?: string | null;
+      }[]
+    | null;
+  perimetroIzq?: number | null;
+  perimetroDer?: number | null;
+  terapias?: string | null;
+  notaInterna?: string | null;
+  notaTutor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "est-fichas".
  */
@@ -2230,6 +2346,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'hos-internamientos';
         value: number | HosInternamiento;
+      } | null)
+    | ({
+        relationTo: 'reh-ejercicios';
+        value: number | RehEjercicio;
+      } | null)
+    | ({
+        relationTo: 'reh-planes';
+        value: number | RehPlan;
+      } | null)
+    | ({
+        relationTo: 'reh-sesiones';
+        value: number | RehSesion;
       } | null)
     | ({
         relationTo: 'est-adicionales';
@@ -3124,6 +3252,99 @@ export interface HosInternamientosSelect<T extends boolean = true> {
   token?: T;
   creadoPor?: T;
   altaPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reh-ejercicios_select".
+ */
+export interface RehEjerciciosSelect<T extends boolean = true> {
+  nombre?: T;
+  comoSeHace?: T;
+  foto?: T;
+  video?: T;
+  activo?: T;
+  orden?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reh-planes_select".
+ */
+export interface RehPlanesSelect<T extends boolean = true> {
+  folio?: T;
+  mascota?: T;
+  cliente?: T;
+  responsable?: T;
+  hoja?: T;
+  motivo?: T;
+  objetivo?: T;
+  servicio?: T;
+  sesionesPrevistas?: T;
+  frecuencia?: T;
+  estado?: T;
+  inicio?: T;
+  fin?: T;
+  ejercicios?:
+    | T
+    | {
+        clave?: T;
+        ejercicio?: T;
+        nombre?: T;
+        comoSeHace?: T;
+        repeticiones?: T;
+        vecesAlDia?: T;
+        nota?: T;
+        activo?: T;
+        desde?: T;
+        por?: T;
+        quitadoEn?: T;
+        id?: T;
+      };
+  casa?:
+    | T
+    | {
+        dia?: T;
+        clave?: T;
+        veces?: T;
+        en?: T;
+        id?: T;
+      };
+  resumenFinal?: T;
+  creadoPor?: T;
+  terminadoPor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reh-sesiones_select".
+ */
+export interface RehSesionesSelect<T extends boolean = true> {
+  plan?: T;
+  mascota?: T;
+  cita?: T;
+  fecha?: T;
+  terapeuta?: T;
+  por?: T;
+  dolor?: T;
+  cojera?: T;
+  mediciones?:
+    | T
+    | {
+        articulacion?: T;
+        lado?: T;
+        movimiento?: T;
+        grados?: T;
+        id?: T;
+      };
+  perimetroIzq?: T;
+  perimetroDer?: T;
+  terapias?: T;
+  notaInterna?: T;
+  notaTutor?: T;
   updatedAt?: T;
   createdAt?: T;
 }

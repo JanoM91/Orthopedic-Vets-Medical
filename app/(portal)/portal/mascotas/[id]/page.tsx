@@ -11,6 +11,7 @@ import { ESTADO_CARTILLA_LABEL, type EstadoCartilla, estadosCartilla } from '../
 import { Avatar, Barra, Cabecera, ESPECIE_LABEL, fecha, GraficaPeso, hoyISO, Icono, Pill, TarjetaContacto, TIPO_CARTILLA_LABEL } from '../../../../../components/portal/comun'
 import { ErrorClinica, portalMascota } from '../../../../../lib/clinica/servicio'
 import { sesionTutor } from '../../../../../lib/portal/sesion'
+import { portalPlanesDeMascota } from '../../../../../lib/clinica/rehabilitacion'
 import { contactoClinica } from '../../../../../lib/sitio/contacto'
 import { ligaRefuerzo as ligaDeRefuerzo } from '../../../../../lib/portal/refuerzo'
 import { leerModulos } from '../../../../../lib/modulos'
@@ -58,6 +59,8 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
   /* Estética (E3): historial entregado y próximo baño; la pestaña solo existe con el módulo encendido. */
   const estetica = modulos.estetica && (tab === 'resumen' || tab === 'estetica') ? await portalEsteticas(c, m.id).catch(() => null) : null
   const conEstetica = Boolean(modulos.clinica && modulos.estetica)
+  /* Rehabilitación (nov-2026): sus planes, para abrir ejercicios y avance. */
+  const planes = tab === 'resumen' ? await portalPlanesDeMascota(c, m.id).catch(() => []) : []
   const documentosHabilitados = Boolean(process.env.CLINICA_BLOB_READ_WRITE_TOKEN || process.env.FINANZAS_BLOB_READ_WRITE_TOKEN)
 
   return (
@@ -115,6 +118,19 @@ export default async function MascotaPortal({ params, searchParams }: { params: 
               <Link href={`/portal/citas/nueva?mascota=${m.id}`} className="pt-btn pt-btn--acento">
                 <Icono n="calmas" /> Pedir cita para {m.nombre}
               </Link>
+            )}
+            {planes.length > 0 && (
+              <div className="pt-card">
+                <h2>Rehabilitación</h2>
+                {planes.map((pl) => (
+                  <Link key={pl.id} href={`/portal/rehabilitacion/${pl.id}`} className="pt-reh-fila">
+                    <span>
+                      <b>{pl.motivo}</b> · {pl.estado === 'activo' ? 'en curso' : `terminó`}
+                    </span>
+                    <Icono n="next" />
+                  </Link>
+                ))}
+              </div>
             )}
             <div className="pt-card">
               <h2>Cartilla</h2>

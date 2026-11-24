@@ -467,3 +467,40 @@ b, strong { font-weight: 700; }
 .pt-paq-oferta__lista { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .pt-paq-form { display: flex; flex-direction: column; gap: 10px; }
 .pt-paq-form__botones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ───────── Rehabilitación en la app (nov-2026) ───────── */
+.pt-reh-cab { display: flex; align-items: center; gap: 12px; }
+.pt-reh-cab > div { flex: 1; min-width: 0; }
+.pt-reh-cab h1 { margin: 0; }
+.pt-reh-cab p { margin: 0; }
+.pt-reh-resumen p, .pt-reh-resumen ul { margin: 0; }
+.pt-reh-resumen ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.pt-reh-resumen .pt-btn { align-self: flex-start; }
+.pt-reh-texto { white-space: pre-line; margin: 0; }
+.pt-reh-casa { display: flex; flex-direction: column; gap: 12px; }
+.pt-reh-dia { display: inline-flex; align-self: flex-start; background: var(--pt-surface); border: 1px solid var(--pt-line); border-radius: 999px; padding: 3px; gap: 2px; }
+.pt-reh-dia button { min-height: 40px; min-width: 76px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-weight: 700; color: var(--pt-muted); cursor: pointer; }
+.pt-reh-dia button.is-on { background: var(--pt-primary, #0f2f2a); color: #fff; }
+.pt-reh-ejercicios { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pt-reh-ej { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: start; }
+.pt-reh-ej--sin-foto { grid-template-columns: 1fr; }
+.pt-reh-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #eef4f1; color: var(--pt-ink); border-radius: 12px; padding: 12px; font-size: 14px; text-decoration: none; min-height: 44px; }
+.pt-reh-ej.is-completo { border-color: var(--pt-accent); }
+.pt-reh-ej__foto { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; background: #eef4f1; }
+.pt-reh-ej__cuerpo { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pt-reh-ej__cuerpo h3 { margin: 0; font-size: 16px; }
+.pt-reh-ej__cuerpo p { margin: 0; }
+.pt-reh-ej__nota { color: var(--pt-accent); font-weight: 600; }
+.pt-reh-video { font-weight: 700; color: var(--pt-accent); }
+.pt-reh-contador { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--pt-line); padding-top: 10px; flex-wrap: wrap; }
+.pt-reh-contador__btns { display: flex; gap: 8px; }
+.pt-reh-contador__btns .pt-btn:first-child { min-width: 46px; padding: 0; font-size: 20px; }
+.pt-reh-semana { flex-direction: row; justify-content: space-between; gap: 4px; }
+.pt-reh-semana__dia { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.pt-reh-semana__barra { width: 100%; max-width: 28px; height: 64px; background: #eef4f1; border-radius: 8px; display: flex; align-items: flex-end; overflow: hidden; }
+.pt-reh-semana__barra > span { display: block; width: 100%; background: #9fd9c8; border-radius: 8px; }
+.pt-reh-semana__barra > span.is-ok { background: var(--pt-accent); }
+.pt-reh-graficas { gap: 12px; }
+.pt-reh-grafica { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.pt-reh-notas { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pt-reh-notas p { margin: 0; }
